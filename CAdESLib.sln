@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CAdESLib", ".\CAdESLib\CAdESLib.csproj", "{9E0C9B8D-4F8A-4495-AC23-D210F402833B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CAdESLib.Tests", ".\CAdESLib.Tests\CAdESLib.Tests.csproj", "{F09627BB-E668-4901-B750-FD513827B3C0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9E0C9B8D-4F8A-4495-AC23-D210F402833B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E0C9B8D-4F8A-4495-AC23-D210F402833B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E0C9B8D-4F8A-4495-AC23-D210F402833B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E0C9B8D-4F8A-4495-AC23-D210F402833B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F09627BB-E668-4901-B750-FD513827B3C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F09627BB-E668-4901-B750-FD513827B3C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F09627BB-E668-4901-B750-FD513827B3C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F09627BB-E668-4901-B750-FD513827B3C0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {37DB5860-5E29-424F-AAC2-853445B13E6E}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,48 @@
+	input									output																						
+RunTest	SignatureProfile	SignatureValid	SignatureCertTimeValid	SignatureCertTrusted	SignatureCertOCSP	SignatureCertCRL	OCSPCertTrusted	CRLCertTrusted (not matter)	TSSignatureCertTrusted	SignatureVerification	CertPathVerification	BESLevel	TLevel	TSignatureVerifications	TCertPathVerifications	CLevel	CCertRefs	CRevocationRefs	XType1Level	XType1SignatureVerifications	XType1CertPathVerifications	XType2Level	XType2SignatureVerifications	XType2CertPathVerifications	XLLevel	CCertValues	CRevocationValues	XLType1Level	XLType2Level	ALevel	ASignatureVerifications	ACertPathVerifications
+yes	BES	yes	yes	yes	yes	yes	yes			yes	yes	yes																				
+yes	BES	yes	yes	yes	yes	yes	no			yes	no	yes																				
+yes	BES	yes	yes	yes	yes	no	yes			yes	yes	yes																				
+yes	BES	yes	yes	yes	yes	no	no			yes	no	yes																				
+yes	BES	yes	yes	yes	no	yes	yes			yes	yes	yes																				
+yes	BES	yes	yes	yes	no	yes	no			yes	yes	yes																				
+yes	BES	yes	yes	yes	no	no	yes			yes	no	yes																				
+yes	BES	yes	yes	yes	no	no	no			yes	no	yes																				
+yes	BES	yes	yes	no	yes	yes	yes			yes	no	yes																				
+yes	BES	yes	yes	no	yes	yes	no			yes	no	yes																				
+yes	BES	yes	yes	no	yes	no	yes			yes	no	yes																				
+yes	BES	yes	yes	no	yes	no	no			yes	no	yes																				
+yes	BES	yes	yes	no	no	yes	yes			yes	no	yes																				
+yes	BES	yes	yes	no	no	yes	no			yes	no	yes																				
+yes	BES	yes	yes	no	no	no	yes			yes	no	yes																				
+yes	BES	yes	yes	no	no	no	no			yes	no	yes																				
+yes	BES	yes	no	yes	yes	yes	yes			no	no	yes																				
+yes	BES	yes	no	yes	yes	yes	no			no	no	yes																				
+yes	BES	yes	no	yes	yes	no	yes			no	no	yes																				
+yes	BES	yes	no	yes	yes	no	no			no	no	yes																				
+yes	BES	yes	no	yes	no	yes	yes			no	no	yes																				
+yes	BES	yes	no	yes	no	yes	no			no	no	yes																				
+yes	BES	yes	no	yes	no	no	yes			no	no	yes																				
+yes	BES	yes	no	yes	no	no	no			no	no	yes																				
+yes	BES	yes	no	no	yes	yes	yes			no	no	yes																				
+yes	BES	yes	no	no	yes	yes	no			no	no	yes																				
+yes	BES	yes	no	no	yes	no	yes			no	no	yes																				
+yes	BES	yes	no	no	yes	no	no			no	no	yes																				
+yes	BES	yes	no	no	no	yes	yes			no	no	yes																				
+yes	BES	yes	no	no	no	yes	no			no	no	yes																				
+yes	BES	yes	no	no	no	no	yes			no	no	yes																				
+yes	BES	yes	no	no	no	no	no			no	no	yes																				
+yes	BES	no	yes	yes	yes	yes	yes			no	yes	yes																				
+yes	T	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes																	
+yes	T	yes	yes	yes	yes	yes	yes		no	yes	yes	yes	yes	yes	no																	
+yes	C	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes	yes	yes	yes														
+yes	XType1	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes											
+yes	XType1	yes	yes	yes	yes	yes	yes		no	yes	yes	yes	yes	yes	no	yes	yes	yes	yes	yes	no											
+yes	XType2	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes	yes	yes	yes				yes	yes	yes								
+yes	XType2	yes	yes	yes	yes	yes	yes		no	yes	yes	yes	yes	yes	no	yes	yes	yes				yes	yes	no								
+yes	XL	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes				yes	yes	yes	yes				
+yes	XL	yes	yes	yes	yes	yes	yes		no	yes	yes	yes	yes	yes	no	yes	yes	yes	yes	yes	no				yes	yes	yes	yes				
+yes	XLType1	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes	yes				yes	yes	yes	yes				
+yes	XLType1	yes	yes	yes	yes	yes	yes		no	yes	yes	yes	yes	yes	no	yes	yes	yes	yes	yes	no				yes	yes	yes	yes				
+yes	XLType2	yes	yes	yes	yes	yes	yes		yes	yes	yes	yes	yes	yes	yes	yes	yes	yes				yes	yes	yes	yes	yes	yes		yes			
+yes	XLType2	yes	yes	yes	yes	yes	yes		no	yes	yes	yes	yes	yes	no	yes	yes	yes				yes	yes	no	yes	yes	yes		yes			
