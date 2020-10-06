@@ -1,7 +1,11 @@
-﻿using NLog;
+﻿using LdapForNet;
+using NLog;
 using Org.BouncyCastle.Utilities.IO;
+using System;
 using System.IO;
+using System.Linq;
 using System.Net;
+using static LdapForNet.Native.Native;
 
 namespace CAdESLib.Service
 {
@@ -15,6 +19,8 @@ namespace CAdESLib.Service
     public class NetHttpDataLoader : IHTTPDataLoader
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
+        private const string LdapScheme = "ldap";
 
         public string ContentType { get; set; }
         public string Accept { get; set; }
@@ -31,25 +37,54 @@ namespace CAdESLib.Service
             {
                 logger.Info("Fetching data from url " + URL);
 
-                var request = (HttpWebRequest)WebRequest.Create(URL);
-                var response = (HttpWebResponse)request.GetResponse();
+                var uri = new Uri(URL);
 
-                if (response.StatusCode == HttpStatusCode.OK)
+                if (uri.Scheme.StartsWith(LdapScheme, StringComparison.OrdinalIgnoreCase))
                 {
-                    Stream dataStream = response.GetResponseStream();
-                    return dataStream;
+                    var arr = uri.Query.Split("?");
+                    var attributes = arr[1].Split(",");
+                    var scope = arr[2] ?? "base";
+                    var filter = arr[3];
+                    var dn = uri.LocalPath.TrimStart('/');
+
+                    using (var cn = new LdapConnection())
+                    {
+                        if (string.IsNullOrEmpty(uri.Host))
+                        {
+                            cn.Connect();
+                        }
+                        else
+                        {
+                            cn.Connect(uri.Host, uri.Port);
+                        }
+
+                        cn.Bind();
+
+                        var results = cn.Search(dn, filter, attributes, GetSearchScope(scope));
+                        var result = results.FirstOrDefault();
+                        var a = result.DirectoryAttributes[attributes[0]];
+                        var c = a.GetValue<byte[]>();
+
+                        return new MemoryStream(c);
+                    }
                 }
                 else
                 {
-                    return new MemoryStream(new byte[0]);
+                    var request = (HttpWebRequest)WebRequest.Create(URL);
+                    var response = (HttpWebResponse)request.GetResponse();
+
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        Stream dataStream = response.GetResponseStream();
+                        return dataStream;
+                    }
+                    else
+                    {
+                        return new MemoryStream(new byte[0]);
+                    }
                 }
             }
-            catch(WebException ex)
-            {
-                logger.Error(ex);
-                throw new CannotFetchDataException(ex, URL);
-            }
-            catch (IOException ex)
+            catch (Exception ex)
             {
                 logger.Error(ex);
                 throw new CannotFetchDataException(ex, URL);
@@ -88,16 +123,19 @@ namespace CAdESLib.Service
 
                 return dataStream;
             }
-            catch (WebException ex)
-            {
-                logger.Error(ex);
-                throw new CannotFetchDataException(ex, URL);
-            }
-            catch (IOException ex)
+            catch (Exception ex)
             {
                 logger.Error(ex);
                 throw new CannotFetchDataException(ex, URL);
             }
         }
+
+        private static LdapSearchScope GetSearchScope(string val) => (val.ToLower()) switch
+        {
+            "base" => LdapSearchScope.LDAP_SCOPE_BASE,
+            "one" => LdapSearchScope.LDAP_SCOPE_ONE,
+            "sub" => LdapSearchScope.LDAP_SCOPE_SUB,
+            _ => LdapSearchScope.LDAP_SCOPE_BASE,
+        };
     }
 }

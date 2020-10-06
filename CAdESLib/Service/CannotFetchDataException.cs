@@ -28,5 +28,15 @@ namespace CAdESLib.Service
             cause = ex;
             this.serviceName = serviceName;
         }
+        public CannotFetchDataException(NotSupportedException ex, string serviceName)
+        {
+            cause = ex;
+            this.serviceName = serviceName;
+        }
+        public CannotFetchDataException(Exception ex, string serviceName)
+        {
+            cause = ex;
+            this.serviceName = serviceName;
+        }
     }
 }
