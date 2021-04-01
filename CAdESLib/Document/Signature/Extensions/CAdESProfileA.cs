@@ -26,7 +26,7 @@ namespace CAdESLib.Document.Signature.Extensions
             si = base.ExtendCMSSignature(cmsSignedData, si, parameters, originalDocument);
             CAdESSignature signature = new CAdESSignature(cmsSignedData, si);
             IDictionary unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
-            Attribute archiveTimeStamp = GetTimeStampAttribute(CAdESProfileA.id_aa_ets_archiveTimestamp, SignatureTsa, digestAlgorithm, signature.GetArchiveTimestampData(0, originalDocument));
+            Attribute archiveTimeStamp = GetTimeStampAttribute(CAdESProfileA.id_aa_ets_archiveTimestamp, SignatureTsa, signature.GetArchiveTimestampData(0, originalDocument));
             unsignedAttrHash.Add(id_aa_ets_archiveTimestamp, archiveTimeStamp);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new AttributeTable
                 (unsignedAttrHash));

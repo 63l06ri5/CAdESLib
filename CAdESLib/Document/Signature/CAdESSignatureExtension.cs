@@ -83,15 +83,15 @@ namespace CAdESLib.Document.Signature.Extensions
         /// Computes an attribute containing a time-stamp token of the provided data, from the provided TSA using the
         /// provided. The hashing is performed by the method using the specified algorithm and a BouncyCastle provider.
         /// </remarks>
-        protected internal virtual BcCms.Attribute GetTimeStampAttribute(DerObjectIdentifier oid, ITspSource tsa, AlgorithmIdentifier digestAlgorithm, byte[] messageImprint)
+        protected internal virtual BcCms.Attribute GetTimeStampAttribute(DerObjectIdentifier oid, ITspSource tsa, byte[] messageImprint)
         {
             if (tsa is null)
             {
                 throw new ArgumentNullException(nameof(tsa));
             }
 
-            IDigest digest = null;
-            string algorithmName = null;
+            IDigest digest;
+            string algorithmName;
             if (tsa is ITSAClient)
             {
                 digest = tsa.GetMessageDigest();

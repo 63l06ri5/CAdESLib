@@ -36,8 +36,7 @@ namespace CAdESLib.Service
         /** The default value for the hash algorithm */
         public const string DEFAULTHASHALGORITHM = "SHA-256";
 
-        /** Hash algorithm */
-        protected internal string digestAlgorithm = DEFAULTHASHALGORITHM;
+        public virtual string DigestAlgorithm { get; private set; }
 
         public virtual string TsaURL { get; private set; }
 
@@ -85,7 +84,7 @@ namespace CAdESLib.Service
             TsaUsername = username;
             TsaPassword = password;
             tokenSizeEstimate = tokSzEstimate;
-            this.digestAlgorithm = digestAlgorithm;
+            DigestAlgorithm = digestAlgorithm;
         }
 
         /**
@@ -112,7 +111,7 @@ namespace CAdESLib.Service
          */
         public IDigest GetMessageDigest()
         {
-            return DigestAlgorithms.GetMessageDigest(digestAlgorithm);
+            return DigestAlgorithms.GetMessageDigest(DigestAlgorithm);
         }
 
         /**
@@ -123,17 +122,16 @@ namespace CAdESLib.Service
          */
         public virtual byte[] GetTimeStampToken(byte[] imprint)
         {
-            byte[] respBytes = null;
             // Setup the time stamp request
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
             BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
-            TimeStampRequest request = tsqGenerator.Generate(DigestAlgorithms.GetAllowedDigests(digestAlgorithm), imprint, nonce);
+            TimeStampRequest request = tsqGenerator.Generate(DigestAlgorithms.GetAllowedDigests(DigestAlgorithm), imprint, nonce);
             byte[] requestBytes = request.GetEncoded();
 
             // Call the communications layer
-            respBytes = GetTSAResponse(requestBytes);
+            var respBytes = GetTSAResponse(requestBytes);
 
             // Handle the TSA response
             TimeStampResponse response = new TimeStampResponse(respBytes);

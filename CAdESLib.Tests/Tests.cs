@@ -510,6 +510,8 @@ namespace CAdESLib.Tests
         public string TspUsername { get; set; }
 
         public string TspPassword { get; set; }
+        
+        public string DigestAlgorithm { get; set; }
 
         public string OcspSource { get; set; }
 

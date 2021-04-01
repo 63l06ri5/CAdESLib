@@ -14,8 +14,6 @@ namespace CAdESLib.Document.Signature.Extensions
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal AlgorithmIdentifier digestAlgorithm = new AlgorithmIdentifier(OiwObjectIdentifiers.IdSha1);
-
         protected internal override SignerInformation ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, Document originalData)
         {
             if (si is null)
@@ -40,7 +38,7 @@ namespace CAdESLib.Document.Signature.Extensions
             }
 
             //TODO: jbonilla - What happens if it is already CAdES-T? It should not be extended again.
-            Attribute signatureTimeStamp = GetTimeStampAttribute(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, SignatureTsa, digestAlgorithm, si.GetSignature());
+            Attribute signatureTimeStamp = GetTimeStampAttribute(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, SignatureTsa, si.GetSignature());
             unsignedAttrHash.Add(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, signatureTimeStamp);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable
                 (unsignedAttrHash));

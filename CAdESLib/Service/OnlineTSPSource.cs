@@ -41,10 +41,18 @@ namespace CAdESLib.Service
             }
         }
 
+        public override string DigestAlgorithm
+        {
+            get
+            {
+                return settings.DigestAlgorithm;
+            }
+        }
+
+
         public virtual TimeStampResponse GetTimeStampResponse(DigestAlgorithm algorithm, byte[] digest)
         {
-            digestAlgorithm = algorithm.Name;
-            byte[] respBytes = null;
+            var digestAlgorithm = algorithm.Name;
 
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
@@ -54,7 +62,7 @@ namespace CAdESLib.Service
             byte[] requestBytes = request.GetEncoded();
 
             // Call the communications layer
-            respBytes = GetTSAResponse(requestBytes);
+            var respBytes = GetTSAResponse(requestBytes);
 
             // Handle the TSA response
             return new TimeStampResponse(respBytes);

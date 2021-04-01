@@ -80,7 +80,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrType.GetDerEncoded());
                 toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrValues.GetDerEncoded());
                 var unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
-                BcCms.Attribute extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, digestAlgorithm, toTimestamp.ToArray());
+                BcCms.Attribute extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
                 unsignedAttrHash.Add(attributeId, extendedTimeStamp);
                 return SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrHash));
             }
