@@ -17,7 +17,7 @@ namespace CAdESLib.Helpers
         string TspSource { get; }
         string TspUsername { get; }
         string TspPassword { get; }
-        string DigestAlgorithm { get; }
+        string TSPDigestAlgorithmOid { get; }
     }
 
     public interface IOcspServiceSettings

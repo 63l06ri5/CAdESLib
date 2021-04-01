@@ -34,9 +34,9 @@ namespace CAdESLib.Service
         protected internal int tokenSizeEstimate = DEFAULTTOKENSIZE;
 
         /** The default value for the hash algorithm */
-        public const string DEFAULTHASHALGORITHM = "SHA-256";
+        public const string DEFAULTHASHALGORITHMOID = "2.16.840.1.101.3.4.2.1";
 
-        public virtual string DigestAlgorithm { get; private set; }
+        public virtual string TsaDigestAlgorithmOid { get; private set; }
 
         public virtual string TsaURL { get; private set; }
 
@@ -53,7 +53,7 @@ namespace CAdESLib.Service
 * @param url String - Time Stamp Authority URL (i.e. "http://tsatest1.digistamp.com/TSA")
 */
         public TSAClientBouncyCastle(string url)
-            : this(url, null, null, DEFAULTTOKENSIZE, DEFAULTHASHALGORITHM)
+            : this(url, null, null, DEFAULTTOKENSIZE, DEFAULTHASHALGORITHMOID)
         {
         }
 
@@ -64,7 +64,7 @@ namespace CAdESLib.Service
         * @param password String - password
         */
         public TSAClientBouncyCastle(string url, string username, string password)
-            : this(url, username, password, DEFAULTTOKENSIZE, DEFAULTHASHALGORITHM)
+            : this(url, username, password, DEFAULTTOKENSIZE, DEFAULTHASHALGORITHMOID)
         {
         }
 
@@ -78,13 +78,13 @@ namespace CAdESLib.Service
         * @param password String - password
         * @param tokSzEstimate int - estimated size of received time stamp token (DER encoded)
         */
-        public TSAClientBouncyCastle(string url, string username, string password, int tokSzEstimate, string digestAlgorithm)
+        public TSAClientBouncyCastle(string url, string username, string password, int tokSzEstimate, string digestAlgorithmOid)
         {
             TsaURL = url;
             TsaUsername = username;
             TsaPassword = password;
             tokenSizeEstimate = tokSzEstimate;
-            DigestAlgorithm = digestAlgorithm;
+            TsaDigestAlgorithmOid = digestAlgorithmOid;
         }
 
         /**
@@ -111,7 +111,7 @@ namespace CAdESLib.Service
          */
         public IDigest GetMessageDigest()
         {
-            return DigestAlgorithms.GetMessageDigest(DigestAlgorithm);
+            return DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOid);
         }
 
         /**
@@ -127,7 +127,7 @@ namespace CAdESLib.Service
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
             BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
-            TimeStampRequest request = tsqGenerator.Generate(DigestAlgorithms.GetAllowedDigests(DigestAlgorithm), imprint, nonce);
+            TimeStampRequest request = tsqGenerator.Generate(TsaDigestAlgorithmOid, imprint, nonce);
             byte[] requestBytes = request.GetEncoded();
 
             // Call the communications layer

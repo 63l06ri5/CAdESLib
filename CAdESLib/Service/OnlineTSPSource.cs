@@ -41,11 +41,11 @@ namespace CAdESLib.Service
             }
         }
 
-        public override string DigestAlgorithm
+        public override string TsaDigestAlgorithmOid
         {
             get
             {
-                return settings.DigestAlgorithm ?? DEFAULTHASHALGORITHM;
+                return settings.TSPDigestAlgorithmOid ?? DEFAULTHASHALGORITHMOID;
             }
         }
 
