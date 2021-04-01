@@ -45,7 +45,7 @@ namespace CAdESLib.Service
         {
             get
             {
-                return settings.DigestAlgorithm;
+                return settings.DigestAlgorithm ?? DEFAULTHASHALGORITHM;
             }
         }
 
