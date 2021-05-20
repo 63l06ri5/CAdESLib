@@ -511,7 +511,7 @@ namespace CAdESLib.Tests
 
         public string TspPassword { get; set; }
         
-        public string TSPDigestAlgorithmOid { get; set; }
+        public string TspDigestAlgorithmOID { get; set; }
 
         public string OcspSource { get; set; }
 

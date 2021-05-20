@@ -41,24 +41,22 @@ namespace CAdESLib.Service
             }
         }
 
-        public override string TsaDigestAlgorithmOid
+        public override string TsaDigestAlgorithmOID
         {
             get
             {
-                return settings.TSPDigestAlgorithmOid ?? DEFAULTHASHALGORITHMOID;
+                return settings.TspDigestAlgorithmOID ?? DEFAULTHASHALGORITHMOID;
             }
         }
 
 
-        public virtual TimeStampResponse GetTimeStampResponse(DigestAlgorithm algorithm, byte[] digest)
+        public virtual TimeStampResponse GetTimeStampResponse(string digestAlgorithmOID, byte[] digest)
         {
-            var digestAlgorithm = algorithm.Name;
-
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
             BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
-            TimeStampRequest request = tsqGenerator.Generate(DigestAlgorithms.GetAllowedDigests(digestAlgorithm), digest, nonce);
+            TimeStampRequest request = tsqGenerator.Generate(digestAlgorithmOID, digest, nonce);
             byte[] requestBytes = request.GetEncoded();
 
             // Call the communications layer

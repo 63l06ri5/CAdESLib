@@ -14,7 +14,7 @@ namespace CAdESLib.Service
         /// <summary>
         /// Gets a TimeStampResponse relevant to the provided digest
         /// </summary>
-        TimeStampResponse GetTimeStampResponse(DigestAlgorithm algorithm, byte[] digest);
+        TimeStampResponse GetTimeStampResponse(string digestAlgorithmOID, byte[] digest);
     }
 
     /**
@@ -56,6 +56,7 @@ namespace CAdESLib.Service
         string TsaUsername { get; }
         /** TSA password */
         string TsaPassword { get; }
+        string TsaDigestAlgorithmOID { get; }
     }
 
     /**

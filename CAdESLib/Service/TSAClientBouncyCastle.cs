@@ -36,7 +36,7 @@ namespace CAdESLib.Service
         /** The default value for the hash algorithm */
         public const string DEFAULTHASHALGORITHMOID = "2.16.840.1.101.3.4.2.1";
 
-        public virtual string TsaDigestAlgorithmOid { get; private set; }
+        public virtual string TsaDigestAlgorithmOID { get; private set; }
 
         public virtual string TsaURL { get; private set; }
 
@@ -84,7 +84,7 @@ namespace CAdESLib.Service
             TsaUsername = username;
             TsaPassword = password;
             tokenSizeEstimate = tokSzEstimate;
-            TsaDigestAlgorithmOid = digestAlgorithmOid;
+            TsaDigestAlgorithmOID = digestAlgorithmOid;
         }
 
         /**
@@ -111,7 +111,7 @@ namespace CAdESLib.Service
          */
         public IDigest GetMessageDigest()
         {
-            return DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOid);
+            return DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOID);
         }
 
         /**
@@ -127,7 +127,7 @@ namespace CAdESLib.Service
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
             BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
-            TimeStampRequest request = tsqGenerator.Generate(TsaDigestAlgorithmOid, imprint, nonce);
+            TimeStampRequest request = tsqGenerator.Generate(TsaDigestAlgorithmOID, imprint, nonce);
             byte[] requestBytes = request.GetEncoded();
 
             // Call the communications layer

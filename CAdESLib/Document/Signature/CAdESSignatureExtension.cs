@@ -91,20 +91,20 @@ namespace CAdESLib.Document.Signature.Extensions
             }
 
             IDigest digest;
-            string algorithmName;
+            string algorithmOid;
             if (tsa is ITSAClient)
             {
                 digest = tsa.GetMessageDigest();
-                algorithmName = digest.AlgorithmName;
+                algorithmOid = tsa.TsaDigestAlgorithmOID;
             }
             else
             {
                 digest = DigestUtilities.GetDigest(DigestAlgorithm.SHA1.Name);
-                algorithmName = DigestAlgorithm.SHA1.Name;
+                algorithmOid = DigestAlgorithm.SHA1.OID;
             }
             byte[] toTimeStamp = DigestAlgorithms.Digest(digest, messageImprint);
 
-            TimeStampResponse tsresp = tsa.GetTimeStampResponse(DigestAlgorithm.GetByName(algorithmName), toTimeStamp);
+            TimeStampResponse tsresp = tsa.GetTimeStampResponse(algorithmOid, toTimeStamp);
             TimeStampToken tstoken = tsresp.TimeStampToken;
             if (tstoken == null)
             {
