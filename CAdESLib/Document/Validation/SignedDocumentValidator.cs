@@ -64,13 +64,13 @@ namespace CAdESLib.Document.Validation
             {
                 byte[] preamble = new byte[5];
                 int read = input.Read(preamble, 0, 5);
-                //input.Position = 5;
+                
                 if (read < 5)
                 {
                     throw new ArgumentException("Not a signed document");
                 }
-                string preambleString = Encoding.UTF8.GetString(preamble);
-                if (Encoding.UTF8.GetBytes(preambleString)[0] == unchecked(0x30))
+                
+                if (preamble[0] == unchecked(0x30))
                 {
                     try
                     {
