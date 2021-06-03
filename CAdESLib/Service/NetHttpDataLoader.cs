@@ -71,6 +71,7 @@ namespace CAdESLib.Service
                 else
                 {
                     var request = (HttpWebRequest)WebRequest.Create(URL);
+                    request.Timeout = TimeOut;
                     var response = (HttpWebResponse)request.GetResponse();
 
                     if (response.StatusCode == HttpStatusCode.OK)
