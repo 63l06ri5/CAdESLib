@@ -7,6 +7,9 @@ using Org.BouncyCastle.X509;
 using CAdESLib.Document.Signature;
 using CAdESLib.Document.Validation;
 using NLog;
+using System.IO;
+using System.Text;
+using System.Linq;
 
 namespace CAdESLib.Service
 {
@@ -36,11 +39,15 @@ namespace CAdESLib.Service
                 if (url != null)
                 {
                     X509CertificateParser parser = new X509CertificateParser();
-                    X509Certificate cert = parser.ReadCertificate(httpDataLoader.Get(url));
+                    var bytes = GetBytes(httpDataLoader.Get(url));
+                    var certs = parser.ReadCertificates(bytes).Cast<X509Certificate>();
 
-                    if (cert.SubjectDN.Equals(subjectName))
+                    foreach (var cert in certs)
                     {
-                        list.Add(new CertificateAndContext(cert));
+                        if (cert.SubjectDN.Equals(subjectName))
+                        {
+                            list.Add(new CertificateAndContext(cert));
+                        }
                     }
                 }
             }
@@ -86,6 +93,23 @@ namespace CAdESLib.Service
                 return accessLocation;
             }
             return null;
+        }
+
+        private byte[] GetBytes(Stream input)
+        {
+            using MemoryStream ms = new MemoryStream();
+
+            input.CopyTo(ms);
+            var bytes = ms.ToArray();
+
+            try
+            {
+                return Convert.FromBase64String(Encoding.UTF8.GetString(bytes));
+            }
+            catch
+            {
+                return bytes;
+            }
         }
     }
 
