@@ -43,17 +43,14 @@ namespace CAdESLib.Document.Validation
                     logger.Warn("CRLSource null");
                     return null;
                 }
-                X509Crl x509crl = crlSource.FindCrl(childCertificate, certificate);
-                if (x509crl == null)
+                var x509crl = GetX509Crl(childCertificate, certificate, validationDate);
+
+                if (x509crl is null)
                 {
                     logger.Info("No CRL found for certificate " + childCertificate.SubjectDN);
                     return null;
                 }
-                if (!IsCRLValid(x509crl, certificate, validationDate))
-                {
-                    logger.Warn("The CRL is not valid !");
-                    return null;
-                }
+
                 report.StatusSource = x509crl;
                 report.Validity = CertificateValidity.UNKNOWN;
                 report.Certificate = childCertificate;
@@ -89,6 +86,25 @@ namespace CAdESLib.Document.Validation
                 logger.Error("IOException when accessing CRL for " + childCertificate.SubjectDN.ToString() + " " + e.Message);
                 return null;
             }
+        }
+
+        private X509Crl GetX509Crl(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
+        {
+            var crls = crlSource.FindCrls(childCertificate, certificate);
+
+            foreach (var crl in crls)
+            {
+                if (crl == null)
+                {
+                    continue;
+                }
+                if (IsCRLValid(crl, certificate, validationDate))
+                {
+                    return crl;
+                }
+            }
+
+            return null;
         }
 
         private bool IsCRLValid(X509Crl x509crl, X509Certificate issuerCertificate, DateTime
@@ -177,5 +193,7 @@ namespace CAdESLib.Document.Validation
             //    throw new RuntimeException("IO error: " + e.Message, e);
             //}
         }
+
+
     }
 }

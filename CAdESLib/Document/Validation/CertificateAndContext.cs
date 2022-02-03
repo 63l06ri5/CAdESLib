@@ -31,8 +31,10 @@ namespace CAdESLib.Document.Validation
         }
 
         public virtual X509Certificate Certificate { get; set; }
+        public virtual CertificateAndContext IssuerCertificate { get; set; }
         public virtual ISerializable Context { get; set; }
         public virtual CertificateSourceType CertificateSource { get; set; }
+        public CertificateStatus CertificateStatus { get; internal set; }
 
         public override string ToString()
         {

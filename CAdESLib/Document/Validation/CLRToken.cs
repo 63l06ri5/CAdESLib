@@ -12,11 +12,12 @@ namespace CAdESLib.Document.Validation
     {
         private readonly X509Crl x509crl;
 
+        private X509Certificate signer;
+
         public CRLToken(X509Crl crl)
         {
             x509crl = crl;
         }
-
         /// <returns>
         /// the x509crl
         /// </returns>
@@ -35,6 +36,7 @@ namespace CAdESLib.Document.Validation
             try
             {
                 x509crl.Verify(potentialIssuer.GetPublicKey());
+                signer = potentialIssuer;
                 return true;
             }
             catch (InvalidKeyException)
@@ -96,5 +98,7 @@ namespace CAdESLib.Document.Validation
         {
             return "CRL[signedBy=" + GetSignerSubjectName() + "]";
         }
+
+        public X509Certificate GetSigner() => signer;
     }
 }

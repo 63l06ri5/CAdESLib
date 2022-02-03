@@ -8,6 +8,7 @@ using System.IO;
 using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
 using X509Extensions = Org.BouncyCastle.Asn1.X509.X509Extensions;
+using System.Collections.Generic;
 
 namespace CAdESLib.Service
 {
@@ -39,26 +40,27 @@ namespace CAdESLib.Service
             UrlDataLoader = dataLoaderFunc();
         }
 
-        public virtual X509Crl FindCrl(X509Certificate certificate, X509Certificate issuerCertificate)
+        public virtual IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
+            var crls = new List<X509Crl>();
             try
             {
                 string crlURL = string.IsNullOrEmpty(presetCRLUri) ? GetCrlUri(certificate) : presetCRLUri;
                 logger.Info("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
-                if (crlURL == null)
+                if (crlURL != null)
                 {
-                    return null;
+                    if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
+                    {
+                        crls.Add(GetCrl(crlURL));
+                    }
+                    else
+                    {
+                        crls.Add(GetCrlFromFS(crlURL));
+                        //logger.Info("We support only HTTP and HTTPS CRL's url, this url is " + crlURL);
+                        //return null;
+                    }
                 }
-                if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
-                {
-                    return GetCrl(crlURL);
-                }
-                else
-                {
-                    return GetCrlFromFS(crlURL);
-                    //logger.Info("We support only HTTP and HTTPS CRL's url, this url is " + crlURL);
-                    //return null;
-                }
+                return crls;
             }
             catch (CrlException e)
             {

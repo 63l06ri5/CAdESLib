@@ -1,4 +1,5 @@
 ﻿using Org.BouncyCastle.Utilities.Date;
+using Org.BouncyCastle.X509;
 
 namespace CAdESLib.Document.Validation
 {
@@ -60,24 +61,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        public virtual string Issuer
-        {
-            get
-            {
-                if (certificateStatus == null)
-                {
-                    return null;
-                }
-                if (Status == CertificateValidity.REVOKED)
-                {
-                    if (certificateStatus.IssuerCertificate != null)
-                    {
-                        return certificateStatus.IssuerCertificate.SubjectDN.ToString();
-                    }
-                }
-                return null;
-            }
-        }
+        public virtual CertificateStatus CertificateStatus => certificateStatus;
 
         public virtual DateTimeObject IssuingTime
         {

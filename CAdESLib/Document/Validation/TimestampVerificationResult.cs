@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Org.BouncyCastle.Cms;
+using Org.BouncyCastle.X509;
 
 namespace CAdESLib.Document.Validation
 {
@@ -21,6 +22,8 @@ namespace CAdESLib.Document.Validation
 
         private string issuerName;
 
+        private X509Certificate issuer;
+
         public TimestampVerificationResult()
         {
         }
@@ -35,6 +38,7 @@ namespace CAdESLib.Document.Validation
                 serialNumber = token.GetTimeStamp().TimeStampInfo.SerialNumber.ToString();
                 creationTime = token.GetTimeStamp().TimeStampInfo.GenTime;
                 issuerName = token.GetSignerSubjectName().ToString();
+                issuer = token.GetSigner();
             }
         }
 
@@ -60,6 +64,8 @@ namespace CAdESLib.Document.Validation
         public virtual DateTime CreationTime => creationTime;
 
         public virtual string IssuerName => issuerName;
+
+        public virtual X509Certificate Issuer => issuer;
 
         public virtual SignatureValidationResult CertPathUpToTrustedList => certPathVerification;
 

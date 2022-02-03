@@ -17,6 +17,6 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Finds the request CRL.
         /// </summary>
-        X509Crl FindCrl(X509Certificate certificate, X509Certificate issuerCertificate);
+        IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate);
     }
 }

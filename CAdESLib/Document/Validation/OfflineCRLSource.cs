@@ -9,18 +9,18 @@ namespace CAdESLib.Document.Validation
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public X509Crl FindCrl(X509Certificate certificate, X509Certificate issuerCertificate)
+        public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
+            var crls = new List<X509Crl>();
             foreach (X509Crl crl in GetCRLsFromSignature())
             {
                 if (crl.IssuerDN.Equals(issuerCertificate.SubjectDN))
                 {
                     logger.Info("CRL found for issuer " + issuerCertificate.SubjectDN.ToString());
-                    return crl;
+                    crls.Add(crl);
                 }
             }
-            logger.Info("CRL not found for issuer " + issuerCertificate.SubjectDN.ToString());
-            return null;
+            return crls;
         }
 
         /// <summary>

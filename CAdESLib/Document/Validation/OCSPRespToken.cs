@@ -1,5 +1,6 @@
 ﻿using NLog;
 using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
@@ -14,6 +15,14 @@ namespace CAdESLib.Document.Validation
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly BasicOcspResp ocspResp;
+
+        private X509Name signerSubjectName;
+
+        private BigInteger signerSerialNumber;
+
+        private X509Certificate signerCertificate;
+
+        private bool isSignerNotFound = false;
 
         public OCSPRespToken(BasicOcspResp ocspResp)
         {
@@ -30,24 +39,67 @@ namespace CAdESLib.Document.Validation
 
         public virtual X509Name GetSignerSubjectName()
         {
-            if (ocspResp.ResponderId.ToAsn1Object().Name != null)
+            if (signerSubjectName != null)
             {
-                return ocspResp.ResponderId.ToAsn1Object().Name;
+                return signerSubjectName;
             }
-            else
+
+            signerSubjectName = ocspResp.ResponderId.ToAsn1Object().Name;
+
+            if (signerSubjectName != null)
             {
-                IList<X509Certificate> certs = ((OCSPRespCertificateSource)GetWrappedCertificateSource()).GetCertificates();
-                foreach (X509Certificate c in certs)
-                {
-                    if (IsSignedBy(c))
-                    {
-                        return c.SubjectDN;
-                    }
-                }
-                logger.Warn("Don't found an signer for OCSPToken in the " + certs.Count + " certificates "
-                     + certs);
+                return signerSubjectName;
+            }
+
+            if (isSignerNotFound)
+            {
                 return null;
             }
+
+            if (signerCertificate != null)
+            {
+                return signerSubjectName = signerCertificate.SubjectDN;
+            }
+
+            signerCertificate = GetSigningCert();
+
+            if (signerCertificate != null)
+            {
+                return signerSubjectName = signerCertificate.SubjectDN;
+            }
+
+            isSignerNotFound = true;
+
+            return null;
+        }
+
+        public virtual BigInteger GetSignerSerialNumber()
+        {
+            if (signerSerialNumber != null)
+            {
+                return signerSerialNumber;
+            }
+
+            if (isSignerNotFound)
+            {
+                return null;
+            }
+
+            if (signerCertificate != null)
+            {
+                return signerSerialNumber = signerCertificate.SerialNumber;
+            }
+
+            signerCertificate = GetSigningCert();
+
+            if (signerCertificate != null)
+            {
+                return signerSerialNumber = signerCertificate.SerialNumber;
+            }
+
+            isSignerNotFound = true;
+
+            return null;
         }
 
         public virtual bool IsSignedBy(X509Certificate potentialIssuer)
@@ -110,6 +162,22 @@ namespace CAdESLib.Document.Validation
         public override string ToString()
         {
             return "OcspResp[signedBy=" + GetSignerSubjectName() + "]";
+        }
+
+        private X509Certificate GetSigningCert()
+        {
+            IList<X509Certificate> certs = ((OCSPRespCertificateSource)GetWrappedCertificateSource()).GetCertificates();
+            foreach (X509Certificate c in certs)
+            {
+                if (IsSignedBy(c))
+                {
+                    return c;
+                }
+            }
+
+            logger.Warn("Don't found an signer for OCSPToken in the " + certs.Count + " certificates " + certs);
+
+            return null;
         }
     }
 }

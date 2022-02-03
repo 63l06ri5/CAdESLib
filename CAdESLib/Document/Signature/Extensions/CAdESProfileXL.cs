@@ -49,13 +49,13 @@ namespace CAdESLib.Document.Signature.Extensions
                     certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence)Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
                 }
             }
-            foreach (X509Crl relatedcrl in validationContext.NeededCRL)
+            foreach (var relatedcrl in validationContext.NeededCRLTokens)
             {
-                crlValues.Add(CertificateList.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedcrl.GetEncoded())));
+                crlValues.Add(CertificateList.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedcrl.GetX509crl().GetEncoded())));
             }
-            foreach (BasicOcspResp relatedocspresp in validationContext.NeededOCSPResp)
+            foreach (var relatedocspresp in validationContext.NeededOCSPRespTokens)
             {
-                ocspValues.Add((BasicOcspResponse.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedocspresp.GetEncoded()))));
+                ocspValues.Add((BasicOcspResponse.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedocspresp.GetOcspResp().GetEncoded()))));
             }
             RevocationValues revocationValues = new RevocationValues(crlValues.ToArray(), ocspValues.ToArray(), null);
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new DerSet(revocationValues)));

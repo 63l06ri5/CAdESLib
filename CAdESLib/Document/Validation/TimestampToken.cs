@@ -72,6 +72,20 @@ namespace CAdESLib.Document.Validation
             return null;
         }
 
+        public virtual X509Certificate GetSigner()
+        {
+            ICollection<X509Certificate> certs = ((CAdESCertificateSource)GetWrappedCertificateSource()).GetCertificates
+                ();
+            foreach (X509Certificate cert in certs)
+            {
+                if (timeStamp.SignerID.Match(cert))
+                {
+                    return cert;
+                }
+            }
+            return null;
+        }
+
         public virtual bool IsSignedBy(X509Certificate potentialIssuer)
         {
             try

@@ -64,12 +64,12 @@ namespace CAdESLib.Document.Validation
             {
                 byte[] preamble = new byte[5];
                 int read = input.Read(preamble, 0, 5);
-                
+
                 if (read < 5)
                 {
                     throw new ArgumentException("Not a signed document");
                 }
-                
+
                 if (preamble[0] == unchecked(0x30))
                 {
                     try
@@ -349,17 +349,26 @@ namespace CAdESLib.Document.Validation
         {
             try
             {
-                result.CertPathUpToTrustedList.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CannotReachTSL");
                 ctx.ValidateTimestamp(t, signature.CertificateSource, signature.CRLSource, signature.OCSPSource, result.UsedCerts);
-                var tsSignerSubjectName = t.GetSignerSubjectName();
-                foreach (CertificateAndContext c in ctx.NeededCertificates)
+                var certificatePathVerification = new List<CertificateVerification>();
+                foreach (CertificateAndContext cert in result.UsedCerts)
                 {
-                    if (c.Certificate.SubjectDN.Equals(tsSignerSubjectName))
+                    CertificateVerification verif = new CertificateVerification(cert, ctx);
+                    certificatePathVerification.Add(verif);
+                }
+                result.CertPathUpToTrustedList.SetStatus(ResultStatus.VALID, null);
+                if (certificatePathVerification != null)
+                {
+                    foreach (CertificateVerification verif in certificatePathVerification)
                     {
-                        if (ctx.GetParentFromTrustedList(c) != null)
+                        if (verif.Summary.IsInvalid)
                         {
-                            result.CertPathUpToTrustedList.SetStatus(ResultStatus.VALID, null);
+                            result.CertPathUpToTrustedList.SetStatus(ResultStatus.INVALID, verif.Summary.Description ?? "$UI_Signatures_ValidationText_CertificateIsNotValid");
                             break;
+                        }
+                        if (verif.Summary.IsUndetermined)
+                        {
+                            result.CertPathUpToTrustedList.SetStatus(ResultStatus.UNDETERMINED, verif.Summary.Description ?? "$UI_Signatures_ValidationText_NoRevocationData");
                         }
                     }
                 }
@@ -494,8 +503,9 @@ namespace CAdESLib.Document.Validation
                 throw new ArgumentNullException(nameof(ocspValuesOrRef));
             }
 
-            foreach (BasicOcspResp ocspResp in ctx.NeededOCSPResp)
+            foreach (var ocspRespToken in ctx.NeededOCSPRespTokens)
             {
+                var ocspResp = ocspRespToken.GetOcspResp();
                 logger.Info("Looking for the OcspResp produced at " + ocspResp.ProducedAt);
                 bool found = false;
                 foreach (object valueOrRef in ocspValuesOrRef)
@@ -538,8 +548,9 @@ namespace CAdESLib.Document.Validation
         /// <returns></returns>
         protected internal virtual bool EveryCRLValueOrRefAreThere<_T0>(IValidationContext ctx, IList<_T0> crlValuesOrRef, ICAdESLogger logger)
         {
-            foreach (X509Crl crl in ctx.NeededCRL)
+            foreach (var crlToken in ctx.NeededCRLTokens)
             {
+                var crl = crlToken.GetX509crl();
                 logger.Info("Looking for CRL ref issued by " + crl.IssuerDN);
                 bool found = false;
                 foreach (object valueOrRef in crlValuesOrRef)
