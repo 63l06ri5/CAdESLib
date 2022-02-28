@@ -1,8 +1,7 @@
-﻿using System;
+﻿using CAdESLib.Helpers;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Tsp;
-using CAdESLib.Document.Signature;
-using CAdESLib.Helpers;
+using System;
 
 namespace CAdESLib.Service
 {
@@ -16,7 +15,7 @@ namespace CAdESLib.Service
         {
             this.settings = settings;
         }
-        
+
         public override string TsaURL
         {
             get

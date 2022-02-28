@@ -1,14 +1,11 @@
 ﻿using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Cms;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace CAdESLib.Document
 {
     /// <summary>A document composed by a CmsSignedData</summary>
-    public class CMSSignedDocument : Document
+    public class CMSSignedDocument : IDocument
     {
         protected internal CmsSignedData signedData;
 

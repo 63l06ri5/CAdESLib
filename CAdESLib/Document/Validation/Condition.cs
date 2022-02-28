@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CAdESLib.Document.Validation
+﻿namespace CAdESLib.Document.Validation
 {
     /// <summary>
     /// Represents a condition on a certificate
     /// </summary>
-    public interface Condition
+    public interface ICondition
     {
         /// <summary>
         /// Return true if the condition evaluate to true

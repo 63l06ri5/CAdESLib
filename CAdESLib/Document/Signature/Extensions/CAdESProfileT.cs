@@ -1,9 +1,8 @@
-﻿using NLog;
+﻿using CAdESLib.Document.Validation;
+using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
-using Org.BouncyCastle.Asn1.Oiw;
 using Org.BouncyCastle.Asn1.Pkcs;
-using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +13,7 @@ namespace CAdESLib.Document.Signature.Extensions
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        protected internal override SignerInformation ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, Document originalData)
+        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
         {
             if (si is null)
             {
@@ -42,7 +41,7 @@ namespace CAdESLib.Document.Signature.Extensions
             unsignedAttrHash.Add(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, signatureTimeStamp);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable
                 (unsignedAttrHash));
-            return newsi;
+            return (newsi, null);
         }
     }
 }

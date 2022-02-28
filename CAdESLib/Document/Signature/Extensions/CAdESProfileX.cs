@@ -1,4 +1,5 @@
 ﻿
+using CAdESLib.Document.Validation;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
@@ -45,45 +46,44 @@ namespace CAdESLib.Document.Signature.Extensions
             this.extendedValidationType = extendedValidationType;
         }
 
-        protected internal override SignerInformation ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, Document originalData)
+        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
         {
-            si = base.ExtendCMSSignature(signedData, si, parameters, originalData);
-            using (var toTimestamp = new MemoryStream())
+            var (newSi, validationContext) = base.ExtendCMSSignature(signedData, si, parameters, originalData);
+            si = newSi;
+            using var toTimestamp = new MemoryStream();
+            DerObjectIdentifier attributeId;
+            switch (GetExtendedValidationType())
             {
-                DerObjectIdentifier attributeId;
-                switch (GetExtendedValidationType())
-                {
-                    case 1:
-                        {
-                            attributeId = PkcsObjectIdentifiers.IdAAEtsEscTimeStamp;
-                            toTimestamp.Write(si.GetSignature());
-                            // We don't include the outer SEQUENCE, only the attrType and attrValues as stated by the TS Â§6.3.5,
-                            // NOTE 2)
-                            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken].AttrType.GetDerEncoded());
-                            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken].AttrValues.GetDerEncoded());
-                            break;
-                        }
+                case 1:
+                    {
+                        attributeId = PkcsObjectIdentifiers.IdAAEtsEscTimeStamp;
+                        toTimestamp.Write(si.GetSignature());
+                        // We don't include the outer SEQUENCE, only the attrType and attrValues as stated by the TS Â§6.3.5,
+                        // NOTE 2)
+                        toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken].AttrType.GetDerEncoded());
+                        toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken].AttrValues.GetDerEncoded());
+                        break;
+                    }
 
-                    case 2:
-                        {
-                            attributeId = PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp;
-                            break;
-                        }
+                case 2:
+                    {
+                        attributeId = PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp;
+                        break;
+                    }
 
-                    default:
-                        {
-                            return si;
-                        }
-                }
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrType.GetDerEncoded());
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrValues.GetDerEncoded());
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrType.GetDerEncoded());
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrValues.GetDerEncoded());
-                var unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
-                BcCms.Attribute extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
-                unsignedAttrHash.Add(attributeId, extendedTimeStamp);
-                return SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrHash));
+                default:
+                    {
+                        return (si, validationContext);
+                    }
             }
+            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrType.GetDerEncoded());
+            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrValues.GetDerEncoded());
+            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrType.GetDerEncoded());
+            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrValues.GetDerEncoded());
+            var unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
+            BcCms.Attribute extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
+            unsignedAttrHash.Add(attributeId, extendedTimeStamp);
+            return (SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrHash)), validationContext);
         }
     }
 }

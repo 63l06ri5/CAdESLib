@@ -1,22 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
+using CAdESLib.Service;
 using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Tsp;
-using CAdESLib.Helpers;
-using CAdESLib.Service;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using BcCms = Org.BouncyCastle.Asn1.Cms;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
     public abstract class CAdESSignatureExtension : ISignatureExtension
     {
-        private const string AlreadyExtendedMessage = "Already extended?";
-        private const string ExtendingSignatureExceptionMessage = "Exception when extending signature";
         private const string CannotParseCMSDataMessage = "Cannot parse CMS data";
         private const string EmptyTimestampMessage = "The TimeStampToken returned for the signature time stamp was empty.";
         private ITspSource signatureTsa;
@@ -26,7 +24,7 @@ namespace CAdESLib.Document.Signature.Extensions
         /// </returns>
         public virtual ITspSource SignatureTsa { get => signatureTsa; set => signatureTsa = value; }
 
-        public virtual Document ExtendSignatures(Document document, Document originalData, SignatureParameters parameters)
+        public virtual IDocument ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters)
         {
             if (document is null)
             {
@@ -48,7 +46,8 @@ namespace CAdESLib.Document.Signature.Extensions
                         // TODO jbonilla - It should be validated to what extent it was extended (BES, T, C, X, XL).
                         if (si.UnsignedAttributes == null || si.UnsignedAttributes.Count == 0)
                         {
-                            siArray.Add(ExtendCMSSignature(signedData, si, parameters, originalData));
+                            var (signerInformation, _) = ExtendCMSSignature(signedData, si, parameters, originalData);
+                            siArray.Add(signerInformation);
                         }
                         else
                         {
@@ -73,7 +72,7 @@ namespace CAdESLib.Document.Signature.Extensions
             }
         }
 
-        protected internal abstract SignerInformation ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, Document originalData);
+        protected internal abstract (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData);
 
         /// <summary>
         /// Computes an attribute containing a time-stamp token of the provided data, from the provided TSA using the

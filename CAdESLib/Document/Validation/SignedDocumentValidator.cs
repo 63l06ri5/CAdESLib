@@ -1,4 +1,6 @@
-﻿using Org.BouncyCastle.Asn1.X509.Qualified;
+﻿using CAdESLib.Document.Signature;
+using CAdESLib.Helpers;
+using Org.BouncyCastle.Asn1.X509.Qualified;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Security;
@@ -7,9 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using CAdESLib.Document.Signature;
-using CAdESLib.Helpers;
 
 namespace CAdESLib.Document.Validation
 {
@@ -17,7 +16,7 @@ namespace CAdESLib.Document.Validation
 
     public interface ISignedDocumentValidator
     {
-        ValidationReport ValidateDocument(Document document, bool checkIntegrity = true, Document externalContent = null);
+        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity = true, IDocument externalContent = null);
     }
 
     /// <summary>
@@ -25,8 +24,8 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class SignedDocumentValidator : ISignedDocumentValidator
     {
-        private Func<ICAdESLogger> loggerFactory;
-
+        private readonly Func<ICAdESLogger> loggerFactory;
+        private readonly Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext> validationContextFactory;
         private const string SVC_INFO = "http://uri.etsi.org/TrstSvc/eSigDir-1999-93-EC-TrustedList/SvcInfoExt/";
 
         /// <param>
@@ -34,18 +33,19 @@ namespace CAdESLib.Document.Validation
         /// </param>
         public ICertificateVerifier CertificateVerifier { get; private set; }
 
-        private readonly Condition qcp = new PolicyIdCondition("0.4.0.1456.1.2");
+        private readonly ICondition qcp = new PolicyIdCondition("0.4.0.1456.1.2");
 
-        private readonly Condition qcpplus = new PolicyIdCondition("0.4.0.1456.1.1");
+        private readonly ICondition qcpplus = new PolicyIdCondition("0.4.0.1456.1.1");
 
-        private readonly Condition qccompliance = new QcStatementCondition(EtsiQCObjectIdentifiers.IdEtsiQcsQcCompliance);
+        private readonly ICondition qccompliance = new QcStatementCondition(EtsiQCObjectIdentifiers.IdEtsiQcsQcCompliance);
 
-        private readonly Condition qcsscd = new QcStatementCondition(EtsiQCObjectIdentifiers.IdEtsiQcsQcSscd);
+        private readonly ICondition qcsscd = new QcStatementCondition(EtsiQCObjectIdentifiers.IdEtsiQcsQcSscd);
 
-        public SignedDocumentValidator(ICertificateVerifier certificateVerifier, Func<ICAdESLogger> loggerFactory)
+        public SignedDocumentValidator(ICertificateVerifier certificateVerifier, Func<ICAdESLogger> loggerFactory, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext> validationContextFactory)
         {
             CertificateVerifier = certificateVerifier;
             this.loggerFactory = loggerFactory;
+            this.validationContextFactory = validationContextFactory;
         }
 
         /// <summary>
@@ -53,38 +53,36 @@ namespace CAdESLib.Document.Validation
         /// </summary>
         /// <param name="document"></param>
         /// <returns></returns>
-        public static CmsSignedData GetCmsSignedData(Document document)
+        public static CmsSignedData GetCmsSignedData(IDocument document)
         {
             if (document is null)
             {
                 throw new ArgumentNullException(nameof(document));
             }
 
-            using (var input = document.OpenStream())
+            using var input = document.OpenStream();
+            byte[] preamble = new byte[5];
+            int read = input.Read(preamble, 0, 5);
+
+            if (read < 5)
             {
-                byte[] preamble = new byte[5];
-                int read = input.Read(preamble, 0, 5);
+                throw new ArgumentException("Not a signed document");
+            }
 
-                if (read < 5)
+            if (preamble[0] == unchecked(0x30))
+            {
+                try
                 {
-                    throw new ArgumentException("Not a signed document");
+                    return new CmsSignedData(document.OpenStream());
                 }
-
-                if (preamble[0] == unchecked(0x30))
+                catch (CmsException)
                 {
-                    try
-                    {
-                        return new CmsSignedData(document.OpenStream());
-                    }
-                    catch (CmsException)
-                    {
-                        throw new IOException("Not a valid CAdES file");
-                    }
+                    throw new IOException("Not a valid CAdES file");
                 }
-                else
-                {
-                    throw new ArgumentException("Document format not recognized/handled");
-                }
+            }
+            else
+            {
+                throw new ArgumentException("Document format not recognized/handled");
             }
         }
 
@@ -106,7 +104,7 @@ namespace CAdESLib.Document.Validation
             return signatures;
         }
 
-        protected internal virtual SignatureVerification[] VerifyCounterSignatures(IAdvancedSignature signature, IValidationContext ctx, Document externalContent)
+        protected internal virtual SignatureVerification[] VerifyCounterSignatures(IAdvancedSignature signature, IValidationContext ctx, IDocument externalContent)
         {
             IList<IAdvancedSignature> counterSignatures = signature.CounterSignatures;
             if (counterSignatures == null)
@@ -134,7 +132,7 @@ namespace CAdESLib.Document.Validation
         /// <param name="tstokens"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        protected internal virtual IList<TimestampVerificationResult> VerifyTimestamps(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx, IList<TimestampToken> tstokens, byte[] data)
+        protected internal virtual IList<TimestampVerificationResult> VerifyTimestamps(IAdvancedSignature signature, IValidationContext ctx, IList<TimestampToken> tstokens, byte[] data)
         {
             IList<TimestampVerificationResult> tstokenVerifs = new List<TimestampVerificationResult>();
             if (tstokens != null)
@@ -158,7 +156,7 @@ namespace CAdESLib.Document.Validation
             return tstokenVerifs;
         }
 
-        protected internal virtual SignatureLevelBES VerifyLevelBES(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx, Document externalContent)
+        protected internal virtual SignatureLevelBES VerifyLevelBES(IAdvancedSignature signature, IValidationContext ctx, IDocument externalContent)
         {
             if (signature is null)
             {
@@ -187,7 +185,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        protected internal virtual SignatureLevelEPES VerifyLevelEPES(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx)
+        protected internal virtual SignatureLevelEPES VerifyLevelEPES(IAdvancedSignature signature, IValidationContext ctx)
         {
             try
             {
@@ -229,7 +227,7 @@ namespace CAdESLib.Document.Validation
             return levelReached;
         }
 
-        protected internal virtual SignatureLevelT VerifyLevelT(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx)
+        protected internal virtual SignatureLevelT VerifyLevelT(IAdvancedSignature signature, IValidationContext ctx)
         {
             if (signature is null)
             {
@@ -237,11 +235,11 @@ namespace CAdESLib.Document.Validation
             }
 
             IList<TimestampToken> sigTimestamps = signature.SignatureTimestamps;
-            IList<TimestampVerificationResult> results = VerifyTimestamps(signature, referenceTime, ctx, sigTimestamps, signature.SignatureTimestampData);
+            IList<TimestampVerificationResult> results = VerifyTimestamps(signature, ctx, sigTimestamps, signature.SignatureTimestampData);
             return new SignatureLevelT(ResultForTimestamps(results, new SignatureValidationResult()), results);
         }
 
-        private bool EveryCertificateRefAreThere(IValidationContext ctx, IList<CertificateRef> refs, X509Certificate signingCert, ICAdESLogger logger)
+        private bool EveryCertificateRefAreThere(IValidationContext ctx, IList<CertificateRef> refs, ICAdESLogger logger)
         {
             foreach (CertificateAndContext neededCert in ctx.NeededCertificates)
             {
@@ -271,7 +269,7 @@ namespace CAdESLib.Document.Validation
             return true;
         }
 
-        protected internal virtual SignatureLevelC VerifyLevelC(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx, bool rehashValues, ICAdESLogger logger)
+        protected internal virtual SignatureLevelC VerifyLevelC(IAdvancedSignature signature, IValidationContext ctx, bool rehashValues, ICAdESLogger logger)
         {
             if (signature is null)
             {
@@ -288,7 +286,7 @@ namespace CAdESLib.Document.Validation
                 }
                 else
                 {
-                    if (EveryCertificateRefAreThere(ctx, refs, signature.SigningCertificate, logger))
+                    if (EveryCertificateRefAreThere(ctx, refs, logger))
                     {
                         everyNeededCertAreInSignature.SetStatus(ResultStatus.VALID, null);
                     }
@@ -379,7 +377,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        protected internal virtual SignatureLevelX VerifyLevelX(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx)
+        protected internal virtual SignatureLevelX VerifyLevelX(IAdvancedSignature signature, IValidationContext ctx)
         {
             if (signature is null)
             {
@@ -439,11 +437,11 @@ namespace CAdESLib.Document.Validation
                 {
                     levelReached.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_NoTimestamp");
                 }
-                return new SignatureLevelX(signature, levelReached, x1Results, x2Results);
+                return new SignatureLevelX(levelReached, x1Results, x2Results);
             }
             catch (Exception)
             {
-                return new SignatureLevelX(signature, new SignatureValidationResult(ResultStatus.INVALID, "$UI_Signatures_ValidationText_ExceptionWhileVerifying"));
+                return new SignatureLevelX(new SignatureValidationResult(ResultStatus.INVALID, "$UI_Signatures_ValidationText_ExceptionWhileVerifying"));
             }
         }
 
@@ -510,18 +508,16 @@ namespace CAdESLib.Document.Validation
                 bool found = false;
                 foreach (object valueOrRef in ocspValuesOrRef)
                 {
-                    if (valueOrRef is BasicOcspResp)
+                    if (valueOrRef is BasicOcspResp sigResp)
                     {
-                        BasicOcspResp sigResp = (BasicOcspResp)valueOrRef;
                         if (sigResp.Equals(ocspResp))
                         {
                             found = true;
                             break;
                         }
                     }
-                    if (valueOrRef is OCSPRef)
+                    if (valueOrRef is OCSPRef @ref)
                     {
-                        OCSPRef @ref = (OCSPRef)valueOrRef;
                         if (@ref.Match(ocspResp))
                         {
                             found = true;
@@ -555,18 +551,16 @@ namespace CAdESLib.Document.Validation
                 bool found = false;
                 foreach (object valueOrRef in crlValuesOrRef)
                 {
-                    if (valueOrRef is X509Crl)
+                    if (valueOrRef is X509Crl sigCRL)
                     {
-                        X509Crl sigCRL = (X509Crl)valueOrRef;
                         if (sigCRL.Equals(crl))
                         {
                             found = true;
                             break;
                         }
                     }
-                    if (valueOrRef is CRLRef)
+                    if (valueOrRef is CRLRef @ref)
                     {
-                        CRLRef @ref = (CRLRef)valueOrRef;
                         if (@ref.Match(crl))
                         {
                             found = true;
@@ -583,7 +577,7 @@ namespace CAdESLib.Document.Validation
             return true;
         }
 
-        protected internal virtual SignatureLevelXL VerifyLevelXL(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx, ICAdESLogger logger)
+        protected internal virtual SignatureLevelXL VerifyLevelXL(IAdvancedSignature signature, IValidationContext ctx, ICAdESLogger logger)
         {
             try
             {
@@ -639,7 +633,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        protected internal virtual SignatureLevelA VerifyLevelA(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx, ICAdESLogger logger, Document externalContent)
+        protected internal virtual SignatureLevelA VerifyLevelA(IAdvancedSignature signature, IValidationContext ctx, ICAdESLogger logger, IDocument externalContent)
         {
             try
             {
@@ -648,7 +642,7 @@ namespace CAdESLib.Document.Validation
                 try
                 {
                     IList<TimestampToken> timestamps = signature.ArchiveTimestamps;
-                    verifs = VerifyTimestamps(signature, referenceTime, ctx, timestamps, signature.GetArchiveTimestampData(0, externalContent));
+                    verifs = VerifyTimestamps(signature, ctx, timestamps, signature.GetArchiveTimestampData(0, externalContent));
                 }
                 catch (IOException e)
                 {
@@ -663,7 +657,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        protected internal virtual QualificationsVerification VerifyQualificationsElement(IAdvancedSignature signature, DateTime referenceTime, IValidationContext ctx)
+        protected internal virtual QualificationsVerification VerifyQualificationsElement(IAdvancedSignature signature, IValidationContext ctx)
         {
             SignatureValidationResult qCWithSSCD = new SignatureValidationResult();
             SignatureValidationResult qCNoSSCD = new SignatureValidationResult();
@@ -705,7 +699,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the report part pertaining to the signature
         /// </returns>
-        protected internal virtual SignatureInformation ValidateSignature(IAdvancedSignature signature, DateTime referenceTime, ICAdESLogger logger, SignatureValidationContext signatureValidationContext, bool checkIntegrity, Document externalContent)
+        protected internal virtual SignatureInformation ValidateSignature(IAdvancedSignature signature, ICAdESLogger logger, SignatureValidationContext signatureValidationContext, bool checkIntegrity, IDocument externalContent)
         {
             if (signature is null)
             {
@@ -718,37 +712,53 @@ namespace CAdESLib.Document.Validation
                 return null;
             }
 
-
-
-            var signatureVerification = new SignatureVerification(new SignatureValidationResult(checkIntegrity ? signature.CheckIntegrity(externalContent) : true), signature.SignatureAlgorithm);
-            IValidationContext ctx = signatureValidationContext.GetExisted(signature.SigningCertificate, referenceTime);
+            var signatureVerification = new SignatureVerification(new SignatureValidationResult(!checkIntegrity || signature.CheckIntegrity(externalContent)), signature.SignatureAlgorithm);
+            IValidationContext ctx = signatureValidationContext.GetExisted(signature.SigningCertificate, signature.SigningTime?.Value ?? DateTime.Now);
             IList<CertificateAndContext> usedCerts = new List<CertificateAndContext>();
+            SignatureLevelT levelT;
+            Func<IValidationContext, SignatureLevelT>  getLevelT = (IValidationContext ctx) =>
+            {
+                var levelT = VerifyLevelT(signature, ctx);
+                if (!levelT.LevelReached.IsValid || !levelT.SignatureTimestampVerification.All(x => x.SameDigest.IsValid && x.CertPathVerification.IsValid))
+                {
+                    ctx.ValidationDate = DateTime.Now;
+                }
+                return levelT;
+            };
+
             if (ctx == null)
             {
-                ctx = CertificateVerifier.ValidateCertificate(signature.SigningCertificate, referenceTime, signature.CertificateSource, usedCerts, signature.CRLSource, signature.OCSPSource, logger);
+                var validationDate = signature.SignatureTimestamps?.FirstOrDefault()?.GetTimeStamp().TimeStampInfo.GenTime ?? DateTime.Now;
+                ctx = validationContextFactory(signature.SigningCertificate, validationDate, logger);
+                levelT = getLevelT(ctx);
+                ctx = CertificateVerifier.ValidateCertificate(signature.SigningCertificate, ctx.ValidationDate, signature.CertificateSource, usedCerts, signature.CRLSource, signature.OCSPSource, logger, ctx);
                 signatureValidationContext.Contexts.Add(ctx);
+            }
+            else
+            {
+                levelT = getLevelT(ctx);
+                usedCerts = ctx.NeededCertificates.ToList();
             }
 
             var qcStatementInformation = VerifyQStatement(signature.SigningCertificate);
-            var qualificationsVerification = VerifyQualificationsElement(signature, referenceTime, ctx);
+            var qualificationsVerification = VerifyQualificationsElement(signature, ctx);
 
             // TODO: serviceinfo is never set, so invalid everytime - hack added  - ?? new ServiceInfo()
             var info = new TrustedListInformation(ctx.GetRelevantServiceInfo() ?? new ServiceInfo());
-            var path = new CertPathRevocationAnalysis(ctx, info);
-
-
-            var signatureLevelXL = VerifyLevelXL(signature, referenceTime, ctx, logger);
+            var path = new CertPathRevocationAnalysis(ctx, info, usedCerts);
+            
+            var signatureLevelXL = VerifyLevelXL(signature, ctx, logger);
             // order matters
-            var signatureLevelC = VerifyLevelC(signature, referenceTime, ctx, signatureLevelXL?.LevelReached.IsValid ?? false, logger);
+            var signatureLevelC = VerifyLevelC(signature, ctx, signatureLevelXL?.LevelReached.IsValid ?? false, logger);
             var signatureLevelAnalysis = new SignatureLevelAnalysis(
                 signature,
-                VerifyLevelBES(signature, referenceTime, ctx, externalContent),
-                VerifyLevelEPES(signature, referenceTime, ctx),
-                VerifyLevelT(signature, referenceTime, ctx),
+                VerifyLevelBES(signature, ctx, externalContent),
+                VerifyLevelEPES(signature, ctx),
+                levelT,
                 signatureLevelC,
-                VerifyLevelX(signature, referenceTime, ctx),
+                VerifyLevelX(signature, ctx),
                 signatureLevelXL,
-                VerifyLevelA(signature, referenceTime, ctx, logger, externalContent));
+                VerifyLevelA(signature, ctx, logger, externalContent));
 
 
             var signatureInformation = new SignatureInformation(signatureVerification, path, signatureLevelAnalysis, qualificationsVerification, qcStatementInformation, ctx.NeededCertificates.Select(cert => new CertificateVerification(cert, ctx)), ctx);
@@ -762,7 +772,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the validation report
         /// </returns>
-        public ValidationReport ValidateDocument(Document document, bool checkIntegrity = true, Document externalContent = null)
+        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity = true, IDocument externalContent = null)
         {
             var cmsSignedData = GetCmsSignedData(document);
             var verificationTime = DateTime.Now;
@@ -773,7 +783,7 @@ namespace CAdESLib.Document.Validation
             foreach (IAdvancedSignature signature in GetSignatures(cmsSignedData))
             {
                 var logger = loggerFactory();
-                var validationInfo = ValidateSignature(signature, signature.SigningTime?.Value ?? DateTime.Now, logger, context, checkIntegrity, externalContent);
+                var validationInfo = ValidateSignature(signature, logger, context, checkIntegrity, externalContent);
                 validationInfo.ValidationLog = logger.GetEntries();
 
                 signatureInformationList.Add(validationInfo);

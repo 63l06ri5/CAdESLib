@@ -1,12 +1,12 @@
-﻿using Org.BouncyCastle.Crypto;
+﻿using CAdESLib.Helpers;
+using NLog;
+using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Tsp;
 using System;
 using System.IO;
 using System.Net;
 using System.Text;
-using NLog;
-using CAdESLib.Helpers;
 
 namespace CAdESLib.Service
 {
@@ -195,28 +195,26 @@ namespace CAdESLib.Service
             Stream inp = response.GetResponseStream();
 
 
-            using (MemoryStream baos = new MemoryStream())
+            using MemoryStream baos = new MemoryStream();
+            byte[] buffer = new byte[1024];
+            int bytesRead = 0;
+            while ((bytesRead = inp.Read(buffer, 0, buffer.Length)) > 0)
             {
-                byte[] buffer = new byte[1024];
-                int bytesRead = 0;
-                while ((bytesRead = inp.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    baos.Write(buffer, 0, bytesRead);
-                }
-
-                byte[] respBytes = baos.ToArray();
-
-                string encoding = response.ContentEncoding;
-                if (encoding != null && encoding.Equals("base64", StringComparison.OrdinalIgnoreCase))
-                {
-                    respBytes = Convert.FromBase64String(Encoding.ASCII.GetString(respBytes));
-                }
-
-                inp.Close();
-                response.Close();
-
-                return respBytes;
+                baos.Write(buffer, 0, bytesRead);
             }
+
+            byte[] respBytes = baos.ToArray();
+
+            string encoding = response.ContentEncoding;
+            if (encoding != null && encoding.Equals("base64", StringComparison.OrdinalIgnoreCase))
+            {
+                respBytes = Convert.FromBase64String(Encoding.ASCII.GetString(respBytes));
+            }
+
+            inp.Close();
+            response.Close();
+
+            return respBytes;
         }
     }
 }

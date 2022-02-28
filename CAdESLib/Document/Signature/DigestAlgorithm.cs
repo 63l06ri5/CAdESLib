@@ -1,8 +1,4 @@
-﻿using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.X509;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System;
 
 namespace CAdESLib.Document.Signature
 {

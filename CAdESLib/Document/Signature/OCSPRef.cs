@@ -1,11 +1,11 @@
-﻿using System.Linq;
+﻿using CAdESLib.Document.Validation;
+using NLog;
 using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities.Encoders;
-using NLog;
-using CAdESLib.Document.Validation;
+using System.Linq;
 
 namespace CAdESLib.Document.Signature
 {

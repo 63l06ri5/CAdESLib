@@ -1,12 +1,12 @@
-﻿using System;
-using System.IO;
+﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
-using NLog;
-using CAdESLib.Document.Validation;
-using CAdESLib.Helpers;
+using System;
+using System.IO;
 using X509Extensions = Org.BouncyCastle.Asn1.X509.X509Extensions;
 
 namespace CAdESLib.Service

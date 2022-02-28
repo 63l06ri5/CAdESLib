@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using CAdESLib.Document.Signature;
+﻿using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
@@ -16,13 +14,13 @@ namespace CAdESLib.Document.Validation
 
         private TrustedListInformation trustedListInformation;
 
-        public CertPathRevocationAnalysis(IValidationContext ctx, TrustedListInformation info)
+        public CertPathRevocationAnalysis(IValidationContext ctx, TrustedListInformation info, IList<CertificateAndContext> neededCertificates)
         {
             summary = new SignatureValidationResult();
             trustedListInformation = info;
-            if (ctx != null && ctx.NeededCertificates != null)
+            if (ctx != null && neededCertificates != null)
             {
-                foreach (CertificateAndContext cert in ctx.NeededCertificates)
+                foreach (CertificateAndContext cert in neededCertificates)
                 {
                     CertificateVerification verif = new CertificateVerification(cert, ctx);
                     certificatePathVerification.Add(verif);
@@ -41,7 +39,7 @@ namespace CAdESLib.Document.Validation
                     if (verif.Summary.IsUndetermined)
                     {
                         summary.SetStatus(ResultStatus.UNDETERMINED, verif.Summary.Description ?? "$UI_Signatures_ValidationText_NoRevocationData");
-                    }                    
+                    }
                 }
             }
             if (trustedListInformation != null)

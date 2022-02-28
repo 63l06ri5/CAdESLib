@@ -1,14 +1,14 @@
-﻿using System;
+﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
-using NLog;
-using System.IO;
-using CAdESLib.Document.Validation;
-using CAdESLib.Helpers;
-using X509Extensions = Org.BouncyCastle.Asn1.X509.X509Extensions;
+using System;
 using System.Collections.Generic;
+using System.IO;
+using X509Extensions = Org.BouncyCastle.Asn1.X509.X509Extensions;
 
 namespace CAdESLib.Service
 {
@@ -21,10 +21,9 @@ namespace CAdESLib.Service
     public class OnlineCrlSource : ICrlSource
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        readonly ICAdESServiceSettings settings;
 
-        ICAdESServiceSettings settings;
-
-        private string presetCRLUri => this.settings.CrlSource;
+        private string PresetCRLUri => settings.CrlSource;
 
         /// <summary>
         /// Set the HTTPDataLoader to use for query the CRL server
@@ -45,7 +44,7 @@ namespace CAdESLib.Service
             var crls = new List<X509Crl>();
             try
             {
-                string crlURL = string.IsNullOrEmpty(presetCRLUri) ? GetCrlUri(certificate) : presetCRLUri;
+                string crlURL = string.IsNullOrEmpty(PresetCRLUri) ? GetCrlUri(certificate) : PresetCRLUri;
                 logger.Info("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
                 if (crlURL != null)
                 {
@@ -109,13 +108,11 @@ namespace CAdESLib.Service
             {
                 try
                 {
-                    using (var input = File.OpenRead(downloadUrl))
-                    {
-                        X509CrlParser parser = new X509CrlParser();
-                        X509Crl crl = parser.ReadCrl(input);
-                        logger.Info("CRL size: " + crl.GetEncoded().Length + " bytes");
-                        return crl;
-                    }
+                    using var input = File.OpenRead(downloadUrl);
+                    X509CrlParser parser = new X509CrlParser();
+                    X509Crl crl = parser.ReadCrl(input);
+                    logger.Info("CRL size: " + crl.GetEncoded().Length + " bytes");
+                    return crl;
                 }
                 catch (CannotFetchDataException)
                 {
@@ -172,10 +169,9 @@ namespace CAdESLib.Service
                         logger.Info("not a uniform resource identifier");
                         continue;
                     }
-                    string str = null;
-                    if (name.ToAsn1Object() is DerTaggedObject)
+                    string str;
+                    if (name.ToAsn1Object() is DerTaggedObject taggedObject)
                     {
-                        DerTaggedObject taggedObject = (DerTaggedObject)name.ToAsn1Object();
                         DerIA5String derStr = DerIA5String.GetInstance(taggedObject.GetObject());
                         str = derStr.GetString();
                     }

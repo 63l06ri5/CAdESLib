@@ -5,7 +5,6 @@ using Org.BouncyCastle.Asn1.Ess;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Security.Certificates;
 using System.Collections.Generic;
 using System.Text;
 
@@ -45,7 +44,9 @@ namespace CAdESLib.Document.Signature.Extensions
             return new Attribute(PkcsObjectIdentifiers.Pkcs9AtSigningTime, new DerSet(new Org.BouncyCastle.Asn1.X509.Time(parameters.SigningDate)));
         }
 
+#pragma warning disable IDE0051 // Remove unused private members
         private Attribute MakeSignerAttrAttribute(SignatureParameters parameters)
+#pragma warning restore IDE0051 // Remove unused private members
         {
             DerOctetString[] roles = new DerOctetString[1];
             roles[0] = new DerOctetString(Encoding.UTF8.GetBytes(parameters.ClaimedSignerRole));

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace CAdESLib.Document.Validation
 {
@@ -12,12 +11,12 @@ namespace CAdESLib.Document.Validation
     {
         public virtual string Type { get; set; }
 
-        private readonly IDictionary<string, Condition> qualifiersAndConditions = new Dictionary<string, Condition>();
+        private readonly IDictionary<string, ICondition> qualifiersAndConditions = new Dictionary<string, ICondition>();
 
         /// <summary>
         /// Add a qualifier and the corresponding condition
         /// </summary>
-        public virtual void AddQualifier(string qualifier, Condition condition)
+        public virtual void AddQualifier(string qualifier, ICondition condition)
         {
             qualifiersAndConditions[qualifier] = condition;
         }
@@ -25,7 +24,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the qualifiersAndConditions
         /// </returns>
-        public virtual IDictionary<string, Condition> GetQualifiersAndConditions()
+        public virtual IDictionary<string, ICondition> GetQualifiersAndConditions()
         {
             return qualifiersAndConditions;
         }
@@ -36,7 +35,7 @@ namespace CAdESLib.Document.Validation
         public virtual IList<string> GetQualifiers(CertificateAndContext cert)
         {
             IList<string> list = new List<string>();
-            foreach (KeyValuePair<string, Condition> e in qualifiersAndConditions)
+            foreach (KeyValuePair<string, ICondition> e in qualifiersAndConditions)
             {
                 if (e.Value.Check(cert))
                 {

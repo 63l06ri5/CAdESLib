@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CAdESLib.Document.Validation
+﻿namespace CAdESLib.Document.Validation
 {
     /// <summary>
     /// Qualification of the certificate according to the QualificationElement of the Trusted List.

@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Text;
 
 namespace CAdESLib.Service
 {
@@ -38,5 +36,9 @@ namespace CAdESLib.Service
             cause = ex;
             this.serviceName = serviceName;
         }
+
+        public Exception Cause => cause;
+
+        public string ServiceName => serviceName;
     }
 }

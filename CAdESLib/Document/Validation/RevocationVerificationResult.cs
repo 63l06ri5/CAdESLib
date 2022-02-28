@@ -1,5 +1,4 @@
 ﻿using Org.BouncyCastle.Utilities.Date;
-using Org.BouncyCastle.X509;
 
 namespace CAdESLib.Document.Validation
 {

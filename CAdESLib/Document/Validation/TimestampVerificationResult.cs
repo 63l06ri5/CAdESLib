@@ -1,7 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using Org.BouncyCastle.Cms;
+﻿using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
+using System;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
@@ -22,7 +22,7 @@ namespace CAdESLib.Document.Validation
 
         private string issuerName;
 
-        private X509Certificate issuer;
+        private readonly X509Certificate issuer;
 
         public TimestampVerificationResult()
         {

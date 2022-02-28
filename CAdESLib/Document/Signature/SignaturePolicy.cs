@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CAdESLib.Document.Signature
+﻿namespace CAdESLib.Document.Signature
 {
     public enum SignaturePolicy
     {

@@ -1,9 +1,8 @@
-﻿using NLog;
+﻿using CAdESLib.Helpers;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using CAdESLib.Helpers;
 
 namespace CAdESLib.Document.Validation
 {

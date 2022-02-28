@@ -1,7 +1,4 @@
-﻿using NLog;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace CAdESLib.Helpers
 {
@@ -44,6 +41,6 @@ namespace CAdESLib.Helpers
         }
         public LogLevel LogLevel { get; private set; }
 
-        public string Message {get; private set;}
+        public string Message { get; private set; }
     }
 }

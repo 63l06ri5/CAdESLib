@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CAdESLib.Document.Validation
+﻿namespace CAdESLib.Document.Validation
 {
     /// <summary>
     /// The advanced signature contains a list of certificate that was needed to validate the signature.

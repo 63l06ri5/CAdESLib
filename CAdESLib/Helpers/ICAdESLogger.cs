@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace CAdESLib.Helpers
 {
-    public interface  ICAdESLogger
+    public interface ICAdESLogger
     {
         void Info(string message);
         void Error(string message);

@@ -1,6 +1,5 @@
 ﻿using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
-using System.IO;
 
 namespace CAdESLib.Document.Validation
 {
@@ -8,10 +7,8 @@ namespace CAdESLib.Document.Validation
     /// Check if a certificate has a specific policy id
     /// </summary>
     [System.Serializable]
-    public class PolicyIdCondition : Condition
+    public class PolicyIdCondition : ICondition
     {
-        private const long serialVersionUID = 7590885101177874819L;
-
         private readonly string policyOid;
 
         public PolicyIdCondition()
@@ -42,16 +39,14 @@ namespace CAdESLib.Document.Validation
             {
                 DerOctetString s = (DerOctetString)certificatePolicies;
                 byte[] content = s.GetOctets();
-                using (Asn1InputStream input = new Asn1InputStream(content))
+                using Asn1InputStream input = new Asn1InputStream(content);
+                DerSequence seq = (DerSequence)input.ReadObject();
+                for (int i = 0; i < seq.Count; i++)
                 {
-                    DerSequence seq = (DerSequence)input.ReadObject();
-                    for (int i = 0; i < seq.Count; i++)
+                    PolicyInformation policyInfo = PolicyInformation.GetInstance(seq[i]);
+                    if (policyInfo.PolicyIdentifier.Id.Equals(policyOid, System.StringComparison.OrdinalIgnoreCase))
                     {
-                        PolicyInformation policyInfo = PolicyInformation.GetInstance(seq[i]);
-                        if (policyInfo.PolicyIdentifier.Id.Equals(policyOid, System.StringComparison.OrdinalIgnoreCase))
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
 

@@ -1,7 +1,5 @@
 ﻿using Org.BouncyCastle.Asn1.X509;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace CAdESLib.Document.Validation
 {
@@ -14,7 +12,7 @@ namespace CAdESLib.Document.Validation
             this.sources = sources;
         }
 
-        public virtual IList<CertificateAndContext> GetCertificateBySubjectName(X509Name
+        public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name
              subjectName)
         {
             List<CertificateAndContext> list = new List<CertificateAndContext>();
@@ -22,14 +20,16 @@ namespace CAdESLib.Document.Validation
             {
                 if (source != null)
                 {
-                    IList<CertificateAndContext> @internal = source.GetCertificateBySubjectName(subjectName);
+                    var @internal = source.GetCertificateBySubjectName(subjectName);
                     if (@internal != null)
                     {
-                        list.AddRange(@internal);
+                        foreach(var item in @internal)
+                        {
+                            yield return item;
+                        }
                     }
                 }
             }
-            return list;
         }
     }
 }

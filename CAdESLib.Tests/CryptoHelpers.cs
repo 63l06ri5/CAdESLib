@@ -1,25 +1,23 @@
-﻿using Org.BouncyCastle.Asn1.Pkcs;
+﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
+using CAdESLib.Service;
+using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Math;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.X509;
-using System;
-using CAdESLib.Document.Signature;
-using CAdESLib.Document.Validation;
-using CAdESLib.Helpers;
-using CAdESLib.Service;
 using Org.BouncyCastle.Ocsp;
+using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Tsp;
+using Org.BouncyCastle.X509;
+using Org.BouncyCastle.X509.Extension;
+using Org.BouncyCastle.X509.Store;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Unity;
-using Org.BouncyCastle.X509.Extension;
-using System.Collections;
-using Org.BouncyCastle.X509.Store;
 #pragma warning disable 618
 
 namespace CAdESLib.Tests
@@ -70,8 +68,8 @@ namespace CAdESLib.Tests
 
     class FakeOnlineTspSource : ITspSource
     {
-        private AsymmetricCipherKeyPair keyPair;
-        private X509Certificate cert;
+        private readonly AsymmetricCipherKeyPair keyPair;
+        private readonly X509Certificate cert;
 
         public FakeOnlineTspSource(X509Certificate cert, AsymmetricCipherKeyPair keyPair)
         {
@@ -84,7 +82,7 @@ namespace CAdESLib.Tests
         public string TsaUsername => throw new NotImplementedException();
 
         public string TsaPassword => throw new NotImplementedException();
-        
+
         public string TsaDigestAlgorithmOID => throw new NotImplementedException();
 
         public const string DEFAULTHASHALGORITHM = "SHA-256";
@@ -111,7 +109,7 @@ namespace CAdESLib.Tests
             var certStore = X509StoreFactory.Create("Certificate/Collection", new X509CollectionStoreParameters(certs));
             tsTokenGen.SetCertificates(certStore);
 
-            TimeStampRequestGenerator reqGen = new TimeStampRequestGenerator();
+            //TimeStampRequestGenerator reqGen = new TimeStampRequestGenerator();
             //TimeStampRequest request = reqGen.Generate(TspAlgorithms.Sha1, new byte[20], BigInteger.ValueOf(100));
 
             TimeStampResponseGenerator tsRespGen = new TimeStampResponseGenerator(tsTokenGen, TspAlgorithms.Allowed);
@@ -136,10 +134,10 @@ namespace CAdESLib.Tests
 
     class FakeOnlineOcspSource : IOcspSource
     {
-        private AsymmetricCipherKeyPair keyPair;
-        private X509Certificate cert;
-        private List<(X509Certificate, X509Certificate)> notRevoked = new List<(X509Certificate, X509Certificate)>();
-        private List<(X509Certificate, X509Certificate)> revoked = new List<(X509Certificate, X509Certificate)>();
+        private readonly AsymmetricCipherKeyPair keyPair;
+        private readonly X509Certificate cert;
+        private readonly List<(X509Certificate, X509Certificate)> notRevoked = new List<(X509Certificate, X509Certificate)>();
+        private readonly List<(X509Certificate, X509Certificate)> revoked = new List<(X509Certificate, X509Certificate)>();
 
         public FakeOnlineOcspSource(X509Certificate cert, AsymmetricCipherKeyPair keyPair)
         {
@@ -192,16 +190,16 @@ namespace CAdESLib.Tests
 
     class FakeOnlineCrlSource : ICrlSource
     {
-        private AsymmetricCipherKeyPair keyPair;
-        private X509Certificate caCert;
-        private List<(X509Certificate, X509Certificate, AsymmetricCipherKeyPair)> revoked = new List<(X509Certificate, X509Certificate, AsymmetricCipherKeyPair)>();
+        private readonly AsymmetricCipherKeyPair keyPair;
+        private readonly X509Certificate caCert;
+        private readonly List<(X509Certificate, X509Certificate, AsymmetricCipherKeyPair)> revoked = new List<(X509Certificate, X509Certificate, AsymmetricCipherKeyPair)>();
 
         public FakeOnlineCrlSource(X509Certificate cert, AsymmetricCipherKeyPair keyPair)
         {
             this.keyPair = keyPair;
             this.caCert = cert;
         }
-        public X509Crl FindCrl(X509Certificate certificate, X509Certificate issuerCertificate)
+        public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
             X509V2CrlGenerator crlGen = new X509V2CrlGenerator();
             DateTime now = DateTime.UtcNow.AddHours(-1);
@@ -232,7 +230,7 @@ namespace CAdESLib.Tests
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(cert));
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlNumber, false, new CrlNumber(BigInteger.One));
 
-            return crlGen.Generate(privateKey);
+            return new List<X509Crl> { crlGen.Generate(privateKey) };
         }
         public void AddRevokedCert(X509Certificate certificate, X509Certificate issuerCertificate, AsymmetricCipherKeyPair keyPair)
         {

@@ -5,25 +5,17 @@ using CAdESLib.Helpers;
 using CAdESLib.Service;
 using NUnit.Framework;
 using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Tsp;
 using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Text;
 using Unity;
 using Unity.Lifetime;
-using Org.BouncyCastle.X509.Extension;
-using Org.BouncyCastle.Math;
-using System.Collections;
-using Org.BouncyCastle.X509.Store;
 
 namespace CAdESLib.Tests
 {
@@ -38,7 +30,6 @@ namespace CAdESLib.Tests
         private X509Certificate ocspCert;
 
         private AsymmetricCipherKeyPair crlCAKeyPair;
-        private X509Certificate crlCACert;
         private AsymmetricCipherKeyPair crlKeyPair;
         private X509Certificate crlCert;
 
@@ -96,7 +87,7 @@ namespace CAdESLib.Tests
             var parameters = new SignatureParameters
             {
                 SigningCertificate = signingCert,
-                CertificateChain = new X509Certificate[] {  signingCert },
+                CertificateChain = new X509Certificate[] { signingCert },
                 SignaturePackaging = SignaturePackaging.DETACHED,
                 SignatureProfile = sigParams.SignatureProfile,
                 SigningDate = signingTime,
@@ -205,7 +196,7 @@ namespace CAdESLib.Tests
             {
                 var crlCA = new X509Name("CN=crlCA");
                 crlCAKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-                crlCACert = CryptoHelpers.GenerateCertificate(crlCA, crlCA, crlCAKeyPair.Private, crlCAKeyPair.Public);
+                //crlCACert = CryptoHelpers.GenerateCertificate(crlCA, crlCA, crlCAKeyPair.Private, crlCAKeyPair.Public);
 
                 var crl = new X509Name("CN=crl");
                 crlKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
@@ -237,7 +228,7 @@ namespace CAdESLib.Tests
 
                 .RegisterFactory<Func<ICAdESServiceSettings, ICertificateVerifier>>(c => new Func<ICAdESServiceSettings, ICertificateVerifier>((settings) => new TrustedListCertificateVerifier(c.Resolve<Func<ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(settings))))
 
-                .RegisterFactory<Func<ICAdESServiceSettings, ISignedDocumentValidator>>(c => new Func<ICAdESServiceSettings, ISignedDocumentValidator>((settings) => new SignedDocumentValidator(c.Resolve<Func<ICAdESServiceSettings, ICertificateVerifier>>()(settings), c.Resolve<Func<ICAdESLogger>>())))
+                .RegisterFactory<Func<ICAdESServiceSettings, ISignedDocumentValidator>>(c => new Func<ICAdESServiceSettings, ISignedDocumentValidator>((settings) => new SignedDocumentValidator(c.Resolve<Func<ICAdESServiceSettings, ICertificateVerifier>>()(settings), c.Resolve<Func<ICAdESLogger>>(), c.Resolve<Func<ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(settings))))
 
 
                 .RegisterType<ICAdESLogger, CAdESLogger>(new TransientLifetimeManager())
@@ -269,63 +260,64 @@ namespace CAdESLib.Tests
             ;
         }
 
+#pragma warning disable IDE0051 // Remove unused private members
         static IEnumerable<object> BESTestCaseSource()
+#pragma warning restore IDE0051 // Remove unused private members
         {
-            using (var file = File.OpenText("TestCases.csv"))
+            using var file = File.OpenText("TestCases.csv");
+            // header
+            var line = file.ReadLine();
+            line = file.ReadLine();
+
+            while ((line = file.ReadLine()) != null)
             {
-                // header
-                var line = file.ReadLine();
-                line = file.ReadLine();
-
-                while ((line = file.ReadLine()) != null)
+                if (line == null)
                 {
-                    if (line == null)
-                    {
-                        yield break;
-                    }
+                    yield break;
+                }
 
-                    var values = line.Split('\t');
-                    // params
-                    if (values[0]=="no")
-                    {
-                        continue;
-                    }
-                    var startIndex = 1;
-                    SignatureProfile SignatureProfile = Enum.Parse<SignatureProfile>(values[startIndex + 0]);
-                    bool? SignatureValid = GetBoolValue(values[startIndex + 1]);
-                    bool? SignatureCertTimeValid = GetBoolValue(values[startIndex + 2]);
-                    bool? SignatureCertTrusted = GetBoolValue(values[startIndex + 3]);
-                    bool? SignatureCertOCSP = GetBoolValue(values[startIndex + 4]);
-                    bool? SignatureCertCRL = GetBoolValue(values[startIndex + 5]);
-                    bool? OCSPCertTrusted = GetBoolValue(values[startIndex + 6]);
-                    //bool? CRLCertTrusted = GetBoolValue(values[startIndex + 7]);
-                    bool? TSSignatureCertTrusted = GetBoolValue(values[startIndex + 8]);
-                    // results
-                    bool SignatureVerification = GetBoolValue(values[startIndex + 9]).Value;
-                    bool CertPathVerification = GetBoolValue(values[startIndex + 10]).Value;
-                    bool? BESLevel = GetBoolValue(values[startIndex + 11]);
-                    bool? TLevel = GetBoolValue(values[startIndex + 12]);
-                    bool? TSignatureVerifications = GetBoolValue(values[startIndex + 13]);
-                    bool? TCertPathVerifications = GetBoolValue(values[startIndex + 14]);
-                    bool? CLevel = GetBoolValue(values[startIndex + 15]);
-                    bool? CCertRefs = GetBoolValue(values[startIndex + 16]);
-                    bool? CRevocationRefs = GetBoolValue(values[startIndex + 17]);
-                    bool? XType1Level = GetBoolValue(values[startIndex + 18]);
-                    bool? XType1SignatureVerifications = GetBoolValue(values[startIndex + 19]);
-                    bool? XType1CertPathVerifications = GetBoolValue(values[startIndex + 20]);
-                    bool? XType2Level = GetBoolValue(values[startIndex + 21]);
-                    bool? XType2SignatureVerifications = GetBoolValue(values[startIndex + 22]);
-                    bool? XType2CertPathVerifications = GetBoolValue(values[startIndex + 23]);
-                    bool? XLLevel = GetBoolValue(values[startIndex + 24]);
-                    bool? CCertValues = GetBoolValue(values[startIndex + 25]);
-                    bool? CRevocationValues = GetBoolValue(values[startIndex + 26]);
-                    bool? XLType1Level = GetBoolValue(values[startIndex + 27]);
-                    bool? XLType2Level = GetBoolValue(values[startIndex + 28]);
-                    bool? ALevel = GetBoolValue(values[startIndex + 29]);
-                    bool? ASignatureVerifications = GetBoolValue(values[startIndex + 30]);
-                    bool? ACertPathVerifications = GetBoolValue(values[startIndex + 31]);
+                var values = line.Split('\t');
+                // params
+                if (values[0] == "no")
+                {
+                    continue;
+                }
+                var startIndex = 1;
+                SignatureProfile SignatureProfile = Enum.Parse<SignatureProfile>(values[startIndex + 0]);
+                bool? SignatureValid = GetBoolValue(values[startIndex + 1]);
+                bool? SignatureCertTimeValid = GetBoolValue(values[startIndex + 2]);
+                bool? SignatureCertTrusted = GetBoolValue(values[startIndex + 3]);
+                bool? SignatureCertOCSP = GetBoolValue(values[startIndex + 4]);
+                bool? SignatureCertCRL = GetBoolValue(values[startIndex + 5]);
+                bool? OCSPCertTrusted = GetBoolValue(values[startIndex + 6]);
+                //bool? CRLCertTrusted = GetBoolValue(values[startIndex + 7]);
+                bool? TSSignatureCertTrusted = GetBoolValue(values[startIndex + 8]);
+                // results
+                bool SignatureVerification = GetBoolValue(values[startIndex + 9]).Value;
+                bool CertPathVerification = GetBoolValue(values[startIndex + 10]).Value;
+                bool? BESLevel = GetBoolValue(values[startIndex + 11]);
+                bool? TLevel = GetBoolValue(values[startIndex + 12]);
+                bool? TSignatureVerifications = GetBoolValue(values[startIndex + 13]);
+                bool? TCertPathVerifications = GetBoolValue(values[startIndex + 14]);
+                bool? CLevel = GetBoolValue(values[startIndex + 15]);
+                bool? CCertRefs = GetBoolValue(values[startIndex + 16]);
+                bool? CRevocationRefs = GetBoolValue(values[startIndex + 17]);
+                bool? XType1Level = GetBoolValue(values[startIndex + 18]);
+                bool? XType1SignatureVerifications = GetBoolValue(values[startIndex + 19]);
+                bool? XType1CertPathVerifications = GetBoolValue(values[startIndex + 20]);
+                bool? XType2Level = GetBoolValue(values[startIndex + 21]);
+                bool? XType2SignatureVerifications = GetBoolValue(values[startIndex + 22]);
+                bool? XType2CertPathVerifications = GetBoolValue(values[startIndex + 23]);
+                bool? XLLevel = GetBoolValue(values[startIndex + 24]);
+                bool? CCertValues = GetBoolValue(values[startIndex + 25]);
+                bool? CRevocationValues = GetBoolValue(values[startIndex + 26]);
+                bool? XLType1Level = GetBoolValue(values[startIndex + 27]);
+                bool? XLType2Level = GetBoolValue(values[startIndex + 28]);
+                bool? ALevel = GetBoolValue(values[startIndex + 29]);
+                bool? ASignatureVerifications = GetBoolValue(values[startIndex + 30]);
+                bool? ACertPathVerifications = GetBoolValue(values[startIndex + 31]);
 
-                    yield return new object[] {
+                yield return new object[] {
                         new SignatureParams {
                             SignatureProfile = SignatureProfile,
                             SignatureValid = SignatureValid,
@@ -363,7 +355,6 @@ namespace CAdESLib.Tests
                             ACertPathVerifications= ACertPathVerifications,
                          }
                     };
-                }
             }
         }
 
@@ -382,12 +373,13 @@ namespace CAdESLib.Tests
             public bool? SignatureCertCRL { get; set; }
             public bool? OCSPCertTrusted { get; set; }
             public bool? TSSignatureCertTrusted { get; set; }
-            
+
             public override string ToString()
             {
-                var builder = new List<string>();
-
-                builder.Add($"Profile{Enum.GetName(SignatureProfile.GetType(), SignatureProfile)}");
+                var builder = new List<string>
+                {
+                    $"Profile{Enum.GetName(SignatureProfile.GetType(), SignatureProfile)}"
+                };
 
                 if (SignatureValid.HasValue) { builder.Add("Sign" + (SignatureValid.Value ? "Valid" : "NotValid")); };
                 if (SignatureCertTimeValid.HasValue) { builder.Add("CertTime" + (SignatureCertTimeValid.Value ? "Valid" : "NotValid")); };
@@ -465,10 +457,11 @@ namespace CAdESLib.Tests
 
             public override string ToString()
             {
-                var builder = new List<string>();
-
-                builder.Add($"Sign" + (SignatureVerification ? "Valid" : "NotValid"));
-                builder.Add($"CertPath" + (CertPathVerification ? "Valid" : "NotValid"));
+                var builder = new List<string>
+                {
+                    $"Sign" + (SignatureVerification ? "Valid" : "NotValid"),
+                    $"CertPath" + (CertPathVerification ? "Valid" : "NotValid")
+                };
 
                 if (BESLevel.HasValue) { builder.Add($"BESLevel" + (BESLevel.Value ? "Valid" : "NotValid")); }
                 if (TLevel.HasValue) { builder.Add($"TLevel" + (TLevel.Value ? "Valid" : "NotValid")); }
@@ -510,7 +503,7 @@ namespace CAdESLib.Tests
         public string TspUsername { get; set; }
 
         public string TspPassword { get; set; }
-        
+
         public string TspDigestAlgorithmOID { get; set; }
 
         public string OcspSource { get; set; }
@@ -519,5 +512,5 @@ namespace CAdESLib.Tests
 
         public IList<X509Certificate> TrustedCerts { get; set; } = new List<X509Certificate>();
 
-    }   
+    }
 }

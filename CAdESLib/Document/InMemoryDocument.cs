@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
+﻿using System.IO;
 
 namespace CAdESLib.Document
 {
     /// <summary>In memory representation of a document</summary>
-    public class InMemoryDocument : Document
+    public class InMemoryDocument : IDocument
     {
         private readonly string name;
 

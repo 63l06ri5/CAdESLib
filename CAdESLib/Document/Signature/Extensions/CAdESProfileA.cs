@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1;
+﻿using CAdESLib.Document.Validation;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
@@ -21,16 +22,17 @@ namespace CAdESLib.Document.Signature.Extensions
     {
         public static readonly DerObjectIdentifier id_aa_ets_archiveTimestamp = PkcsObjectIdentifiers.IdAAEtsArchiveTimestamp;
 
-        protected internal override SignerInformation ExtendCMSSignature(CmsSignedData cmsSignedData, SignerInformation si, SignatureParameters parameters, Document originalDocument)
+        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData cmsSignedData, SignerInformation si, SignatureParameters parameters, IDocument originalDocument)
         {
-            si = base.ExtendCMSSignature(cmsSignedData, si, parameters, originalDocument);
+            var (newSi, validationContext) = base.ExtendCMSSignature(cmsSignedData, si, parameters, originalDocument);
+            si = newSi;
             CAdESSignature signature = new CAdESSignature(cmsSignedData, si);
             IDictionary unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
             Attribute archiveTimeStamp = GetTimeStampAttribute(CAdESProfileA.id_aa_ets_archiveTimestamp, SignatureTsa, signature.GetArchiveTimestampData(0, originalDocument));
             unsignedAttrHash.Add(id_aa_ets_archiveTimestamp, archiveTimeStamp);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new AttributeTable
                 (unsignedAttrHash));
-            return newsi;
+            return (newsi, validationContext);
         }
     }
 }

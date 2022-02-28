@@ -47,26 +47,24 @@ namespace CAdESLib.Service
                     var filter = arr[3];
                     var dn = uri.LocalPath.TrimStart('/');
 
-                    using (var cn = new LdapConnection())
+                    using var cn = new LdapConnection();
+                    if (string.IsNullOrEmpty(uri.Host))
                     {
-                        if (string.IsNullOrEmpty(uri.Host))
-                        {
-                            cn.Connect();
-                        }
-                        else
-                        {
-                            cn.Connect(uri.Host, uri.Port);
-                        }
-
-                        cn.Bind();
-
-                        var results = cn.Search(dn, filter, attributes, GetSearchScope(scope));
-                        var result = results.FirstOrDefault();
-                        var a = result.DirectoryAttributes[attributes[0]];
-                        var c = a.GetValue<byte[]>();
-
-                        return new MemoryStream(c);
+                        cn.Connect();
                     }
+                    else
+                    {
+                        cn.Connect(uri.Host, uri.Port);
+                    }
+
+                    cn.Bind();
+
+                    var results = cn.Search(dn, filter, attributes, GetSearchScope(scope));
+                    var result = results.FirstOrDefault();
+                    var a = result.DirectoryAttributes[attributes[0]];
+                    var c = a.GetValue<byte[]>();
+
+                    return new MemoryStream(c);
                 }
                 else
                 {

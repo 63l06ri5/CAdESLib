@@ -1,6 +1,6 @@
-﻿using System;
+﻿using NLog;
 using Org.BouncyCastle.X509;
-using NLog;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -14,8 +14,8 @@ namespace CAdESLib.Document.Validation
         private const string CLRDoneMessage = "CRL check has been performed. Valid or not, the verification is done";
         private const string NoResponceMessage = "We had no response from OCSP nor CRL";
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-        private ICertificateStatusVerifier ocspVerifier;
-        private ICertificateStatusVerifier crlVerifier;
+        private readonly ICertificateStatusVerifier ocspVerifier;
+        private readonly ICertificateStatusVerifier crlVerifier;
 
         public OCSPAndCRLCertificateVerifier(ICertificateStatusVerifier ocspVerifier, ICertificateStatusVerifier crlVerifier)
         {

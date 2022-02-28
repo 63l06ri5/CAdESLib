@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CAdESLib.Document.Validation;
+using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
-using CAdESLib.Document.Signature;
-using CAdESLib.Document.Validation;
-using NLog;
+using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Linq;
+using System.Text;
 
 namespace CAdESLib.Service
 {
@@ -29,7 +28,7 @@ namespace CAdESLib.Service
             this.httpDataLoader = httpDataLoader;
         }
 
-        public virtual IList<CertificateAndContext> GetCertificateBySubjectName(X509Name
+        public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name
              subjectName)
         {
             IList<CertificateAndContext> list = new List<CertificateAndContext>();

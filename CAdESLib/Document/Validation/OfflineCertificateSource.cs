@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using Org.BouncyCastle.Asn1.X509;
+﻿using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.X509;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
@@ -21,7 +20,7 @@ namespace CAdESLib.Document.Validation
             this.sourceType = sourceType;
         }
 
-        public IList<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName)
+        public IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName)
         {
             IList<CertificateAndContext> list = new List<CertificateAndContext>();
             foreach (X509Certificate cert in GetCertificates())

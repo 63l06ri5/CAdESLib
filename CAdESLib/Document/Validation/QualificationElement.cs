@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CAdESLib.Document.Validation
+﻿namespace CAdESLib.Document.Validation
 {
     public class QualificationElement
     {
-        public QualificationElement(string qualification, Condition condition)
+        public QualificationElement(string qualification, ICondition condition)
         {
             this.Qualification = qualification;
             this.Condition = condition;
@@ -20,6 +16,6 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the condition
         /// </returns>
-        public virtual Condition Condition { get; set; }
+        public virtual ICondition Condition { get; set; }
     }
 }

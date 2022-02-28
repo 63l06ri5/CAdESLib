@@ -1,7 +1,7 @@
-﻿using Org.BouncyCastle.X509;
+﻿using CAdESLib.Document.Signature;
+using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
-using CAdESLib.Document.Signature;
 
 namespace CAdESLib.Document.Validation
 {

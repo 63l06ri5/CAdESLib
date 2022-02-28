@@ -1,5 +1,5 @@
-﻿using System;
-using CAdESLib.Document.Signature;
+﻿using CAdESLib.Document.Signature;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -44,7 +44,7 @@ namespace CAdESLib.Document.Validation
             this.levelXL = levelXL;
             levelReached = LevelIsReached(levelXL, levelReached);
             this.levelA = levelA;
-            levelReached = LevelIsReached(levelA, levelReached);
+            LevelIsReached(levelA, levelReached);
         }
 
         private bool LevelIsReached(SignatureLevel level, bool previousLevel)
@@ -71,7 +71,7 @@ namespace CAdESLib.Document.Validation
         {
             get
             {
-                string signatureFormat = null;
+                string signatureFormat;
                 if (signature is CAdESSignature)
                 {
                     signatureFormat = "PAdES";

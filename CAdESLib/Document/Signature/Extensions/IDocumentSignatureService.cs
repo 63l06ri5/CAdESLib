@@ -1,7 +1,5 @@
-﻿using System.IO;
-using CAdESLib.Document.Validation;
-using CAdESLib.Helpers;
-using CAdESLib.Service;
+﻿using CAdESLib.Document.Validation;
+using System.IO;
 
 namespace CAdESLib.Document.Signature
 {
@@ -13,9 +11,9 @@ namespace CAdESLib.Document.Signature
         /// <param name="originalDocument">
         /// Нужен для создания подписи уровня A
         /// </param>
-        Document ExtendDocument(Document document, Document originalDocument, SignatureParameters parameters);
+        IDocument ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters);
 
-        ValidationReport ValidateDocument(Document document, bool checkIntegrity, Document externalContent = null);
+        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null);
 
         /// <summary>
         /// Prerate data for singing
@@ -23,7 +21,7 @@ namespace CAdESLib.Document.Signature
         /// <param name="document"></param>
         /// <param name="parameters"></param>
         /// <returns></returns>
-        public Stream ToBeSigned(Document document, SignatureParameters parameters);
+        public Stream ToBeSigned(IDocument document, SignatureParameters parameters);
 
         /// <summary>
         /// Build PKCS#7-format signature file
@@ -32,6 +30,6 @@ namespace CAdESLib.Document.Signature
         /// <param name="parameters"></param>
         /// <param name="signatureValue">generated signature</param>
         /// <returns></returns>
-        public Document GetSignedDocument(Document document, SignatureParameters parameters, byte[] signatureValue);
+        public IDocument GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue);
     }
 }

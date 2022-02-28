@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Org.BouncyCastle.Asn1.X509;
+﻿using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.Tsp;
 using Org.BouncyCastle.X509;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 namespace CAdESLib.Document.Validation
 {
     // <summary>SignedToken containing a TimeStamp.</summary>

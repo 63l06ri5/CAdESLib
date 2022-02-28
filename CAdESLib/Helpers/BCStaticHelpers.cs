@@ -2,9 +2,6 @@
 using Org.BouncyCastle.Asn1.Oiw;
 using Org.BouncyCastle.Asn1.Rosstandart;
 using Org.BouncyCastle.Cms;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CAdESLib.Helpers
 {
@@ -14,7 +11,7 @@ namespace CAdESLib.Helpers
 
         public static SignerInformation GetSigner(CmsSignedDataParser cms, SignerID id) => GetSignerInfoByEnumeration(cms.GetSignerInfos(), id) ?? GetSignerInfoByGetFirst(cms.GetSignerInfos(), id);
 
-        
+
 
         public static SignerInformation GetSignerInfoByGetFirst(SignerInformationStore signerInformationStore, SignerID id)
         {

@@ -1,7 +1,5 @@
 ﻿using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Tsp;
-using CAdESLib.Document;
-using CAdESLib.Document.Signature;
 
 namespace CAdESLib.Service
 {

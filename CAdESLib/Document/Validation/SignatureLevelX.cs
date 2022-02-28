@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using CAdESLib.Document.Signature;
 
 namespace CAdESLib.Document.Validation
 {
@@ -12,18 +11,18 @@ namespace CAdESLib.Document.Validation
 
         private readonly TimestampVerificationResult[] referencesTimestampsVerification;
 
-        public SignatureLevelX(IAdvancedSignature signature, SignatureValidationResult levelReached) : base(levelReached)
+        public SignatureLevelX(SignatureValidationResult levelReached) : base(levelReached)
         {
         }
 
-        public SignatureLevelX(IAdvancedSignature signature, SignatureValidationResult levelReached, TimestampVerificationResult
+        public SignatureLevelX(SignatureValidationResult levelReached, TimestampVerificationResult
             [] signatureAndRefsTimestampsVerification, TimestampVerificationResult[] referencesTimestampsVerification) : base(levelReached)
         {
             this.signatureAndRefsTimestampsVerification = signatureAndRefsTimestampsVerification;
             this.referencesTimestampsVerification = referencesTimestampsVerification;
         }
 
-        public SignatureLevelX(IAdvancedSignature signature, SignatureValidationResult levelReached, List<TimestampVerificationResult> signatureAndRefsTimestampsVerification, List<TimestampVerificationResult> referencesTimestampsVerification) : base(levelReached)
+        public SignatureLevelX(SignatureValidationResult levelReached, List<TimestampVerificationResult> signatureAndRefsTimestampsVerification, List<TimestampVerificationResult> referencesTimestampsVerification) : base(levelReached)
         {
             if (signatureAndRefsTimestampsVerification is null)
             {

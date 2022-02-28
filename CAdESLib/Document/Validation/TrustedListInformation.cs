@@ -111,7 +111,7 @@ namespace CAdESLib.Document.Validation
                 int slashIndex = status.LastIndexOf('/');
                 if (slashIndex > 0 && slashIndex < status.Length - 1)
                 {
-                    status = status.Substring(slashIndex + 1);
+                    status = status[(slashIndex + 1)..];
                 }
                 return status;
             }
@@ -144,7 +144,7 @@ namespace CAdESLib.Document.Validation
                 int slashIndex = status.LastIndexOf('/');
                 if (slashIndex > 0 && slashIndex < status.Length - 1)
                 {
-                    status = status.Substring(slashIndex + 1);
+                    status = status[(slashIndex + 1)..];
                 }
                 return status;
             }
@@ -192,7 +192,7 @@ namespace CAdESLib.Document.Validation
                     return null;
                 }
                 IList<QualificationElement> elements = new List<QualificationElement>();
-                foreach (KeyValuePair<string, Condition> e in trustService.GetQualifiersAndConditions())
+                foreach (KeyValuePair<string, ICondition> e in trustService.GetQualifiersAndConditions())
                 {
                     elements.Add(new QualificationElement(e.Key, e.Value));
                 }

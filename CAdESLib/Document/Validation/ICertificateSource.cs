@@ -1,7 +1,5 @@
 ﻿using Org.BouncyCastle.Asn1.X509;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace CAdESLib.Document.Validation
 {
@@ -26,6 +24,6 @@ namespace CAdESLib.Document.Validation
         /// A list of certificates (and their respective context) corresponding to the subjectName. Never return
         /// null.
         /// </returns>
-        IList<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName);
+        IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName);
     }
 }

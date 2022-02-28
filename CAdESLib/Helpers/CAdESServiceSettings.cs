@@ -1,6 +1,6 @@
-﻿using Org.BouncyCastle.X509;
+﻿using CAdESLib.Document.Signature;
+using Org.BouncyCastle.X509;
 using System.Collections.Generic;
-using CAdESLib.Document.Signature;
 
 namespace CAdESLib.Helpers
 {
@@ -33,5 +33,5 @@ namespace CAdESLib.Helpers
     public interface ICertificateSourceSettings
     {
         IList<X509Certificate> TrustedCerts { get; }
-    }    
+    }
 }

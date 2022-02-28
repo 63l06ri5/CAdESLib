@@ -1,7 +1,8 @@
-﻿using System;
+﻿using NLog;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
-using NLog;
+using System;
 using System.IO;
 
 namespace CAdESLib.Document.Validation
@@ -11,6 +12,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class OCSPCertificateVerifier : ICertificateStatusVerifier
     {
+        private static readonly DerObjectIdentifier OCSPNoCheck = new DerObjectIdentifier("1.3.6.1.5.5.7.48.1.5");
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly IOcspSource ocspSource;
 
@@ -28,6 +30,13 @@ namespace CAdESLib.Document.Validation
 
         public virtual CertificateStatus Check(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
         {
+            var ocspNoCheck = childCertificate.GetExtensionValue(OCSPNoCheck);
+            if (ocspNoCheck != null)
+            {
+                logger.Info("OCSPNoCheck null");
+                return null;
+            }
+
             CertificateStatus status = new CertificateStatus
             {
                 Certificate = childCertificate,
@@ -71,10 +80,10 @@ namespace CAdESLib.Document.Validation
                     else
                     {
                         logger.Info("OCSP certificate status: " + singleResp.GetCertStatus().GetType().FullName);
-                        if (singleResp.GetCertStatus() is RevokedStatus)
+                        if (singleResp.GetCertStatus() is RevokedStatus status1)
                         {
                             logger.Info("OCSP status revoked");
-                            if (validationDate.CompareTo(((RevokedStatus)singleResp.GetCertStatus()).RevocationTime) < 0)
+                            if (validationDate.CompareTo(status1.RevocationTime) < 0)
                             {
                                 logger.Info("OCSP revocation time after the validation date, the certificate was valid at "
                                      + validationDate);
@@ -82,7 +91,7 @@ namespace CAdESLib.Document.Validation
                             }
                             else
                             {
-                                status.RevocationDate = ((RevokedStatus)singleResp.GetCertStatus()).RevocationTime;
+                                status.RevocationDate = status1.RevocationTime;
                                 status.Validity = CertificateValidity.REVOKED;
                             }
                         }

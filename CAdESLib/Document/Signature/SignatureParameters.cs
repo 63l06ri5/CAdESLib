@@ -1,8 +1,8 @@
-﻿using Org.BouncyCastle.Cms;
+﻿using CAdESLib.Helpers;
+using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
-using CAdESLib.Helpers;
 
 namespace CAdESLib.Document.Signature
 {

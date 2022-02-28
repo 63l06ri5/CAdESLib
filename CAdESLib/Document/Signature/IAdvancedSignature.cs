@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CAdESLib.Document.Validation;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Utilities.Date;
 using Org.BouncyCastle.X509;
-using CAdESLib.Document.Validation;
-using CAdESLib.Service;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Signature
 {
@@ -93,7 +91,7 @@ namespace CAdESLib.Document.Signature
         /// <param name="originalData">
         /// For a detached signature, the original data are needed
         /// </param>
-        byte[] GetArchiveTimestampData(int index, Document originalData);
+        byte[] GetArchiveTimestampData(int index, IDocument originalData);
 
         /// <summary>
         /// Returns the timestamp over the certificate/revocation references (and optionally other fields), used in -X
@@ -117,7 +115,7 @@ namespace CAdESLib.Document.Signature
         /// <returns>
         /// true if the signature is valid
         /// </returns>
-        bool CheckIntegrity(Document detachedDocument);
+        bool CheckIntegrity(IDocument detachedDocument);
 
         /// <summary>
         /// Returns a list of counter signatures applied to this signature

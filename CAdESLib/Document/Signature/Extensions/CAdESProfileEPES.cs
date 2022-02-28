@@ -3,7 +3,6 @@ using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace CAdESLib.Document.Signature.Extensions

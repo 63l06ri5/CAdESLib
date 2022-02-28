@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CAdESLib.Helpers;
 using Org.BouncyCastle.X509;
-using CAdESLib.Helpers;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {

@@ -1,29 +1,26 @@
-﻿using Org.BouncyCastle.Asn1.Cms;
-using Org.BouncyCastle.Cms;
-using Org.BouncyCastle.X509;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Linq;
-using CAdESLib.Document.Signature.Extensions;
+﻿using CAdESLib.Document.Signature.Extensions;
 using CAdESLib.Document.Validation;
-using CAdESLib.Helpers;
 using CAdESLib.Service;
-using Org.BouncyCastle.X509.Store;
+using Org.BouncyCastle.Asn1.Cms;
+using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.IO;
-using System.IO;
 using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Utilities.IO;
+using Org.BouncyCastle.X509;
+using Org.BouncyCastle.X509.Store;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace CAdESLib.Document.Signature
 {
     public class CAdESService : IDocumentSignatureService
     {
-        private ITspSource tspSource;
-        private ICertificateVerifier verifier;
-        private ISignedDocumentValidator validator;
+        private readonly ITspSource tspSource;
+        private readonly ICertificateVerifier verifier;
+        private readonly ISignedDocumentValidator validator;
 
         ///// <param>
         ///// the tspSource to set
@@ -103,7 +100,7 @@ namespace CAdESLib.Document.Signature
         }
 
 
-        public virtual Document ExtendDocument(Document document, Document originalDocument, SignatureParameters parameters)
+        public virtual IDocument ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters)
         {
             if (parameters is null)
             {
@@ -121,12 +118,12 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public ValidationReport ValidateDocument(Document document, bool checkIntegrity, Document externalContent = null)
+        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null)
         {
             return validator.ValidateDocument(document, checkIntegrity, externalContent);
         }
 
-        public Stream ToBeSigned(Document document, SignatureParameters parameters)
+        public Stream ToBeSigned(IDocument document, SignatureParameters parameters)
         {
             if (document is null)
             {
@@ -157,7 +154,7 @@ namespace CAdESLib.Document.Signature
             return new MemoryStream(si.GetEncodedSignedAttributes());
         }
 
-        public Document GetSignedDocument(Document document, SignatureParameters parameters, byte[] signatureValue)
+        public IDocument GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)
         {
             if (document is null)
             {
@@ -183,7 +180,7 @@ namespace CAdESLib.Document.Signature
             }
             CmsSignedData data = generator.Generate(content, includeContent);
             CAdESSignatureExtension extension = GetExtensionProfile(parameters);
-            Document signedDocument = new CMSSignedDocument(data);
+            IDocument signedDocument = new CMSSignedDocument(data);
             if (extension != null)
             {
                 signedDocument = extension.ExtendSignatures(signedDocument, document, parameters);
@@ -330,7 +327,7 @@ namespace CAdESLib.Document.Signature
 
     class ReadySignatureFactory : ISignatureFactory
     {
-        private ISigner signer;
+        private readonly ISigner signer;
         private readonly Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier algID;
 
         public Object AlgorithmDetails

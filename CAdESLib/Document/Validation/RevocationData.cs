@@ -1,8 +1,6 @@
 ﻿using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CAdESLib.Document.Validation
 {
@@ -58,22 +56,22 @@ namespace CAdESLib.Document.Validation
 
         public override string ToString()
         {
-            string data = null;
-            if (GetRevocationData() is X509Crl)
+            string data;
+            if (GetRevocationData() is X509Crl crl)
             {
-                data = "CRL[from=" + ((X509Crl)GetRevocationData()).IssuerDN + "]";
+                data = "CRL[from=" + crl.IssuerDN + "]";
             }
             else
             {
-                if (GetRevocationData() is BasicOcspResp)
+                if (GetRevocationData() is BasicOcspResp resp)
                 {
-                    data = "OCSP[from" + ((BasicOcspResp)GetRevocationData()).ResponderId.ToAsn1Object().Name + "]";
+                    data = "OCSP[from" + resp.ResponderId.ToAsn1Object().Name + "]";
                 }
                 else
                 {
-                    if (GetRevocationData() is X509Certificate)
+                    if (GetRevocationData() is X509Certificate certificate)
                     {
-                        data = "Certificate[subjectName=" + ((X509Certificate)GetRevocationData()).SubjectDN + "]";
+                        data = "Certificate[subjectName=" + certificate.SubjectDN + "]";
                     }
                     else
                     {

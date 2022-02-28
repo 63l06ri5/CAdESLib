@@ -1,5 +1,4 @@
-﻿using System;
-using Org.BouncyCastle.Asn1.X509;
+﻿using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 

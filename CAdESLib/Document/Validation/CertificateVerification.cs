@@ -53,7 +53,7 @@ namespace CAdESLib.Document.Validation
                 {
                     Summary.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CertificateIsNotValid");
                 }
-                if (CertificateStatus != null)
+                else if (CertificateStatus != null)
                 {
                     if (CertificateStatus.Status == CertificateValidity.REVOKED)
                     {

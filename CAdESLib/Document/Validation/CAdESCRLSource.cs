@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CAdESLib.Helpers;
 using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
-using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
-using CAdESLib.Helpers;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
