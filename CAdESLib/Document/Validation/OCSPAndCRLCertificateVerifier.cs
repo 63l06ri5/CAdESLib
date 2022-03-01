@@ -30,6 +30,11 @@ namespace CAdESLib.Document.Validation
                 throw new ArgumentNullException(nameof(cert));
             }
 
+            if (potentialIssuer == null)
+            {
+                return null;
+            }
+
             logger.Info("OCSP request for " + cert.SubjectDN);
             CertificateStatus result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
             if (result != null && result.Validity != CertificateValidity.UNKNOWN)

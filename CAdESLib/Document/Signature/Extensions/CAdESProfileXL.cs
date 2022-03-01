@@ -41,10 +41,7 @@ namespace CAdESLib.Document.Signature.Extensions
             List<BasicOcspResponse> ocspValues = new List<BasicOcspResponse>();
             foreach (CertificateAndContext c in validationContext.NeededCertificates)
             {
-                if (!c.Equals(signingCertificate))
-                {
-                    certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence)Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
-                }
+                certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence)Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
             }
             foreach (var relatedcrl in validationContext.NeededCRLTokens)
             {

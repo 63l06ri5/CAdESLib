@@ -314,6 +314,10 @@ namespace CAdESLib.Document.Validation
                     else
                     {
                         issuer = alreadyProcessed;
+                        if (!(usedCerts?.Any(x => x.Certificate.Equals(issuer.Certificate))) ?? false)
+                        {
+                            usedCerts?.Add(issuer);
+                        }
                     }
                 }
 

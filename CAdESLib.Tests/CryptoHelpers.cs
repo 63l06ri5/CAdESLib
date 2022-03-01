@@ -45,8 +45,8 @@ namespace CAdESLib.Tests
             certGenerator.SetIssuerDN(issuer);
             certGenerator.SetSubjectDN(subject);
             certGenerator.SetSerialNumber(BigInteger.ValueOf(Math.Abs(secureRandom.NextInt())));
-            certGenerator.SetNotAfter(notAfter ?? DateTime.UtcNow.AddHours(1));
-            certGenerator.SetNotBefore(notBefore ?? DateTime.UtcNow);
+            certGenerator.SetNotAfter(notAfter ?? DateTime.Now.AddDays(1));
+            certGenerator.SetNotBefore(notBefore ?? DateTime.Now.AddDays(-1));
             certGenerator.SetPublicKey(subjectPublic);
             certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyCertSign | KeyUsage.CrlSign));
             certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.IdKPTimeStamping));
@@ -55,7 +55,7 @@ namespace CAdESLib.Tests
 
         public static bool ValidateSignedCert(X509Certificate cert, ICipherParameters pubKey)
         {
-            cert.CheckValidity(DateTime.UtcNow);
+            cert.CheckValidity(DateTime.Now);
             byte[] tbsCert = cert.GetTbsCertificate();
             byte[] sig = cert.GetSignature();
 
@@ -83,7 +83,7 @@ namespace CAdESLib.Tests
 
         public string TsaPassword => throw new NotImplementedException();
 
-        public string TsaDigestAlgorithmOID => throw new NotImplementedException();
+        public string TsaDigestAlgorithmOID => DigestAlgorithms.GetAllowedDigests(DEFAULTHASHALGORITHM);
 
         public const string DEFAULTHASHALGORITHM = "SHA-256";
 
@@ -114,7 +114,7 @@ namespace CAdESLib.Tests
 
             TimeStampResponseGenerator tsRespGen = new TimeStampResponseGenerator(tsTokenGen, TspAlgorithms.Allowed);
 
-            TimeStampResponse tsResp = tsRespGen.Generate(request, BigInteger.ValueOf(23), DateTime.UtcNow);
+            TimeStampResponse tsResp = tsRespGen.Generate(request, BigInteger.ValueOf(23), DateTime.Now);
 
             tsResp = new TimeStampResponse(tsResp.GetEncoded());
 
@@ -202,7 +202,7 @@ namespace CAdESLib.Tests
         public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
             X509V2CrlGenerator crlGen = new X509V2CrlGenerator();
-            DateTime now = DateTime.UtcNow.AddHours(-1);
+            DateTime now = DateTime.Now.AddDays(-1);
             //			BigInteger			revokedSerialNumber = BigInteger.Two;
 
 
@@ -224,7 +224,7 @@ namespace CAdESLib.Tests
             crlGen.SetIssuerDN(PrincipalUtilities.GetSubjectX509Principal(cert));
 
             crlGen.SetThisUpdate(now);
-            crlGen.SetNextUpdate(now.AddHours(1));
+            crlGen.SetNextUpdate(now.AddDays(1));
             crlGen.SetSignatureAlgorithm("SHA256WithRSAEncryption");
 
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(cert));

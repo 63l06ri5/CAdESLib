@@ -333,9 +333,12 @@ namespace CAdESLib.Document.Signature
                         for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
                         {
                             CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeCertificateRefs[i1]);
-                            foreach (CrlValidatedID id in otherCertId.CrlIDs.GetCrls())
+                            if (otherCertId.CrlIDs != null)
                             {
-                                list.Add(new CRLRef(id));
+                                foreach (CrlValidatedID id in otherCertId.CrlIDs.GetCrls())
+                                {
+                                    list.Add(new CRLRef(id));
+                                }
                             }
                         }
                     }
@@ -360,9 +363,12 @@ namespace CAdESLib.Document.Signature
                         for (int i1 = 0; i1 < completeRevocationRefs.Count; i1++)
                         {
                             CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeRevocationRefs[i1]);
-                            foreach (OcspResponsesID id in otherCertId.OcspIDs.GetOcspResponses())
+                            if (otherCertId.OcspIDs != null)
                             {
-                                list.Add(new OCSPRef(id, true));
+                                foreach (OcspResponsesID id in otherCertId.OcspIDs.GetOcspResponses())
+                                {
+                                    list.Add(new OCSPRef(id, true));
+                                }
                             }
                         }
                     }

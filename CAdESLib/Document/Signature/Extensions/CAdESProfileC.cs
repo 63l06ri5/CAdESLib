@@ -36,9 +36,10 @@ namespace CAdESLib.Document.Signature.Extensions
         /// </summary>
         private static OtherCertID MakeOtherCertID(X509Certificate cert)
         {
-            byte[] d = DigestUtilities.CalculateDigest(X509ObjectIdentifiers.IdSha1, cert.GetEncoded());
+            var hashAlg = X509ObjectIdentifiers.IdSha1;
+            byte[] d = DigestUtilities.CalculateDigest(hashAlg, cert.GetEncoded());
             logger.Info(new DerOctetString(d).ToString());
-            OtherHash hash = new OtherHash(d);
+            OtherHash hash = new OtherHash(new OtherHashAlgAndValue(new AlgorithmIdentifier(hashAlg), d));
             OtherCertID othercertid = new OtherCertID(hash);
             return othercertid;
         }
@@ -48,7 +49,8 @@ namespace CAdESLib.Document.Signature.Extensions
         /// </summary>
         private static CrlValidatedID MakeCrlValidatedID(X509Crl crl)
         {
-            OtherHash hash = new OtherHash(DigestUtilities.CalculateDigest(X509ObjectIdentifiers.IdSha1, crl.GetEncoded()));
+            var hashAlg = X509ObjectIdentifiers.IdSha1;
+            OtherHash hash = new OtherHash(new OtherHashAlgAndValue(new AlgorithmIdentifier(hashAlg), DigestUtilities.CalculateDigest(hashAlg, crl.GetEncoded())));
             BigInteger crlnumber;
             CrlIdentifier crlid;
             DerObjectIdentifier crlExt = new DerObjectIdentifier("2.5.29.20");
@@ -70,9 +72,10 @@ namespace CAdESLib.Document.Signature.Extensions
         /// </summary>
         private static OcspResponsesID MakeOcspResponsesID(BasicOcspResp ocspResp)
         {
+            var hashAlg = X509ObjectIdentifiers.IdSha1;
             byte[] digestValue = DigestUtilities.CalculateDigest
-                (X509ObjectIdentifiers.IdSha1, ocspResp.GetEncoded());
-            OtherHash hash = new OtherHash(digestValue);
+                (hashAlg, ocspResp.GetEncoded());
+            OtherHash hash = new OtherHash(new OtherHashAlgAndValue(new AlgorithmIdentifier(hashAlg), digestValue));
             OcspResponsesID ocsprespid = new OcspResponsesID(new OcspIdentifier(ocspResp.ResponderId
                 .ToAsn1Object(), ocspResp.ProducedAt), hash);
             logger.Info("Incorporate OcspResponseId[hash=" + Hex.ToHexString(digestValue) +
@@ -80,7 +83,7 @@ namespace CAdESLib.Document.Signature.Extensions
             return ocsprespid;
         }
 
-        private (IDictionary,IValidationContext) ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, SignatureParameters parameters, DateTime signingTime, ICertificateSource optionalCertificateSource, IValidationContext validationContext)
+        private (IDictionary, IValidationContext) ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, SignatureParameters parameters, DateTime signingTime, ICertificateSource optionalCertificateSource, IValidationContext validationContext)
         {
             var usedCerts = new List<CertificateAndContext>();
             validationContext = CertificateVerifier.ValidateCertificate(
@@ -99,7 +102,7 @@ namespace CAdESLib.Document.Signature.Extensions
             var completeRevocationRefs = new List<CrlOcspRef>();
             foreach (CertificateAndContext c in validationContext.NeededCertificates)
             {
-                if (!c.Equals(signingCertificate))
+                if (!c.Certificate.Equals(signingCertificate))
                 {
                     completeCertificateRefs.Add(MakeOtherCertID(c.Certificate));
                 }
@@ -113,7 +116,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 {
                     ocspListIDValues.Add(MakeOcspResponsesID(relatedocspresp));
                 }
-                completeRevocationRefs.Add(new CrlOcspRef(new CrlListID(crlListIdValues.ToArray()), new OcspListID(ocspListIDValues.ToArray()), null));
+                completeRevocationRefs.Add(new CrlOcspRef(crlListIdValues.Count == 0 || ocspListIDValues.Count != 0 ? null : new CrlListID(crlListIdValues.ToArray()), ocspListIDValues.Count == 0 ? null : new OcspListID(ocspListIDValues.ToArray()), null));
             }
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsCertificateRefs, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsCertificateRefs, new DerSet(new DerSequence(completeCertificateRefs.ToArray()))));
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationRefs, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationRefs, new DerSet(new DerSequence(completeRevocationRefs.ToArray()))));

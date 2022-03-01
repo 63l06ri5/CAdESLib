@@ -355,7 +355,7 @@ namespace CAdESLib.Document.Validation
                     certificatePathVerification.Add(verif);
                 }
                 result.CertPathUpToTrustedList.SetStatus(ResultStatus.VALID, null);
-                if (certificatePathVerification != null)
+                if (certificatePathVerification != null && certificatePathVerification.Count != 0)
                 {
                     foreach (CertificateVerification verif in certificatePathVerification)
                     {
@@ -369,6 +369,10 @@ namespace CAdESLib.Document.Validation
                             result.CertPathUpToTrustedList.SetStatus(ResultStatus.UNDETERMINED, verif.Summary.Description ?? "$UI_Signatures_ValidationText_NoRevocationData");
                         }
                     }
+                }
+                else
+                {
+                    result.CertPathUpToTrustedList.SetStatus(ResultStatus.UNDETERMINED, "$UI_Signatures_ValidationText_NoRevocationData");
                 }
             }
             catch (IOException)
@@ -716,15 +720,15 @@ namespace CAdESLib.Document.Validation
             IValidationContext ctx = signatureValidationContext.GetExisted(signature.SigningCertificate, signature.SigningTime?.Value ?? DateTime.Now);
             IList<CertificateAndContext> usedCerts = new List<CertificateAndContext>();
             SignatureLevelT levelT;
-            Func<IValidationContext, SignatureLevelT>  getLevelT = (IValidationContext ctx) =>
-            {
-                var levelT = VerifyLevelT(signature, ctx);
-                if (!levelT.LevelReached.IsValid || !levelT.SignatureTimestampVerification.All(x => x.SameDigest.IsValid && x.CertPathVerification.IsValid))
-                {
-                    ctx.ValidationDate = DateTime.Now;
-                }
-                return levelT;
-            };
+            Func<IValidationContext, SignatureLevelT> getLevelT = (IValidationContext ctx) =>
+           {
+               var levelT = VerifyLevelT(signature, ctx);
+               if (!levelT.LevelReached.IsValid || !levelT.SignatureTimestampVerification.All(x => x.SameDigest.IsValid && x.CertPathVerification.IsValid))
+               {
+                   ctx.ValidationDate = DateTime.Now;
+               }
+               return levelT;
+           };
 
             if (ctx == null)
             {
@@ -746,7 +750,7 @@ namespace CAdESLib.Document.Validation
             // TODO: serviceinfo is never set, so invalid everytime - hack added  - ?? new ServiceInfo()
             var info = new TrustedListInformation(ctx.GetRelevantServiceInfo() ?? new ServiceInfo());
             var path = new CertPathRevocationAnalysis(ctx, info, usedCerts);
-            
+
             var signatureLevelXL = VerifyLevelXL(signature, ctx, logger);
             // order matters
             var signatureLevelC = VerifyLevelC(signature, ctx, signatureLevelXL?.LevelReached.IsValid ?? false, logger);

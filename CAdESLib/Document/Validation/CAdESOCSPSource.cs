@@ -44,10 +44,16 @@ namespace CAdESLib.Document.Validation
             if (si != null && si.UnsignedAttributes != null && si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues] != null)
             {
                 RevocationValues revValues = RevocationValues.GetInstance(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues].AttrValues[0]);
-                foreach (BasicOcspResponse ocspObj in revValues.GetOcspVals())
+                try
                 {
-                    BasicOcspResp bOcspObj = new BasicOcspResp(ocspObj);
-                    list.Add(bOcspObj);
+                    foreach (BasicOcspResponse ocspObj in revValues.GetOcspVals())
+                    {
+                        BasicOcspResp bOcspObj = new BasicOcspResp(ocspObj);
+                        list.Add(bOcspObj);
+                    }
+                }
+                catch
+                {
                 }
             }
             return list;

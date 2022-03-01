@@ -51,10 +51,16 @@ namespace CAdESLib.Document.Validation
             if (si != null && si.UnsignedAttributes != null && si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues] != null)
             {
                 RevocationValues revValues = RevocationValues.GetInstance(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues].AttrValues[0]);
-                foreach (CertificateList crlObj in revValues.GetCrlVals())
+                try
                 {
-                    X509Crl crl = new X509Crl(crlObj);
-                    list.Add(crl);
+                    foreach (CertificateList crlObj in revValues.GetCrlVals())
+                    {
+                        X509Crl crl = new X509Crl(crlObj);
+                        list.Add(crl);
+                    }
+                }
+                catch
+                {
                 }
             }
 

@@ -45,39 +45,41 @@ namespace CAdESLib.Tests
             var caKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
             var caCert = CryptoHelpers.GenerateCertificate(ca, ca, caKeyPair.Private, caKeyPair.Public);
 
-            var notBefore = DateTime.Now;
-            var notAfter = DateTime.Now.AddHours(1);
-            if (!(sigParams.SignatureCertTimeValid ?? true))
+            var notBefore = DateTime.Now.AddDays(-1);
+            var notAfter = DateTime.Now.AddDays(1);
+            if (!(sigParams.SignatureCertTimeValid ?? false))
             {
-                notBefore = DateTime.Now.AddHours(-2);
-                notAfter = DateTime.Now.AddHours(-1);
+                notBefore = DateTime.Now.AddDays(-2);
+                notAfter = DateTime.Now.AddDays(-1);
             }
             var signingCertName = new X509Name("CN=singing_cert");
             var signingKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
             var signingCert = CryptoHelpers.GenerateCertificate(ca, signingCertName, caKeyPair.Private, signingKeyPair.Public, notBefore, notAfter);
 
             var cadesSettings = new CAdESServiceSettings();
-            if (sigParams.SignatureCertTrusted ?? true)
+            if (sigParams.SignatureCertTrusted ?? false)
             {
                 cadesSettings.TrustedCerts.Add(caCert);
             }
-            if (sigParams.SignatureCertOCSP ?? true)
+            if (sigParams.SignatureCertOCSP ?? false)
             {
                 var fakeOcsp = unityContainer.Resolve<IOcspSource>() as FakeOnlineOcspSource;
                 fakeOcsp.AddNotRevokedCert(signingCert, caCert);
             }
-            if (sigParams.OCSPCertTrusted ?? true)
+            if (sigParams.OCSPCertTrusted ?? false)
             {
                 cadesSettings.TrustedCerts.Add(ocspCACert);
             }
-            if ((sigParams.SignatureCertCRL ?? true))
+            if (!(sigParams.SignatureCertCRL ?? false))
             {
                 var fakeCrl = unityContainer.Resolve<ICrlSource>() as FakeOnlineCrlSource;
-                fakeCrl.AddRevokedCert(!(sigParams.SignatureCertCRL ?? true) ? signingCert : null, caCert, caKeyPair);
+                fakeCrl.AddRevokedCert(!(sigParams.SignatureCertCRL ?? false) ? signingCert : null, caCert, caKeyPair);
             }
-            if (sigParams.TSSignatureCertTrusted ?? true)
+            if (sigParams.TSSignatureCertTrusted ?? false)
             {
                 cadesSettings.TrustedCerts.Add(tspCACert);
+                var fakeOcsp = unityContainer.Resolve<IOcspSource>() as FakeOnlineOcspSource;
+                fakeOcsp.AddNotRevokedCert(tspCert, tspCACert);
             }
             var cadesService = unityContainer.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
             // to be signed
@@ -123,8 +125,8 @@ namespace CAdESLib.Tests
             if (sigResult.TLevel.HasValue)
             {
                 Assert.AreEqual(sigResult.TLevel, sigInfo.SignatureLevelAnalysis.LevelT.LevelReached.IsValid, "T is not reached");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.All(x => (sigResult.TSignatureVerifications ?? true) && x.SameDigest.IsValid || !(sigResult.TSignatureVerifications ?? true) && !x.SameDigest.IsValid), "T timestamps are not valid");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.All(x => (sigResult.TCertPathVerifications ?? true) && x.CertPathVerification.IsValid || !(sigResult.TCertPathVerifications ?? true) && !x.CertPathVerification.IsValid), "T cert paths are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.All(x => (sigResult.TSignatureVerifications ?? false) && x.SameDigest.IsValid || !(sigResult.TSignatureVerifications ?? false) && !x.SameDigest.IsValid), "T timestamps are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.All(x => (sigResult.TCertPathVerifications ?? false) && x.CertPathVerification.IsValid || !(sigResult.TCertPathVerifications ?? false) && !x.CertPathVerification.IsValid), "T cert paths are not valid");
             }
 
             if (sigResult.CLevel.HasValue)
@@ -145,37 +147,37 @@ namespace CAdESLib.Tests
             {
                 Assert.AreEqual(sigResult.XType1Level, sigInfo.SignatureLevelAnalysis.LevelX.LevelReached.IsValid, "XType1 is not reached");
                 Assert.AreEqual(sigResult.CLevel, sigInfo.SignatureLevelAnalysis.LevelC.LevelReached.IsValid, "C is not reached");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1SignatureVerifications ?? true) && x.SameDigest.IsValid || !(sigResult.XType1SignatureVerifications ?? true) && !x.SameDigest.IsValid), "XType1 timestamps are not valid");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1CertPathVerifications ?? true) && x.CertPathVerification.IsValid || !(sigResult.XType1CertPathVerifications ?? true) && !x.CertPathVerification.IsValid), "XType1 cert paths are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1SignatureVerifications ?? false) && x.SameDigest.IsValid || !(sigResult.XType1SignatureVerifications ?? false) && !x.SameDigest.IsValid), "XType1 timestamps are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1CertPathVerifications ?? false) && x.CertPathVerification.IsValid || !(sigResult.XType1CertPathVerifications ?? false) && !x.CertPathVerification.IsValid), "XType1 cert paths are not valid");
             }
 
             if (sigResult.XType2Level.HasValue)
             {
                 Assert.AreEqual(sigResult.XType2Level, sigInfo.SignatureLevelAnalysis.LevelX.LevelReached.IsValid, "XType2 is not reached");
                 Assert.AreEqual(sigResult.CLevel, sigInfo.SignatureLevelAnalysis.LevelC.LevelReached.IsValid, "C is not reached");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2SignatureVerifications ?? true) && x.SameDigest.IsValid || !(sigResult.XType2SignatureVerifications ?? true) && !x.SameDigest.IsValid), "XType2 timestamps are not valid");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2CertPathVerifications ?? true) && x.CertPathVerification.IsValid || !(sigResult.XType2CertPathVerifications ?? true) && !x.CertPathVerification.IsValid), "XType2 cert paths are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2SignatureVerifications ?? false) && x.SameDigest.IsValid || !(sigResult.XType2SignatureVerifications ?? false) && !x.SameDigest.IsValid), "XType2 timestamps are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2CertPathVerifications ?? false) && x.CertPathVerification.IsValid || !(sigResult.XType2CertPathVerifications ?? false) && !x.CertPathVerification.IsValid), "XType2 cert paths are not valid");
             }
 
             if (sigResult.XLType1Level.HasValue)
             {
                 Assert.AreEqual(sigResult.XLType1Level, sigInfo.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid, "XLType1 is not reached");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1SignatureVerifications ?? true) && x.SameDigest.IsValid || !(sigResult.XType1SignatureVerifications ?? true) && !x.SameDigest.IsValid), "XType1 timestamps are not valid");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1CertPathVerifications ?? true) && x.CertPathVerification.IsValid || !(sigResult.XType1CertPathVerifications ?? true) && !x.CertPathVerification.IsValid), "XType1 cert paths are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1SignatureVerifications ?? false) && x.SameDigest.IsValid || !(sigResult.XType1SignatureVerifications ?? false) && !x.SameDigest.IsValid), "XType1 timestamps are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => (sigResult.XType1CertPathVerifications ?? false) && x.CertPathVerification.IsValid || !(sigResult.XType1CertPathVerifications ?? false) && !x.CertPathVerification.IsValid), "XType1 cert paths are not valid");
             }
 
             if (sigResult.XLType2Level.HasValue)
             {
                 Assert.AreEqual(sigResult.XLType2Level, sigInfo.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid, "XLType2 is not reached");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2SignatureVerifications ?? true) && x.SameDigest.IsValid || !(sigResult.XType2SignatureVerifications ?? true) && !x.SameDigest.IsValid), "XType2 timestamps are not valid");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2CertPathVerifications ?? true) && x.CertPathVerification.IsValid || !(sigResult.XType2CertPathVerifications ?? true) && !x.CertPathVerification.IsValid), "XType2 cert paths are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2SignatureVerifications ?? false) && x.SameDigest.IsValid || !(sigResult.XType2SignatureVerifications ?? false) && !x.SameDigest.IsValid), "XType2 timestamps are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.All(x => (sigResult.XType2CertPathVerifications ?? false) && x.CertPathVerification.IsValid || !(sigResult.XType2CertPathVerifications ?? false) && !x.CertPathVerification.IsValid), "XType2 cert paths are not valid");
             }
 
             if (sigResult.ALevel.HasValue)
             {
                 Assert.AreEqual(sigResult.ALevel, sigInfo.SignatureLevelAnalysis.LevelA.LevelReached.IsValid, "A is not reached");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification.All(x => (sigResult.ASignatureVerifications ?? true) && x.SameDigest.IsValid || !(sigResult.ASignatureVerifications ?? true) && !x.SameDigest.IsValid), "A timestamps are not valid");
-                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification.All(x => (sigResult.ACertPathVerifications ?? true) && x.CertPathVerification.IsValid || !(sigResult.ACertPathVerifications ?? true) && !x.CertPathVerification.IsValid), "A cert paths are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification.All(x => (sigResult.ASignatureVerifications ?? false) && x.SameDigest.IsValid || !(sigResult.ASignatureVerifications ?? false) && !x.SameDigest.IsValid), "A timestamps are not valid");
+                Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification.All(x => (sigResult.ACertPathVerifications ?? false) && x.CertPathVerification.IsValid || !(sigResult.ACertPathVerifications ?? false) && !x.CertPathVerification.IsValid), "A cert paths are not valid");
             }
 
         }
