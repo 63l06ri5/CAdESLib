@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
@@ -56,13 +57,14 @@ namespace CAdESLib.Document.Validation
                     logger.Info("OCSP response not found");
                     return null;
                 }
-                BasicOcspResp basicOCSPResp = ocspResp;
-                CertificateID certificateId = new CertificateID(CertificateID.HashSha1, certificate, childCertificate.SerialNumber);
+                BasicOcspResp basicOCSPResp = ocspResp;                
                 SingleResp[] singleResps = basicOCSPResp.Responses;
                 foreach (SingleResp singleResp in singleResps)
                 {
                     CertificateID responseCertificateId = singleResp.GetCertID();
-                    if (!certificateId.Equals(responseCertificateId))
+                    CertificateID certificateId = new CertificateID(responseCertificateId.HashAlgOid, certificate, childCertificate.SerialNumber);
+
+                    if (!certificateId.EqualsWithDerNull(responseCertificateId))
                     {
                         continue;
                     }

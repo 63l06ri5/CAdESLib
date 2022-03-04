@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
@@ -20,10 +21,11 @@ namespace CAdESLib.Document.Validation
             {
                 foreach (BasicOcspResp basicOCSPResp in GetOCSPResponsesFromSignature())
                 {
-                    CertificateID certId = new CertificateID(CertificateID.HashSha1, issuerCertificate, certificate.SerialNumber);
                     foreach (SingleResp singleResp in basicOCSPResp.Responses)
                     {
-                        if (singleResp.GetCertID().Equals(certId))
+                        var localCertId = singleResp.GetCertID();
+                        CertificateID certId = new CertificateID(localCertId.HashAlgOid, issuerCertificate, certificate.SerialNumber);
+                        if (localCertId.EqualsWithDerNull(certId))
                         {
                             logger.Info("OCSP response found");
                             return basicOCSPResp;

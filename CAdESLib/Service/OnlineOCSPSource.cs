@@ -55,6 +55,7 @@ namespace CAdESLib.Service
                     return null;
                 }
                 OcspReqGenerator ocspReqGenerator = new OcspReqGenerator();
+                // TODO: should use from settings?
                 CertificateID certId = new CertificateID(CertificateID.HashSha1, issuerCertificate, certificate.SerialNumber);
                 ocspReqGenerator.AddRequest(certId);
                 OcspReq ocspReq = ocspReqGenerator.Generate();

@@ -107,6 +107,11 @@ namespace CAdESLib.Document.Signature
         IList<TimestampToken> ArchiveTimestamps { get; }
 
         /// <summary>
+        /// All timestamp tokens
+        /// </summary>
+        IList<TimestampToken> AllTimestampTokens { get; }
+
+        /// <summary>
         /// Verify the signature integrity; checks if the signed content has not been tampered with
         /// </summary>
         /// <param name="detachedDocument">

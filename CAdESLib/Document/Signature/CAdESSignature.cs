@@ -86,7 +86,20 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual IList<X509Certificate> Certificates => ((CAdESCertificateSource)CertificateSource).GetCertificates();
+        public virtual IList<X509Certificate> Certificates
+        {
+            get
+            {
+                var list = ((CAdESCertificateSource)CertificateSource).GetCertificates()?.ToList();
+
+                foreach (var tst in AllTimestampTokens)
+                {
+                    list.AddRange(tst.GetTimeStamp().UnsignedAttributes?.GetEtsCertValues() ?? new List<X509Certificate>());
+                }
+
+                return list;
+            }
+        }
 
         public virtual PolicyValue PolicyId
         {
@@ -177,8 +190,7 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        private IList<TimestampToken> GetTimestampList(DerObjectIdentifier attrType, TimestampToken.TimestampType
-             timestampType)
+        private IList<TimestampToken> GetTimestampList(DerObjectIdentifier attrType, TimestampToken.TimestampType timestampType)
         {
             if (signerInformation.UnsignedAttributes != null)
             {
@@ -208,17 +220,13 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual IList<TimestampToken> SignatureTimestamps => GetTimestampList(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, TimestampToken.TimestampType
-                    .SIGNATURE_TIMESTAMP);
+        public virtual IList<TimestampToken> SignatureTimestamps => GetTimestampList(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, TimestampToken.TimestampType.SIGNATURE_TIMESTAMP);
 
-        public virtual IList<TimestampToken> TimestampsX1 => GetTimestampList(PkcsObjectIdentifiers.IdAAEtsEscTimeStamp, TimestampToken.TimestampType
-                    .VALIDATION_DATA_TIMESTAMP);
+        public virtual IList<TimestampToken> TimestampsX1 => GetTimestampList(PkcsObjectIdentifiers.IdAAEtsEscTimeStamp, TimestampToken.TimestampType.VALIDATION_DATA_TIMESTAMP);
 
-        public virtual IList<TimestampToken> TimestampsX2 => GetTimestampList(PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp, TimestampToken.TimestampType
-                    .VALIDATION_DATA_REFSONLY_TIMESTAMP);
+        public virtual IList<TimestampToken> TimestampsX2 => GetTimestampList(PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp, TimestampToken.TimestampType.VALIDATION_DATA_REFSONLY_TIMESTAMP);
 
-        public virtual IList<TimestampToken> ArchiveTimestamps => GetTimestampList(id_aa_ets_archiveTimestamp, TimestampToken.TimestampType
-                    .ARCHIVE_TIMESTAMP);
+        public virtual IList<TimestampToken> ArchiveTimestamps => GetTimestampList(id_aa_ets_archiveTimestamp, TimestampToken.TimestampType.ARCHIVE_TIMESTAMP);
 
         public virtual string SignatureAlgorithm => signerInformation.EncryptionAlgOid;
 
@@ -279,40 +287,14 @@ namespace CAdESLib.Document.Signature
         {
             get
             {
-                IList<CertificateRef> list = new List<CertificateRef>();
-                if (signerInformation.UnsignedAttributes != null)
+                var list = new List<CertificateRef>();
+                list.AddRange(signerInformation.UnsignedAttributes.GetEtsCertificateRefs());
+
+                foreach (var tst in AllTimestampTokens)
                 {
-                    BcCms.Attribute completeCertRefsAttr = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
-                    if (completeCertRefsAttr != null && completeCertRefsAttr.AttrValues.Count >
-                         0)
-                    {
-                        DerSequence completeCertificateRefs = (DerSequence)completeCertRefsAttr.AttrValues[0];
-                        for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
-                        {
-                            OtherCertID otherCertId = OtherCertID.GetInstance(completeCertificateRefs[i1]);
-                            CertificateRef certId = new CertificateRef
-                            {
-                                DigestAlgorithm = otherCertId.OtherCertHash.HashAlgorithm.Algorithm.Id
-                            };
-
-                            otherCertId.OtherCertHash.GetHashValue();
-
-                            certId.DigestValue = otherCertId.OtherCertHash.GetHashValue();
-                            if (otherCertId.IssuerSerial != null)
-                            {
-                                if (otherCertId.IssuerSerial.Issuer != null)
-                                {
-                                    certId.IssuerName = otherCertId.IssuerSerial.Issuer.ToString();
-                                }
-                                if (otherCertId.IssuerSerial.Serial != null)
-                                {
-                                    certId.IssuerSerial = otherCertId.IssuerSerial.Serial.ToString();
-                                }
-                            }
-                            list.Add(certId);
-                        }
-                    }
+                    list.AddRange(tst.GetTimeStamp().UnsignedAttributes?.GetEtsCertificateRefs() ?? new List<CertificateRef>());
                 }
+
                 return list;
             }
         }
@@ -321,57 +303,26 @@ namespace CAdESLib.Document.Signature
         {
             get
             {
-                IList<CRLRef> list = new List<CRLRef>();
-                if (signerInformation.UnsignedAttributes != null)
+                var list = new List<CRLRef>();
+                list.AddRange(signerInformation.UnsignedAttributes.GetEtsCrlRefs());
+
+                foreach (var tst in AllTimestampTokens)
                 {
-                    BcCms.Attribute completeRevocationRefsAttr = signerInformation.UnsignedAttributes
-                        [PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
-                    if (completeRevocationRefsAttr != null && completeRevocationRefsAttr.AttrValues
-                        .Count > 0)
-                    {
-                        DerSequence completeCertificateRefs = (DerSequence)completeRevocationRefsAttr.AttrValues[0];
-                        for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
-                        {
-                            CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeCertificateRefs[i1]);
-                            if (otherCertId.CrlIDs != null)
-                            {
-                                foreach (CrlValidatedID id in otherCertId.CrlIDs.GetCrls())
-                                {
-                                    list.Add(new CRLRef(id));
-                                }
-                            }
-                        }
-                    }
+                    list.AddRange(tst.GetTimeStamp().UnsignedAttributes?.GetEtsCrlRefs() ?? new List<CRLRef>());
                 }
                 return list;
             }
         }
-
         public virtual IList<OCSPRef> OCSPRefs
         {
             get
             {
-                IList<OCSPRef> list = new List<OCSPRef>();
-                if (signerInformation.UnsignedAttributes != null)
+                var list = new List<OCSPRef>();
+                list.AddRange(signerInformation.UnsignedAttributes.GetEtsOcspRefs());
+
+                foreach (var tst in AllTimestampTokens)
                 {
-                    BcCms.Attribute completeRevocationRefsAttr = signerInformation.UnsignedAttributes
-                        [PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
-                    if (completeRevocationRefsAttr != null && completeRevocationRefsAttr.AttrValues
-                        .Count > 0)
-                    {
-                        DerSequence completeRevocationRefs = (DerSequence)completeRevocationRefsAttr.AttrValues[0];
-                        for (int i1 = 0; i1 < completeRevocationRefs.Count; i1++)
-                        {
-                            CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeRevocationRefs[i1]);
-                            if (otherCertId.OcspIDs != null)
-                            {
-                                foreach (OcspResponsesID id in otherCertId.OcspIDs.GetOcspResponses())
-                                {
-                                    list.Add(new OCSPRef(id, true));
-                                }
-                            }
-                        }
-                    }
+                    list.AddRange(tst.GetTimeStamp().UnsignedAttributes?.GetEtsOcspRefs() ?? new List<OCSPRef>());
                 }
                 return list;
             }
@@ -418,6 +369,32 @@ namespace CAdESLib.Document.Signature
                     toTimestamp.Write(attrRevocCertRefs.AttrValues.GetDerEncoded());
                 }
                 return toTimestamp.ToArray();
+            }
+        }
+
+        public IList<TimestampToken> AllTimestampTokens
+        {
+            get
+            {
+                var tsts = new List<TimestampToken>();
+                if (SignatureTimestamps != null)
+                {
+                    tsts.AddRange(SignatureTimestamps);
+                }
+                if (TimestampsX1 != null)
+                {
+                    tsts.AddRange(TimestampsX1);
+                }
+                if (TimestampsX2 != null)
+                {
+                    tsts.AddRange(TimestampsX2);
+                }
+                if (ArchiveTimestamps != null)
+                {
+                    tsts.AddRange(ArchiveTimestamps);
+                }
+
+                return tsts;
             }
         }
 

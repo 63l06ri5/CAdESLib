@@ -47,7 +47,7 @@ namespace CAdESLib.Document.Validation
 
         public override IList<X509Certificate> GetCertificates()
         {
-            IList<X509Certificate> list = new List<X509Certificate>();
+            var list = new List<X509Certificate>();
 
             if (!onlyExtended)
             {
@@ -64,19 +64,7 @@ namespace CAdESLib.Document.Validation
             }
             // Add certificates in CAdES-XL certificate-values inside SignerInfo attribute if present
             SignerInformation si = BCStaticHelpers.GetSigner(cmsSignedData, signerId);
-            if (si != null && si.UnsignedAttributes != null && si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertValues] != null)
-            {
-                DerSequence seq = (DerSequence)si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertValues].AttrValues[0];
-                for (int i = 0; i < seq.Count; i++)
-                {
-                    X509CertificateStructure cs = X509CertificateStructure.GetInstance(seq[i]);
-                    X509Certificate c = new X509Certificate(cs);
-                    if (!list.Contains(c))
-                    {
-                        list.Add(c);
-                    }
-                }
-            }
+            list.AddRange(si?.UnsignedAttributes?.GetEtsCertValues() ?? new List<X509Certificate>());
 
             return list;
         }

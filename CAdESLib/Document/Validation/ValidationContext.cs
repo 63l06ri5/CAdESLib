@@ -322,7 +322,7 @@ namespace CAdESLib.Document.Validation
                 }
 
                 if (signedToken is CertificateToken ct)
-                {   
+                {
                     var certAndContext = ct.GetCertificateAndContext();
                     if (!(usedCerts?.Any(x => x.Certificate.Equals(certAndContext.Certificate))) ?? false)
                     {
@@ -453,23 +453,17 @@ namespace CAdESLib.Document.Validation
             }
             else
             {
-                //try
-                //{
-                CertificateID matchingCertID = new CertificateID(CertificateID.HashSha1, issuerCertificate
-                    .Certificate, cert.Certificate.SerialNumber);
                 foreach (SingleResp resp in basicOcspResp.Responses)
                 {
-                    if (resp.GetCertID().Equals(matchingCertID))
+                    var certID = resp.GetCertID();
+                    CertificateID matchingCertID = new CertificateID(certID.HashAlgOid, issuerCertificate.Certificate, cert.Certificate.SerialNumber);
+
+                    if (certID.Equals(matchingCertID))
                     {
                         return true;
                     }
                 }
                 return false;
-                //}
-                //catch (OcspException ex)
-                //{
-                //    throw new RuntimeException(ex);
-                //}
             }
         }
 

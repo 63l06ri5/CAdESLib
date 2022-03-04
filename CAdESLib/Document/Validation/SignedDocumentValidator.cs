@@ -239,11 +239,12 @@ namespace CAdESLib.Document.Validation
             return new SignatureLevelT(ResultForTimestamps(results, new SignatureValidationResult()), results);
         }
 
-        private bool EveryCertificateRefAreThere(IValidationContext ctx, IList<CertificateRef> refs, ICAdESLogger logger)
+        private bool EveryCertificateRefAreThere(IValidationContext ctx, IList<CertificateRef> refs, IList<TimestampToken> timestampTokens, ICAdESLogger logger)
         {
             foreach (CertificateAndContext neededCert in ctx.NeededCertificates)
             {
-                if (neededCert.Certificate.Equals(ctx.Certificate))
+                if (neededCert.Certificate.Equals(ctx.Certificate)
+                    || timestampTokens.Any(x => x.IsSignedBy(neededCert.Certificate)))
                 {
                     logger.Info("Don't check for the signing certificate");
                     continue;
@@ -286,7 +287,7 @@ namespace CAdESLib.Document.Validation
                 }
                 else
                 {
-                    if (EveryCertificateRefAreThere(ctx, refs, logger))
+                    if (EveryCertificateRefAreThere(ctx, refs, signature.AllTimestampTokens, logger))
                     {
                         everyNeededCertAreInSignature.SetStatus(ResultStatus.VALID, null);
                     }
