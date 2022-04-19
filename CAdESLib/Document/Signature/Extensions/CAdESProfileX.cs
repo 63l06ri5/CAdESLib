@@ -18,6 +18,8 @@ namespace CAdESLib.Document.Signature.Extensions
     {
         protected int extendedValidationType = 1;
 
+        public override SignatureProfile SignatureProfile => SignatureProfile.XType1;
+
         /// <summary>
         /// Gets the type of the CAdES-X signature (Type 1 with id-aa-ets-escTimeStamp or Type 2 with
         /// id-aa-ets-certCRLTimestamp)

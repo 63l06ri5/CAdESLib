@@ -22,6 +22,8 @@ namespace CAdESLib.Document.Signature.Extensions
     {
         public static readonly DerObjectIdentifier id_aa_ets_archiveTimestamp = PkcsObjectIdentifiers.IdAAEtsArchiveTimestamp;
 
+        public override SignatureProfile SignatureProfile => SignatureProfile.A;
+
         protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData cmsSignedData, SignerInformation si, SignatureParameters parameters, IDocument originalDocument)
         {
             var (newSi, validationContext) = base.ExtendCMSSignature(cmsSignedData, si, parameters, originalDocument);

@@ -37,7 +37,9 @@ namespace CAdESLib.Document.Validation
 
         private readonly TimestampToken.TimestampType timeStampType;
 
-        public TimestampToken(TimeStampToken timeStamp)
+        public object RootCause { get; }
+
+        private TimestampToken(TimeStampToken timeStamp, object rootCause)
         {
             // CAdES: id-aa-ets-contentTimestamp, XAdES: AllDataObjectsTimeStamp, PAdES standard
             // timestamp
@@ -47,20 +49,20 @@ namespace CAdESLib.Document.Validation
             // CAdES: id-aa-ets-escTimeStamp, XAdES: SigAndRefsTimeStamp
             // CAdES: id-aa-ets-archiveTimestamp, XAdES: ArchiveTimeStamp, PAdES-LTV "document timestamp"
             this.timeStamp = timeStamp;
+            RootCause = rootCause;
         }
 
         /// <summary>
         /// Constructor with an indication of the time-stamp type The default constructor for TimestampToken.
         /// </summary>
-        public TimestampToken(TimeStampToken timeStamp, TimestampToken.TimestampType type)
+        public TimestampToken(TimeStampToken timeStamp, TimestampToken.TimestampType type, object rootCause = null) : this(timeStamp, rootCause)
         {
-            this.timeStamp = timeStamp;
             timeStampType = type;
         }
 
         public virtual X509Name GetSignerSubjectName()
         {
-            ICollection<X509Certificate> certs = ((CAdESCertificateSource)GetWrappedCertificateSource()).GetCertificates
+            ICollection<X509Certificate> certs = ((CAdESCertificateSource) GetWrappedCertificateSource()).GetCertificates
                 ();
             foreach (X509Certificate cert in certs)
             {
@@ -74,7 +76,7 @@ namespace CAdESLib.Document.Validation
 
         public virtual X509Certificate GetSigner()
         {
-            ICollection<X509Certificate> certs = ((CAdESCertificateSource)GetWrappedCertificateSource()).GetCertificates();
+            ICollection<X509Certificate> certs = ((CAdESCertificateSource) GetWrappedCertificateSource()).GetCertificates();
             foreach (X509Certificate cert in certs)
             {
                 if (timeStamp.SignerID.Match(cert))

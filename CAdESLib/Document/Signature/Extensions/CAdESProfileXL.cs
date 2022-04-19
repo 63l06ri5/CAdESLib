@@ -10,6 +10,7 @@ using Org.BouncyCastle.X509;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using BcCms = Org.BouncyCastle.Asn1.Cms;
 
 namespace CAdESLib.Document.Signature.Extensions
@@ -22,6 +23,8 @@ namespace CAdESLib.Document.Signature.Extensions
 
     public class CAdESProfileXL : CAdESProfileX
     {
+        public override SignatureProfile SignatureProfile => SignatureProfile.XL;
+
         /// <summary>
         /// Sets the type of the CAdES-X signature (Type 1 with id-aa-ets-escTimeStamp or Type 2 with
         /// id-aa-ets-certCRLTimestamp)
@@ -36,24 +39,11 @@ namespace CAdESLib.Document.Signature.Extensions
 
         private IDictionary ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, DateTime signingDate, ICertificateSource optionalCertificateSource, IValidationContext validationContext)
         {
-            List<X509CertificateStructure> certificateValues = new List<X509CertificateStructure>();
-            List<CertificateList> crlValues = new List<CertificateList>();
-            List<BasicOcspResponse> ocspValues = new List<BasicOcspResponse>();
-            foreach (CertificateAndContext c in validationContext.NeededCertificates)
-            {
-                certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence)Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
-            }
-            foreach (var relatedcrl in validationContext.NeededCRLTokens)
-            {
-                crlValues.Add(CertificateList.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedcrl.GetX509crl().GetEncoded())));
-            }
-            foreach (var relatedocspresp in validationContext.NeededOCSPRespTokens)
-            {
-                ocspValues.Add((BasicOcspResponse.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedocspresp.GetOcspResp().GetEncoded()))));
-            }
-            RevocationValues revocationValues = new RevocationValues(crlValues.ToArray(), ocspValues.ToArray(), null);
-            unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new DerSet(revocationValues)));
-            unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsCertValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsCertValues, new DerSet(new DerSequence(certificateValues.ToArray()))));
+            SetValues(
+                unsignedAttrs,
+                validationContext.NeededCertificateTokens.Where(x => x.RootCause is X509Certificate).Select(x => x.GetCertificateAndContext()),
+                validationContext.NeededCRLTokens.Where(x => x.RootCause is X509Certificate),
+                validationContext.NeededOCSPRespTokens.Where(x => x.RootCause is X509Certificate));
 
             return unsignedAttrs;
         }

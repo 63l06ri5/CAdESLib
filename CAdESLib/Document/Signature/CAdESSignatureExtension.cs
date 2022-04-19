@@ -1,6 +1,7 @@
 ﻿using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
 using CAdESLib.Service;
+using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
@@ -9,12 +10,15 @@ using Org.BouncyCastle.Tsp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using BcCms = Org.BouncyCastle.Asn1.Cms;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
     public abstract class CAdESSignatureExtension : ISignatureExtension
     {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private const string CannotParseCMSDataMessage = "Cannot parse CMS data";
         private const string EmptyTimestampMessage = "The TimeStampToken returned for the signature time stamp was empty.";
         private ITspSource signatureTsa;
@@ -23,6 +27,8 @@ namespace CAdESLib.Document.Signature.Extensions
         /// the TSA used for the signature-time-stamp attribute
         /// </returns>
         public virtual ITspSource SignatureTsa { get => signatureTsa; set => signatureTsa = value; }
+
+        public virtual SignatureProfile SignatureProfile => throw new NotImplementedException();
 
         public virtual IDocument ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters)
         {
@@ -82,7 +88,7 @@ namespace CAdESLib.Document.Signature.Extensions
         /// Computes an attribute containing a time-stamp token of the provided data, from the provided TSA using the
         /// provided. The hashing is performed by the method using the specified algorithm and a BouncyCastle provider.
         /// </remarks>
-        protected internal virtual BcCms.Attribute GetTimeStampAttribute(DerObjectIdentifier oid, ITspSource tsa, byte[] messageImprint)
+        protected internal virtual BcCms.Attribute GetTimeStampAttribute(DerObjectIdentifier oid, ITspSource tsa, byte[] messageImprint, bool needToWaitTsTime = false)
         {
             if (tsa is null)
             {
@@ -109,6 +115,27 @@ namespace CAdESLib.Document.Signature.Extensions
             {
                 throw new ArgumentNullException(EmptyTimestampMessage);
             }
+            if (needToWaitTsTime)
+            {
+                // TODO: Think about it
+                var utcNow = DateTime.UtcNow;
+                var genTime = tstoken.TimeStampInfo.GenTime.ToUniversalTime();
+                var datediff = genTime.Subtract(utcNow);
+                if (datediff.TotalMilliseconds > 0)
+                {
+                    if (datediff.TotalMilliseconds < 30000)
+                    {
+                        Thread.Sleep((int) Math.Ceiling(datediff.TotalMilliseconds));
+                    }
+                    else
+                    {
+                        var message = $"Timestamp date is far in the future. GenTime = {genTime}, CheckTime = {utcNow} ";
+                        logger.Error(message);
+                        throw new Exception(message);
+                    }
+                }
+            }
+
             BcCms.Attribute signatureTimeStamp = new BcCms.Attribute(oid, new DerSet(Asn1Object.FromByteArray(tstoken.GetEncoded())));
             return signatureTimeStamp;
 

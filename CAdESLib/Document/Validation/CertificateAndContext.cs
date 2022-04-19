@@ -8,10 +8,6 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class CertificateAndContext
     {
-        public CertificateAndContext()
-        {
-        }
-
         /// <summary>
         /// Create a CertificateAndContext wrapping the provided X509Certificate The default constructor for
         /// CertificateAndContext.
@@ -27,6 +23,7 @@ namespace CAdESLib.Document.Validation
             Context = context;
         }
 
+        public object RootCause { get; set; }
         public virtual X509Certificate Certificate { get; set; }
         public virtual CertificateAndContext IssuerCertificate { get; set; }
         public virtual ISerializable Context { get; set; }

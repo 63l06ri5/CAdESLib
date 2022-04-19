@@ -2,6 +2,9 @@
 using Org.BouncyCastle.Asn1.Oiw;
 using Org.BouncyCastle.Asn1.Rosstandart;
 using Org.BouncyCastle.Cms;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Security.Certificates;
+using Org.BouncyCastle.X509;
 
 namespace CAdESLib.Helpers
 {
@@ -53,6 +56,35 @@ namespace CAdESLib.Helpers
             else
             {
                 return (OiwObjectIdentifiers.IdSha1.Id, openKeyOid);
+            }
+        }
+    }
+
+    public static class BCStaticExtensions
+    {
+        public static bool IsSignedBy(this X509Certificate cert, X509Certificate otherCert)
+        {
+            if (cert is null || otherCert is null)
+            {
+                return false;
+            }
+
+            try
+            {
+                cert.Verify(otherCert.GetPublicKey());
+                return true;
+            }
+            catch (InvalidKeyException)
+            {
+                return false;
+            }
+            catch (CertificateException)
+            {
+                return false;
+            }
+            catch (SignatureException)
+            {
+                return false;
             }
         }
     }

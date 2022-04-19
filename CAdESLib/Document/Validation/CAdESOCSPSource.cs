@@ -1,10 +1,8 @@
 ﻿using CAdESLib.Helpers;
-using Org.BouncyCastle.Asn1.Esf;
-using Org.BouncyCastle.Asn1.Ocsp;
-using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Ocsp;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CAdESLib.Document.Validation
 {
@@ -27,7 +25,7 @@ namespace CAdESLib.Document.Validation
             signers.MoveNext();
 
             cmsSignedData = cms;
-            signerId = ((SignerInformation)signers.Current).SignerID;
+            signerId = ((SignerInformation) signers.Current).SignerID;
         }
 
         public CAdESOCSPSource(CmsSignedData cms, SignerID id)
@@ -38,24 +36,18 @@ namespace CAdESLib.Document.Validation
 
         public override IList<BasicOcspResp> GetOCSPResponsesFromSignature()
         {
-            IList<BasicOcspResp> list = new List<BasicOcspResp>();
             // Add certificates in CAdES-XL certificate-values inside SignerInfo attribute if present
             SignerInformation si = BCStaticHelpers.GetSigner(cmsSignedData, signerId);
-            if (si != null && si.UnsignedAttributes != null && si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues] != null)
+            var list = si?.UnsignedAttributes.GetOcspReps()?.ToList() ?? new List<BasicOcspResp>();
+
+            if (si != null)
             {
-                RevocationValues revValues = RevocationValues.GetInstance(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues].AttrValues[0]);
-                try
+                foreach (var tst in si.GetAllTimestampTokens())
                 {
-                    foreach (BasicOcspResponse ocspObj in revValues.GetOcspVals())
-                    {
-                        BasicOcspResp bOcspObj = new BasicOcspResp(ocspObj);
-                        list.Add(bOcspObj);
-                    }
-                }
-                catch
-                {
+                    list.AddRange(tst.GetTimeStamp().UnsignedAttributes?.GetOcspReps() ?? new List<BasicOcspResp>());
                 }
             }
+
             return list;
         }
     }

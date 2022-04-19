@@ -7,5 +7,7 @@
         /// </summary>
         IDocument ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters);
 
+        SignatureProfile SignatureProfile { get; }
+
     }
 }

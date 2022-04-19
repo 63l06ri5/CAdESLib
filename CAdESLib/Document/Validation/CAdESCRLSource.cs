@@ -5,6 +5,7 @@ using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CAdESLib.Document.Validation
 {
@@ -27,7 +28,7 @@ namespace CAdESLib.Document.Validation
             signers.MoveNext();
 
             cmsSignedData = cms;
-            signerId = ((SignerInformation)signers.Current).SignerID;
+            signerId = ((SignerInformation) signers.Current).SignerID;
         }
 
         public CAdESCRLSource(CmsSignedData cms, SignerID id)
@@ -38,29 +39,30 @@ namespace CAdESLib.Document.Validation
 
         public override IList<X509Crl> GetCRLsFromSignature()
         {
-            IList<X509Crl> list = new List<X509Crl>();
+            var list = new List<X509Crl>();
 
-            // Add certificates contained in SignedData
-            foreach (X509Crl crl in cmsSignedData.GetCrls
-                ("Collection").GetMatches(null))
-            {
-                list.Add(crl);
-            }
             // Add certificates in CAdES-XL certificate-values inside SignerInfo attribute if present
             SignerInformation si = BCStaticHelpers.GetSigner(cmsSignedData, signerId);
-            if (si != null && si.UnsignedAttributes != null && si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues] != null)
+
+            if (si != null)
             {
-                RevocationValues revValues = RevocationValues.GetInstance(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationValues].AttrValues[0]);
-                try
+                var unsignedAttributes = si?.UnsignedAttributes;
+                foreach (X509Crl crl in cmsSignedData.GetCrls("Collection").GetMatches(null))
                 {
-                    foreach (CertificateList crlObj in revValues.GetCrlVals())
+                    list.Add(crl);
+                }
+
+                list.AddRange(si?.UnsignedAttributes.GetCrls()?.ToList() ?? new List<X509Crl>());
+
+                foreach (var tst in si.GetAllTimestampTokens())
+                {
+                    var t = tst.GetTimeStamp();
+                    foreach (X509Crl crl in t.GetCrls("Collection").GetMatches(null))
                     {
-                        X509Crl crl = new X509Crl(crlObj);
                         list.Add(crl);
                     }
-                }
-                catch
-                {
+
+                    list.AddRange(t.UnsignedAttributes?.GetCrls() ?? new List<X509Crl>());
                 }
             }
 

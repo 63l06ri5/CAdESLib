@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1.X509;
+﻿using CAdESLib.Helpers;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
@@ -17,6 +18,8 @@ namespace CAdESLib.Document.Validation
 
         private CertificateStatus status;
 
+        public object RootCause { get; }
+
         /// <summary>
         /// Create a CertificateToken
         /// </summary>
@@ -24,6 +27,7 @@ namespace CAdESLib.Document.Validation
         {
             this.cert = cert;
             this.sourceFactory = sourceFactory;
+            RootCause = cert.RootCause;
         }
 
         public virtual X509Name GetSignerSubjectName()
@@ -47,26 +51,7 @@ namespace CAdESLib.Document.Validation
             return cert.Certificate;
         }
 
-        public virtual bool IsSignedBy(X509Certificate potentialIssuer)
-        {
-            try
-            {
-                GetCertificate().Verify(potentialIssuer.GetPublicKey());
-                return true;
-            }
-            catch (InvalidKeyException)
-            {
-                return false;
-            }
-            catch (CertificateException)
-            {
-                return false;
-            }
-            catch (SignatureException)
-            {
-                return false;
-            }
-        }
+        public virtual bool IsSignedBy(X509Certificate potentialIssuer) => GetCertificate().IsSignedBy(potentialIssuer);
 
         /// <param>
         /// the status to set

@@ -1,6 +1,7 @@
 ﻿using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
 using CAdESLib.Service;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
@@ -35,7 +36,7 @@ namespace CAdESLib.Tests
             return keyGenerator.GenerateKeyPair();
         }
 
-        public static X509Certificate GenerateCertificate(X509Name issuer, X509Name subject, AsymmetricKeyParameter issuerPrivate, AsymmetricKeyParameter subjectPublic, DateTime? notBefore = null, DateTime? notAfter = null)
+        public static X509Certificate GenerateCertificate(X509Name issuer, X509Name subject, AsymmetricKeyParameter issuerPrivate, AsymmetricKeyParameter subjectPublic, DateTime? notBefore = null, DateTime? notAfter = null, bool ocsp = false)
         {
             ISignatureFactory signatureFactory = new Asn1SignatureFactory(
                     PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(),
@@ -45,17 +46,26 @@ namespace CAdESLib.Tests
             certGenerator.SetIssuerDN(issuer);
             certGenerator.SetSubjectDN(subject);
             certGenerator.SetSerialNumber(BigInteger.ValueOf(Math.Abs(secureRandom.NextInt())));
-            certGenerator.SetNotAfter(notAfter ?? DateTime.Now.AddDays(1));
-            certGenerator.SetNotBefore(notBefore ?? DateTime.Now.AddDays(-1));
+            certGenerator.SetNotAfter(notAfter ?? DateTime.UtcNow.AddDays(1));
+            certGenerator.SetNotBefore(notBefore ?? DateTime.UtcNow.AddDays(-1));
             certGenerator.SetPublicKey(subjectPublic);
             certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyCertSign | KeyUsage.CrlSign));
-            certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.IdKPTimeStamping));
+            var keySupposedIds = new List<KeyPurposeID> { KeyPurposeID.IdKPTimeStamping };
+            if (ocsp)
+            {
+                keySupposedIds.Add(KeyPurposeID.IdKPOcspSigning);
+            }
+            certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(keySupposedIds));
+            if (ocsp)
+            {
+                certGenerator.AddExtension(X509Consts.OCSPNoCheck, false, new DerInteger(BigInteger.ValueOf(0x0500)));
+            }
             return certGenerator.Generate(signatureFactory);
         }
 
         public static bool ValidateSignedCert(X509Certificate cert, ICipherParameters pubKey)
         {
-            cert.CheckValidity(DateTime.Now);
+            cert.CheckValidity(DateTime.UtcNow);
             byte[] tbsCert = cert.GetTbsCertificate();
             byte[] sig = cert.GetSignature();
 
@@ -97,7 +107,7 @@ namespace CAdESLib.Tests
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
-            BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
+            BigInteger nonce = BigInteger.ValueOf(DateTime.UtcNow.Ticks + Environment.TickCount);
             TimeStampRequest request = tsqGenerator.Generate(digestAlgorithmOid, digest, nonce);
 
 
@@ -114,7 +124,7 @@ namespace CAdESLib.Tests
 
             TimeStampResponseGenerator tsRespGen = new TimeStampResponseGenerator(tsTokenGen, TspAlgorithms.Allowed);
 
-            TimeStampResponse tsResp = tsRespGen.Generate(request, BigInteger.ValueOf(23), DateTime.Now);
+            TimeStampResponse tsResp = tsRespGen.Generate(request, BigInteger.ValueOf(23), DateTime.UtcNow);
 
             tsResp = new TimeStampResponse(tsResp.GetEncoded());
 
@@ -161,12 +171,12 @@ namespace CAdESLib.Tests
                 else if (revoked.Any(x => x.Item1.SerialNumber.ToString() == certificate.SerialNumber.ToString() && x.Item2.SerialNumber.ToString() == issuerCertificate.SerialNumber.ToString()))
                 {
                     // 0 - Unspecified
-                    status = new Org.BouncyCastle.Ocsp.RevokedStatus(DateTime.Now, 0);
+                    status = new Org.BouncyCastle.Ocsp.RevokedStatus(DateTime.UtcNow, 0);
                 }
 
                 generator.AddResponse(certId, status);
 
-                BasicOcspResp resp = generator.Generate("SHA1withRSA", keyPair.Private, new X509Certificate[] { cert }, DateTime.Now, null);
+                BasicOcspResp resp = generator.Generate("SHA1withRSA", keyPair.Private, new X509Certificate[] { cert }, DateTime.UtcNow, null);
 
                 return resp;
             }
@@ -202,7 +212,7 @@ namespace CAdESLib.Tests
         public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
             X509V2CrlGenerator crlGen = new X509V2CrlGenerator();
-            DateTime now = DateTime.Now.AddDays(-1);
+            DateTime now = DateTime.UtcNow.AddDays(-1);
             //			BigInteger			revokedSerialNumber = BigInteger.Two;
 
 

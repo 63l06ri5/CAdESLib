@@ -192,7 +192,7 @@ namespace CAdESLib.Tests
 
                 var ocsp = new X509Name("CN=ocsp");
                 ocspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-                ocspCert = CryptoHelpers.GenerateCertificate(ocspCA, ocsp, ocspCAKeyPair.Private, ocspKeyPair.Public);
+                ocspCert = CryptoHelpers.GenerateCertificate(ocspCA, ocsp, ocspCAKeyPair.Private, ocspKeyPair.Public, ocsp: true);
             }
 
             {

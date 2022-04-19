@@ -44,22 +44,35 @@ namespace CAdESLib.Service
             var crls = new List<X509Crl>();
             try
             {
-                string crlURL = string.IsNullOrEmpty(PresetCRLUri) ? GetCrlUri(certificate) : PresetCRLUri;
-                logger.Info("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
-                if (crlURL != null)
+                var crlURLs = string.IsNullOrEmpty(PresetCRLUri) ? GetCrlUri(certificate) : new List<string> { PresetCRLUri };
+                foreach (var crlURL in crlURLs)
                 {
-                    if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
+                    logger.Info("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
+                    if (crlURL != null)
                     {
-                        crls.Add(GetCrl(crlURL));
-                    }
-                    else
-                    {
-                        crls.Add(GetCrlFromFS(crlURL));
-                        //logger.Info("We support only HTTP and HTTPS CRL's url, this url is " + crlURL);
-                        //return null;
+                        X509Crl crl;
+                        if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
+                        {
+                            crl = GetCrl(crlURL);
+                        }
+                        else
+                        {
+                            crl = GetCrlFromFS(crlURL);
+                        }
+
+                        if (crl is null)
+                        {
+                            continue;
+                        }
+
+                        crls.Add(crl);
+
+                        return crls;
                     }
                 }
+
                 return crls;
+
             }
             catch (CrlException e)
             {
@@ -131,12 +144,13 @@ namespace CAdESLib.Service
         /// <returns>
         /// the CRL URI, or <code>null</code> if the extension is not present.
         /// </returns>
-        public virtual string GetCrlUri(X509Certificate certificate)
+        public virtual List<string> GetCrlUri(X509Certificate certificate)
         {
+            var uris = new List<string>();
             Asn1OctetString crlDistributionPointsValue = certificate.GetExtensionValue(X509Extensions.CrlDistributionPoints);
             if (null == crlDistributionPointsValue)
             {
-                return null;
+                return uris;
             }
             Asn1Sequence seq;
             try
@@ -144,8 +158,8 @@ namespace CAdESLib.Service
                 DerOctetString oct;
                 //oct = (DEROctetString)(new ASN1InputStream(new ByteArrayInputStream(crlDistributionPointsValue
                 //    )).ReadObject());
-                oct = (DerOctetString)crlDistributionPointsValue;
-                seq = (Asn1Sequence)new Asn1InputStream(oct.GetOctets()).ReadObject();
+                oct = (DerOctetString) crlDistributionPointsValue;
+                seq = (Asn1Sequence) new Asn1InputStream(oct.GetOctets()).ReadObject();
             }
             catch (IOException e)
             {
@@ -160,7 +174,7 @@ namespace CAdESLib.Service
                 {
                     continue;
                 }
-                GeneralNames generalNames = (GeneralNames)distributionPointName.Name;
+                GeneralNames generalNames = (GeneralNames) distributionPointName.Name;
                 GeneralName[] names = generalNames.GetNames();
                 foreach (GeneralName name in names)
                 {
@@ -183,7 +197,7 @@ namespace CAdESLib.Service
                     if (str != null && (str.StartsWith("http://") || str.StartsWith("https://"))
                         && str.ToUpperInvariant().Contains("CRL")) //jbonilla - El URL del CRL para el BCE está en la tercera posición y solo se puede acceder desde HTTP.
                     {
-                        return str;
+                        uris.Add(str);
                     }
                     else
                     {
@@ -192,16 +206,7 @@ namespace CAdESLib.Service
                 }
             }
 
-            //jbonilla
-            #region BCE
-            if (certificate.SubjectDN.ToString()
-                .Contains("AC BANCO CENTRAL DEL ECUADOR"))
-            {
-                return IntermediateAcUrl;
-            }
-            #endregion
-
-            return null;
+            return uris;
         }
     }
 }

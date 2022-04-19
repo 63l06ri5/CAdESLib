@@ -22,5 +22,11 @@ namespace CAdESLib.Document.Validation
         /// Retrieve certificates from the SignedToken
         /// </summary>
         ICertificateSource GetWrappedCertificateSource();
+
+
+        /// <summary>
+        /// Root reason to validate the token
+        /// </summary>
+        object RootCause { get; }
     }
 }

@@ -13,9 +13,12 @@ namespace CAdESLib.Document.Validation
 
         private X509Certificate signer;
 
-        public CRLToken(X509Crl crl)
+        public object RootCause { get; }
+
+        public CRLToken(X509Crl crl, object rootCause)
         {
             x509crl = crl;
+            RootCause = rootCause;
         }
         /// <returns>
         /// the x509crl

@@ -24,9 +24,12 @@ namespace CAdESLib.Document.Validation
 
         private bool isSignerNotFound = false;
 
-        public OCSPRespToken(BasicOcspResp ocspResp)
+        public object RootCause { get; }
+
+        public OCSPRespToken(BasicOcspResp ocspResp, object rootValidationCause)
         {
             this.ocspResp = ocspResp;
+            RootCause = rootValidationCause;
         }
 
         /// <returns>
@@ -106,7 +109,12 @@ namespace CAdESLib.Document.Validation
         {
             try
             {
-                return ocspResp.Verify(potentialIssuer.GetPublicKey());
+                var result = ocspResp.Verify(potentialIssuer.GetPublicKey());
+                if (result)
+                {
+                    signerCertificate = potentialIssuer;
+                }
+                return result;
             }
             catch (OcspException)
             {

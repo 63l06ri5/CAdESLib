@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.X509;
 using System;
 
@@ -33,6 +34,20 @@ namespace CAdESLib.Document.Validation
             if (potentialIssuer == null)
             {
                 return null;
+            }
+
+            var ocspNoCheck = cert.GetExtensionValue(X509Consts.OCSPNoCheck);
+            if (ocspNoCheck != null && cert.GetExtendedKeyUsage().Contains(Org.BouncyCastle.Asn1.X509.KeyPurposeID.IdKPOcspSigning.Id))
+            {
+                logger.Info("OCSPNoCheck");
+                return new CertificateStatus
+                {
+                    Certificate = cert,
+                    ValidationDate = validationDate,
+                    IssuerCertificate = potentialIssuer,
+                    Validity = CertificateValidity.VALID,
+                    StatusSource = CertificateSourceType.TRUST_STORE
+                };
             }
 
             logger.Info("OCSP request for " + cert.SubjectDN);

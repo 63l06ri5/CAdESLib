@@ -13,7 +13,6 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class OCSPCertificateVerifier : ICertificateStatusVerifier
     {
-        private static readonly DerObjectIdentifier OCSPNoCheck = new DerObjectIdentifier("1.3.6.1.5.5.7.48.1.5");
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly IOcspSource ocspSource;
 
@@ -31,10 +30,10 @@ namespace CAdESLib.Document.Validation
 
         public virtual CertificateStatus Check(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
         {
-            var ocspNoCheck = childCertificate.GetExtensionValue(OCSPNoCheck);
+            var ocspNoCheck = childCertificate.GetExtensionValue(X509Consts.OCSPNoCheck);
             if (ocspNoCheck != null)
             {
-                logger.Info("OCSPNoCheck null");
+                logger.Info("OCSPNoCheck");
                 return null;
             }
 

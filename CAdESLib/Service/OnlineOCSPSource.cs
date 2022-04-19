@@ -2,10 +2,14 @@
 using CAdESLib.Helpers;
 using NLog;
 using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Asn1.Ocsp;
 using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Cms;
+using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using X509Extensions = Org.BouncyCastle.Asn1.X509.X509Extensions;
 
@@ -54,16 +58,40 @@ namespace CAdESLib.Service
                 {
                     return null;
                 }
+
+                var digestOid = CertificateID.HashSha1;
+                try
+                {
+                    digestOid = new DefaultDigestAlgorithmIdentifierFinder().find(new AlgorithmIdentifier(certificate.SigAlgOid)).Algorithm.Id;
+                }
+                catch { }
+
                 OcspReqGenerator ocspReqGenerator = new OcspReqGenerator();
                 // TODO: should use from settings?
-                CertificateID certId = new CertificateID(CertificateID.HashSha1, issuerCertificate, certificate.SerialNumber);
+                CertificateID certId = new CertificateID(digestOid, issuerCertificate, certificate.SerialNumber);
+                var certCertId = certId.ToAsn1Object();
+                certId = new CertificateID(new CertID(new AlgorithmIdentifier(certCertId.HashAlgorithm.Algorithm.Id), certCertId.IssuerNameHash, certCertId.IssuerKeyHash, certCertId.SerialNumber));
                 ocspReqGenerator.AddRequest(certId);
+
+                var nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
+                var oids = new List<DerObjectIdentifier> { OcspObjectIdentifiers.PkixOcspNonce };
+                var nonceValue = new DerOctetString(new DerOctetString(nonce.ToByteArray()));
+                var values = new List<X509Extension> { new X509Extension(false, nonceValue) };
+                ocspReqGenerator.SetRequestExtensions(new X509Extensions(oids, values));
+
                 OcspReq ocspReq = ocspReqGenerator.Generate();
                 byte[] ocspReqData = ocspReq.GetEncoded();
                 OcspResp ocspResp = new OcspResp(HttpDataLoader.Post(OcspUri, new MemoryStream(ocspReqData)));
                 try
                 {
-                    return (BasicOcspResp)ocspResp.GetResponseObject();
+                    var respObj = (BasicOcspResp) ocspResp.GetResponseObject();
+
+                    if (!CheckNonce(respObj, nonceValue))
+                    {
+                        return null;
+                    }
+
+                    return respObj;
                 }
                 catch (ArgumentNullException)
                 {
@@ -92,8 +120,8 @@ namespace CAdESLib.Service
                 return null;
             }
             AuthorityInformationAccess authorityInformationAccess;
-            DerOctetString oct = (DerOctetString)authInfoAccessExtensionValue;
-            authorityInformationAccess = AuthorityInformationAccess.GetInstance((Asn1Sequence)new Asn1InputStream
+            DerOctetString oct = (DerOctetString) authInfoAccessExtensionValue;
+            authorityInformationAccess = AuthorityInformationAccess.GetInstance((Asn1Sequence) new Asn1InputStream
                 (oct.GetOctets()).ReadObject());
             AccessDescription[] accessDescriptions = authorityInformationAccess.GetAccessDescriptions
                 ();
@@ -111,12 +139,36 @@ namespace CAdESLib.Service
                     logger.Info("not a uniform resource identifier");
                     continue;
                 }
-                DerIA5String str = (DerIA5String)((DerTaggedObject)gn.ToAsn1Object()).GetObject();
+                DerIA5String str = (DerIA5String) ((DerTaggedObject) gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
                 logger.Info("access location: " + accessLocation);
                 return accessLocation;
             }
             return null;
+        }
+
+        private bool CheckNonce(BasicOcspResp basicResponse, DerOctetString encodedNonce)
+        {
+            var nonceExt = basicResponse.GetExtensionValue(OcspObjectIdentifiers.PkixOcspNonce) as DerOctetString;
+            if (nonceExt != null)
+            {
+                if (!nonceExt.Equals(encodedNonce))
+                {
+                    logger.Error("Different nonce found in response!");
+                    return false;
+                }
+                else
+                {
+                    logger.Info("Nonce is good");
+                    return true;
+                }
+            }
+            // https://tools.ietf.org/html/rfc5019
+            // Clients that opt to include a nonce in the
+            // request SHOULD NOT reject a corresponding OCSPResponse solely on the
+            // basis of the nonexistent expected nonce, but MUST fall back to
+            // validating the OCSPResponse based on time.
+            return false;
         }
     }
 }
