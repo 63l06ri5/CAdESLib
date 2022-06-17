@@ -9,8 +9,7 @@ namespace CAdESLib.Document.Signature
     {
         public override string ToString()
         {
-            return "CertificateRef[issuerName=" + IssuerName + ",issuerSerial=" + IssuerSerial
-                 + ",digest=" + Hex.ToHexString(DigestValue) + "]";
+            return $"CertificateRef[issuerName={IssuerName},issuerSerial={IssuerSerial},digest={Hex.ToHexString(DigestValue)}]";
         }
 
         public virtual string DigestAlgorithm { get; set; }

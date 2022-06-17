@@ -52,7 +52,6 @@ namespace CAdESLib.Document.Validation
         private const string WasNotValidTSLMessage = "Was not valid in the TSL";
         private const string VerifyWithOfflineServiceMessage = "Verify with offline services";
         private const string VerifyWithOnlineServiceMessage = "Verify with online services";
-        //private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly ICAdESLogger logger;
 
 
@@ -90,7 +89,7 @@ namespace CAdESLib.Document.Validation
             logger = cadesLogger;
             if (certificate != null)
             {
-                logger?.Info("New context for " + certificate.SubjectDN);
+                logger?.Info($"New context for {certificate.SubjectDN}, {certificate.SerialNumber.ToString(16)}");
                 Certificate = certificate;
             }
             ValidationDate = validationDate;
@@ -121,7 +120,7 @@ namespace CAdESLib.Document.Validation
             {
                 foreach (CertificateAndContext cert in list)
                 {
-                    logger?.Info(cert.ToString());
+                    logger?.Info($"Potential issuer: {cert.ToString()}");
                     if (validationDate != null)
                     {
                         try
@@ -160,10 +159,12 @@ namespace CAdESLib.Document.Validation
                     }
                     if (signedToken.IsSignedBy(cert.Certificate))
                     {
+                        logger?.Info($"Issuer: {cert.ToString()}");
                         return cert;
                     }
                 }
             }
+            logger?.Warn("Don't found any issuer for token " + signedToken);
             return null;
         }
 
@@ -236,7 +237,20 @@ namespace CAdESLib.Document.Validation
                 throw new ArgumentNullException(nameof(certificate));
             }
 
-            var trustedCert = TrustedListCertificatesSource?.GetCertificateBySubjectName(certificate.SubjectDN)?.FirstOrDefault();
+            CertificateAndContext trustedCert = null;
+            var possibleCerts = TrustedListCertificatesSource?.GetCertificateBySubjectName(certificate.SubjectDN);
+            if (possibleCerts != null)
+            {
+                foreach (var c in possibleCerts)
+                {
+                    if (certificate.IsSignedBy(c.Certificate))
+                    {
+                        trustedCert = c;
+                        break;
+                    }
+                }
+            }
+
             AddNotYetVerifiedToken(certificateTokenFactory(trustedCert ?? new CertificateAndContext(certificate) { RootCause = certificate }));
 
             Validate(
@@ -282,12 +296,7 @@ namespace CAdESLib.Document.Validation
                 ICertificateSource otherSource = new CompositeCertificateSource(optionalSource, signedToken.GetWrappedCertificateSource());
                 CertificateAndContext issuer = GetIssuerCertificate(signedToken, otherSource, validationDate);
                 RevocationData data = null;
-                if (issuer == null)
-                {
-                    logger?.Warn("Don't found any issuer for token " + signedToken);
-                    //data = new RevocationData(signedToken);
-                }
-                else
+                if (issuer != null)
                 {
                     var alreadyProcessed = NeededCertificates.FirstOrDefault(x => x.Certificate.Equals(issuer.Certificate));
 
@@ -417,8 +426,7 @@ namespace CAdESLib.Document.Validation
                 }
                 builder.Append(" ");
             }
-            return "ValidationContext contains " + RevocationInfo.Count + " ISignedToken and "
-                 + count + " of them have been verified. List : " + builder.ToString();
+            return $"ValidationContext contains {RevocationInfo.Count} ISignedToken and {count} of them have been verified. List : {builder.ToString()}";
         }
 
         private CertificateStatus GetCertificateValidity(CertificateAndContext cert, CertificateAndContext potentialIssuer, DateTime validationDate, ICrlSource optionalCRLSource, IOcspSource optionalOCSPSource)

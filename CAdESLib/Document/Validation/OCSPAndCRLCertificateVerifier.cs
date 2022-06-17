@@ -59,7 +59,7 @@ namespace CAdESLib.Document.Validation
             }
             else
             {
-                logger.Info("No OCSP check performed, looking for a CRL for " + cert.SubjectDN);
+                logger.Info($"No OCSP check performed, looking for a CRL for {cert.SubjectDN},serial={cert.SerialNumber.ToString(16)}");
                 result = crlVerifier.Check(cert, potentialIssuer, validationDate);
                 if (result != null && result.Validity != CertificateValidity.UNKNOWN)
                 {

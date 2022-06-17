@@ -47,7 +47,7 @@ namespace CAdESLib.Document.Validation
 
                 if (x509crl is null)
                 {
-                    logger.Info("No CRL found for certificate " + childCertificate.SubjectDN);
+                    logger.Info($"No CRL found for certificate {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
                     return null;
                 }
 
@@ -59,21 +59,20 @@ namespace CAdESLib.Document.Validation
                 X509CrlEntry crlEntry = x509crl.GetRevokedCertificate(childCertificate.SerialNumber);
                 if (null == crlEntry)
                 {
-                    logger.Info("CRL OK for: " + childCertificate.SubjectDN);
+                    logger.Info($"CRL OK for:  {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
                     report.Validity = CertificateValidity.VALID;
                 }
                 else
                 {
                     if (crlEntry.RevocationDate.CompareTo(validationDate) > 0) //jbonilla - After
                     {
-                        logger.Info("CRL OK for: " + childCertificate.SubjectDN + " at " + validationDate);
+                        logger.Info($"CRL OK for: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} at {validationDate}");
                         report.Validity = CertificateValidity.VALID;
                         report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
                     }
                     else
                     {
-                        logger.Info("CRL reports certificate: " + childCertificate.SubjectDN
-                             + " as revoked since " + crlEntry.RevocationDate);
+                        logger.Info($"CRL reports certificate: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} as revoked since {crlEntry.RevocationDate}");
                         report.Validity = CertificateValidity.REVOKED;
                         report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
                         report.RevocationDate = crlEntry.RevocationDate;
@@ -83,7 +82,7 @@ namespace CAdESLib.Document.Validation
             }
             catch (IOException e)
             {
-                logger.Error("IOException when accessing CRL for " + childCertificate.SubjectDN.ToString() + " " + e.Message);
+                logger.Error($"IOException when accessing CRL for {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}  {e.Message}");
                 return null;
             }
         }
@@ -130,8 +129,7 @@ namespace CAdESLib.Document.Validation
             }
             if (!x509crl.IssuerDN.Equals(issuerCertificate.SubjectDN))
             {
-                logger.Warn("The CRL must be signed by the issuer (" + issuerCertificate.SubjectDN
-                    + " ) but instead is signed by " + x509crl.IssuerDN);
+                logger.Warn($"The CRL must be signed by the issuer ({issuerCertificate.SubjectDN},serial={issuerCertificate.SerialNumber.ToString(16)}) but instead is signed by {x509crl.IssuerDN}");
                 return false;
             }
             try
@@ -182,9 +180,9 @@ namespace CAdESLib.Document.Validation
             //{
             //DerOctetString octetString = (DerOctetString)(new ASN1InputStream(new ByteArrayInputStream
             //    (crlNumberExtensionValue)).ReadObject());
-            DerOctetString octetString = (DerOctetString)crlNumberExtensionValue;
+            DerOctetString octetString = (DerOctetString) crlNumberExtensionValue;
             byte[] octets = octetString.GetOctets();
-            DerInteger integer = (DerInteger)new Asn1InputStream(octets).ReadObject();
+            DerInteger integer = (DerInteger) new Asn1InputStream(octets).ReadObject();
             BigInteger crlNumber = integer.PositiveValue;
             return crlNumber;
             //}

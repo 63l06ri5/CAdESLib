@@ -134,8 +134,8 @@ namespace CAdESLib.Document.Validation
 
         public override string ToString()
         {
-            return "Certificate[subjectName=\"" + GetCertificate().SubjectDN + "\",issuedBy=\""
-                 + GetCertificate().IssuerDN + "\"]";
+            var cert = GetCertificate();
+            return $"Certificate[subjectName=\"{GetCertificate().SubjectDN}\",issuedBy=\"{GetCertificate().IssuerDN}\",serial={cert.SerialNumber.ToString(16)}]";
         }
     }
 }

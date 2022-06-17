@@ -70,11 +70,11 @@ namespace CAdESLib.Document.Signature
         {
             get
             {
-                logger.Info("SignerInformation " + signerInformation.SignerID);
+                logger.Trace($"SignerInformation {signerInformation.SignerID.Subject},serial={signerInformation.SignerID.SerialNumber.ToString(16)}");
                 ICollection<X509Certificate> certs = Certificates;
                 foreach (X509Certificate cert in certs)
                 {
-                    logger.Info("Test match for certificate " + cert.SubjectDN.ToString());
+                    logger.Trace($"Test match for certificate {cert.SubjectDN.ToString()},serial={cert.SerialNumber.ToString(16)}");
                     if (signerInformation.SignerID.Match(cert))
                     {
                         return cert;

@@ -51,11 +51,11 @@ namespace CAdESLib.Document.Validation
 
             if (!onlyExtended)
             {
-                logger.Info(cmsSignedData.GetCertificates("Collection").GetMatches(null).Count + " certificate in collection");
+                logger.Trace(cmsSignedData.GetCertificates("Collection").GetMatches(null).Count + " certificate in collection");
                 foreach (X509Certificate ch in cmsSignedData.GetCertificates("Collection").GetMatches(null))
                 {
                     X509Certificate c = ch;
-                    logger.Info("Certificate for subject " + c.SubjectDN);
+                    logger.Trace($"Certificate {c.SubjectDN},{c.SerialNumber.ToString(16)}");
                     if (!list.Contains(c))
                     {
                         list.Add(c);

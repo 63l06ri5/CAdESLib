@@ -32,9 +32,7 @@ namespace CAdESLib.Document.Validation
 
         public override string ToString()
         {
-            return "Certificate[for=" + Certificate.SubjectDN.ToString() + ",source=" + CertificateSource
-                 + ",issuedBy=" + Certificate.IssuerDN + ",serial=" + Certificate
-                .SerialNumber + "]";
+            return $"Certificate[for={Certificate.SubjectDN.ToString()},source={CertificateSource},issuedBy={Certificate.IssuerDN},serial={Certificate.SerialNumber.ToString(16)}]";
         }
 
         public override int GetHashCode()
