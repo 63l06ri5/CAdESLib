@@ -47,7 +47,7 @@ namespace CAdESLib.Service
                 var crlURLs = string.IsNullOrEmpty(PresetCRLUri) ? GetCrlUri(certificate) : new List<string> { PresetCRLUri };
                 foreach (var crlURL in crlURLs)
                 {
-                    logger.Info("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
+                    logger.Trace("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
                     if (crlURL != null)
                     {
                         X509Crl crl;
@@ -101,7 +101,7 @@ namespace CAdESLib.Service
 
                     X509CrlParser parser = new X509CrlParser();
                     X509Crl crl = parser.ReadCrl(input);
-                    logger.Info("CRL size: " + crl.GetEncoded().Length + " bytes");
+                    logger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
                     return crl;
                 }
                 catch (CannotFetchDataException)
@@ -124,7 +124,7 @@ namespace CAdESLib.Service
                     using var input = File.OpenRead(downloadUrl);
                     X509CrlParser parser = new X509CrlParser();
                     X509Crl crl = parser.ReadCrl(input);
-                    logger.Info("CRL size: " + crl.GetEncoded().Length + " bytes");
+                    logger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
                     return crl;
                 }
                 catch (CannotFetchDataException)
@@ -180,7 +180,7 @@ namespace CAdESLib.Service
                 {
                     if (name.TagNo != GeneralName.UniformResourceIdentifier)
                     {
-                        logger.Info("not a uniform resource identifier");
+                        logger.Trace("not a uniform resource identifier");
                         continue;
                     }
                     string str;
@@ -201,7 +201,7 @@ namespace CAdESLib.Service
                     }
                     else
                     {
-                        logger.Info("Supports only http:// and https:// protocol for CRL");
+                        logger.Trace("Supports only http:// and https:// protocol for CRL");
                     }
                 }
             }

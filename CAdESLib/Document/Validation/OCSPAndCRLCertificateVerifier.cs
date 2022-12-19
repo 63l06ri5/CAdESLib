@@ -39,7 +39,7 @@ namespace CAdESLib.Document.Validation
             var ocspNoCheck = cert.GetExtensionValue(X509Consts.OCSPNoCheck);
             if (ocspNoCheck != null && cert.GetExtendedKeyUsage().Contains(Org.BouncyCastle.Asn1.X509.KeyPurposeID.IdKPOcspSigning.Id))
             {
-                logger.Info("OCSPNoCheck");
+                logger.Trace("OCSPNoCheck");
                 return new CertificateStatus
                 {
                     Certificate = cert,
@@ -50,11 +50,11 @@ namespace CAdESLib.Document.Validation
                 };
             }
 
-            logger.Info("OCSP request for " + cert.SubjectDN);
+            logger.Trace("OCSP request for " + cert.SubjectDN);
             CertificateStatus result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
             if (result != null && result.Validity != CertificateValidity.UNKNOWN)
             {
-                logger.Info(OCSPDoneMessage);
+                logger.Trace(OCSPDoneMessage);
                 return result;
             }
             else
@@ -63,12 +63,12 @@ namespace CAdESLib.Document.Validation
                 result = crlVerifier.Check(cert, potentialIssuer, validationDate);
                 if (result != null && result.Validity != CertificateValidity.UNKNOWN)
                 {
-                    logger.Info(CLRDoneMessage);
+                    logger.Trace(CLRDoneMessage);
                     return result;
                 }
                 else
                 {
-                    logger.Info(NoResponceMessage);
+                    logger.Trace(NoResponceMessage);
                     return null;
                 }
             }

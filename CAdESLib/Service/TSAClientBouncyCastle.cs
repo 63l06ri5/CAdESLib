@@ -157,7 +157,7 @@ namespace CAdESLib.Service
             TimeStampTokenInfo tsTokenInfo = tsToken.TimeStampInfo; // to view details
             byte[] encoded = tsToken.GetEncoded();
 
-            logger.Info("Timestamp generated: " + tsTokenInfo.GenTime);
+            logger.Trace("Timestamp generated: " + tsTokenInfo.GenTime);
             if (tsaInfo != null)
             {
                 tsaInfo.InspectTimeStampTokenInfo(tsTokenInfo);

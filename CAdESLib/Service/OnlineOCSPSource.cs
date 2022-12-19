@@ -53,7 +53,7 @@ namespace CAdESLib.Service
             try
             {
                 OcspUri = string.IsNullOrEmpty(PresetOCSPUri) ? GetAccessLocation(certificate, X509ObjectIdentifiers.OcspAccessMethod) : PresetOCSPUri;
-                logger.Info("OCSP URI: " + OcspUri);
+                logger.Trace("OCSP URI: " + OcspUri);
                 if (OcspUri == null)
                 {
                     return null;
@@ -127,7 +127,7 @@ namespace CAdESLib.Service
                 ();
             foreach (AccessDescription accessDescription in accessDescriptions)
             {
-                logger.Info("access method: " + accessDescription.AccessMethod);
+                logger.Trace("access method: " + accessDescription.AccessMethod);
                 bool correctAccessMethod = accessDescription.AccessMethod.Equals(accessMethod);
                 if (!correctAccessMethod)
                 {
@@ -136,12 +136,12 @@ namespace CAdESLib.Service
                 GeneralName gn = accessDescription.AccessLocation;
                 if (gn.TagNo != GeneralName.UniformResourceIdentifier)
                 {
-                    logger.Info("not a uniform resource identifier");
+                    logger.Trace("not a uniform resource identifier");
                     continue;
                 }
                 DerIA5String str = (DerIA5String) ((DerTaggedObject) gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
-                logger.Info("access location: " + accessLocation);
+                logger.Trace("access location: " + accessLocation);
                 return accessLocation;
             }
             return null;
@@ -159,7 +159,7 @@ namespace CAdESLib.Service
                 }
                 else
                 {
-                    logger.Info("Nonce is good");
+                    logger.Trace("Nonce is good");
                     return true;
                 }
             }

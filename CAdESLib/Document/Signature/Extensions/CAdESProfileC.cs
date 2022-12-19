@@ -40,7 +40,7 @@ namespace CAdESLib.Document.Signature.Extensions
         private static OtherCertID MakeOtherCertID(X509Certificate cert, DerObjectIdentifier hashAlg)
         {
             byte[] d = DigestUtilities.CalculateDigest(hashAlg, cert.GetEncoded());
-            logger.Info(new DerOctetString(d).ToString());
+            logger.Trace(new DerOctetString(d).ToString());
             OtherHash hash = new OtherHash(new OtherHashAlgAndValue(new AlgorithmIdentifier(hashAlg), d));
             OtherCertID othercertid = new OtherCertID(hash, new IssuerSerial(new GeneralNames(new GeneralName(cert.IssuerDN)), new DerInteger(cert.SerialNumber)));
             return othercertid;
@@ -79,7 +79,7 @@ namespace CAdESLib.Document.Signature.Extensions
             OtherHash hash = new OtherHash(new OtherHashAlgAndValue(new AlgorithmIdentifier(hashAlg), digestValue));
             // there is fuckup with DerGeneralizedTime, it loses milliseconds if DateTime is you param
             OcspResponsesID ocsprespid = new OcspResponsesID(OcspIdentifier.GetInstance(new DerSequence(ocspResp.ResponderId.ToAsn1Object(), new DerGeneralizedTime(ocspResp.ProducedAt.ToZuluString()))), hash);
-            logger.Info("Incorporate OcspResponseId[hash=" + Hex.ToHexString(digestValue) + ",producedAt=" + ocspResp.ProducedAt);
+            logger.Trace("Incorporate OcspResponseId[hash=" + Hex.ToHexString(digestValue) + ",producedAt=" + ocspResp.ProducedAt);
             return ocsprespid;
         }
 

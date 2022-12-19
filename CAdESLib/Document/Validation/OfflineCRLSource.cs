@@ -15,7 +15,7 @@ namespace CAdESLib.Document.Validation
             {
                 if (crl.IssuerDN.Equals(issuerCertificate.SubjectDN))
                 {
-                    logger.Info("CRL found for issuer " + issuerCertificate.SubjectDN.ToString());
+                    logger.Trace("CRL found for issuer " + issuerCertificate.SubjectDN.ToString());
                     crls.Add(crl);
                 }
             }

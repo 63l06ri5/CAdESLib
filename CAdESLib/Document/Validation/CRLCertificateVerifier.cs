@@ -59,20 +59,20 @@ namespace CAdESLib.Document.Validation
                 X509CrlEntry crlEntry = x509crl.GetRevokedCertificate(childCertificate.SerialNumber);
                 if (null == crlEntry)
                 {
-                    logger.Info($"CRL OK for:  {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
+                    logger.Trace($"CRL OK for:  {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
                     report.Validity = CertificateValidity.VALID;
                 }
                 else
                 {
                     if (crlEntry.RevocationDate.CompareTo(validationDate) > 0) //jbonilla - After
                     {
-                        logger.Info($"CRL OK for: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} at {validationDate}");
+                        logger.Trace($"CRL OK for: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} at {validationDate}");
                         report.Validity = CertificateValidity.VALID;
                         report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
                     }
                     else
                     {
-                        logger.Info($"CRL reports certificate: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} as revoked since {crlEntry.RevocationDate}");
+                        logger.Trace($"CRL reports certificate: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} as revoked since {crlEntry.RevocationDate}");
                         report.Validity = CertificateValidity.REVOKED;
                         report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
                         report.RevocationDate = crlEntry.RevocationDate;
@@ -115,7 +115,7 @@ namespace CAdESLib.Document.Validation
             }
             else
             {
-                logger.Info("CRL number: " + GetCrlNumber(x509crl));
+                logger.Trace("CRL number: " + GetCrlNumber(x509crl));
                 return true;
             }
         }
@@ -142,16 +142,16 @@ namespace CAdESLib.Document.Validation
                 return false;
             }
             DateTime thisUpdate = x509crl.ThisUpdate;
-            logger.Info("validation date: " + validationDate);
-            logger.Info("CRL this update: " + thisUpdate);
+            logger.Trace("validation date: " + validationDate);
+            logger.Trace("CRL this update: " + thisUpdate);
             //        if (thisUpdate.after(validationDate)) {
             //            logger.warning("CRL too young");
             //            return false;
             //        }
-            logger.Info("CRL next update: " + x509crl.NextUpdate);
+            logger.Trace("CRL next update: " + x509crl.NextUpdate);
             if (x509crl.NextUpdate != null && validationDate.CompareTo(x509crl.NextUpdate.Value) > 0) //jbonilla After
             {
-                logger.Info("CRL too old");
+                logger.Trace("CRL too old");
                 return false;
             }
             // assert cRLSign KeyUsage bit

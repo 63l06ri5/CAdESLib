@@ -26,7 +26,7 @@ namespace CAdESLib.Document.Signature.Extensions
             {
                 throw new System.ArgumentNullException(nameof(SignatureTsa));
             }
-            logger.Info("Extend signature with id " + si.SignerID);
+            logger.Trace("Extend signature with id " + si.SignerID);
             BcCms.AttributeTable unsigned = si.UnsignedAttributes;
             IDictionary unsignedAttrHash;
             if (unsigned is null)

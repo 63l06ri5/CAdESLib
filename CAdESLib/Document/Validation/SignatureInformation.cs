@@ -153,7 +153,7 @@ namespace CAdESLib.Document.Validation
             {
                 certContentCase = 9;
             }
-            logger.Info("TLCase : " + (tlContentCase + 1) + " - CertCase : " + (certContentCase + 1));
+            logger.Trace("TLCase : " + (tlContentCase + 1) + " - CertCase : " + (certContentCase + 1));
             try
             {
                 FinalConclusions[][] matrix = new FinalConclusions[][] {

@@ -47,7 +47,7 @@ namespace CAdESLib.Document.Signature
             }
             digest.BlockUpdate(oscpBytes, 0, oscpBytes.Length);
             byte[] computedValue = DigestUtilities.DoFinal(digest);
-            logger.Info("Compare " + Hex.ToHexString(digestValue) + " to computed value " +
+            logger.Trace("Compare " + Hex.ToHexString(digestValue) + " to computed value " +
                 Hex.ToHexString(computedValue) + " of BasicOcspResp produced at " + ocspResp
                 .ProducedAt);
             return digestValue.SequenceEqual(computedValue);

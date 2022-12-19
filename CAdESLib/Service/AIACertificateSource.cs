@@ -74,7 +74,7 @@ namespace CAdESLib.Service
             AccessDescription[] accessDescriptions = authorityInformationAccess.GetAccessDescriptions();
             foreach (AccessDescription accessDescription in accessDescriptions)
             {
-                logger.Info("access method: " + accessDescription.AccessMethod);
+                logger.Trace("access method: " + accessDescription.AccessMethod);
                 bool correctAccessMethod = accessDescription.AccessMethod.Equals(accessMethod);
                 if (!correctAccessMethod)
                 {
@@ -83,12 +83,12 @@ namespace CAdESLib.Service
                 GeneralName gn = accessDescription.AccessLocation;
                 if (gn.TagNo != GeneralName.UniformResourceIdentifier)
                 {
-                    logger.Info("not a uniform resource identifier");
+                    logger.Trace("not a uniform resource identifier");
                     continue;
                 }
                 DerIA5String str = (DerIA5String)((DerTaggedObject)gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
-                logger.Info("access location: " + accessLocation);
+                logger.Trace("access location: " + accessLocation);
                 return accessLocation;
             }
             return null;

@@ -35,7 +35,7 @@ namespace CAdESLib.Service
         {
             try
             {
-                logger.Info("Fetching data from url " + URL);
+                logger.Trace("Fetching data from url " + URL);
 
                 var uri = new Uri(URL);
 
@@ -94,7 +94,7 @@ namespace CAdESLib.Service
         {
             try
             {
-                logger.Info("Post data to url " + URL);
+                logger.Trace("Post data to url " + URL);
 
                 byte[] data = Streams.ReadAll(content);
 

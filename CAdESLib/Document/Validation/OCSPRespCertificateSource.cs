@@ -24,8 +24,7 @@ namespace CAdESLib.Document.Validation
             IList<X509Certificate> certs = new List<X509Certificate>();
             foreach (X509Certificate c in ocspResp.GetCerts())
             {
-                logger.Info(c.SubjectDN + " issued by " + c.IssuerDN
-                     + " serial number " + c.SerialNumber);
+                logger.Trace(c.SubjectDN + " issued by " + c.IssuerDN + " serial number " + c.SerialNumber);
                 certs.Add(c);
             }
             return certs;

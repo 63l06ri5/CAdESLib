@@ -16,7 +16,7 @@ namespace CAdESLib.Document.Validation
         public BasicOcspResp GetOcspResponse(X509Certificate certificate, X509Certificate
              issuerCertificate)
         {
-            logger.Info("find OCSP response");
+            logger.Trace("find OCSP response");
             try
             {
                 foreach (BasicOcspResp basicOCSPResp in GetOCSPResponsesFromSignature())
@@ -27,7 +27,7 @@ namespace CAdESLib.Document.Validation
                         CertificateID certId = new CertificateID(localCertId.HashAlgOid, issuerCertificate, certificate.SerialNumber);
                         if (localCertId.EqualsWithDerNull(certId))
                         {
-                            logger.Info("OCSP response found");
+                            logger.Trace("OCSP response found");
                             return basicOCSPResp;
                         }
                     }

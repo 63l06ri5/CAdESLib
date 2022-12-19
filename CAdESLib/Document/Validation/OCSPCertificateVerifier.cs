@@ -33,7 +33,7 @@ namespace CAdESLib.Document.Validation
             var ocspNoCheck = childCertificate.GetExtensionValue(X509Consts.OCSPNoCheck);
             if (ocspNoCheck != null)
             {
-                logger.Info("OCSPNoCheck");
+                logger.Trace("OCSPNoCheck");
                 return null;
             }
 
@@ -53,7 +53,7 @@ namespace CAdESLib.Document.Validation
                 BasicOcspResp ocspResp = ocspSource.GetOcspResponse(childCertificate, certificate);
                 if (null == ocspResp)
                 {
-                    logger.Info("OCSP response not found");
+                    logger.Trace("OCSP response not found");
                     return null;
                 }
                 BasicOcspResp basicOCSPResp = ocspResp;                
@@ -68,25 +68,25 @@ namespace CAdESLib.Document.Validation
                         continue;
                     }
                     DateTime thisUpdate = singleResp.ThisUpdate;
-                    logger.Info("OCSP thisUpdate: " + thisUpdate);
-                    logger.Info("OCSP nextUpdate: " + singleResp.NextUpdate);
+                    logger.Trace("OCSP thisUpdate: " + thisUpdate);
+                    logger.Trace("OCSP nextUpdate: " + singleResp.NextUpdate);
                     status.StatusSourceType = ValidatorSourceType.OCSP;
                     status.StatusSource = ocspResp;
                     status.RevocationObjectIssuingTime = ocspResp.ProducedAt;
                     if (null == singleResp.GetCertStatus())
                     {
-                        logger.Info("OCSP OK for: " + childCertificate.SubjectDN);
+                        logger.Trace("OCSP OK for: " + childCertificate.SubjectDN);
                         status.Validity = CertificateValidity.VALID;
                     }
                     else
                     {
-                        logger.Info("OCSP certificate status: " + singleResp.GetCertStatus().GetType().FullName);
+                        logger.Trace("OCSP certificate status: " + singleResp.GetCertStatus().GetType().FullName);
                         if (singleResp.GetCertStatus() is RevokedStatus status1)
                         {
-                            logger.Info("OCSP status revoked");
+                            logger.Trace("OCSP status revoked");
                             if (validationDate.CompareTo(status1.RevocationTime) < 0)
                             {
-                                logger.Info("OCSP revocation time after the validation date, the certificate was valid at "
+                                logger.Trace("OCSP revocation time after the validation date, the certificate was valid at "
                                      + validationDate);
                                 status.Validity = CertificateValidity.VALID;
                             }
@@ -100,14 +100,14 @@ namespace CAdESLib.Document.Validation
                         {
                             if (singleResp.GetCertStatus() is UnknownStatus)
                             {
-                                logger.Info("OCSP status unknown");
+                                logger.Trace("OCSP status unknown");
                                 status.Validity = CertificateValidity.UNKNOWN;
                             }
                         }
                     }
                     return status;
                 }
-                logger.Info("no matching OCSP response entry");
+                logger.Trace("no matching OCSP response entry");
                 return null;
             }
             catch (IOException ex)
