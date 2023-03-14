@@ -149,6 +149,16 @@ namespace CAdESLib.Service
 
         private bool CheckNonce(BasicOcspResp basicResponse, DerOctetString encodedNonce)
         {
+            if (basicResponse is null)
+            {
+                throw new ArgumentNullException(nameof(basicResponse));
+            }
+
+            if (encodedNonce is null)
+            {
+                throw new ArgumentNullException(nameof(encodedNonce));
+            }
+
             var nonceExt = basicResponse.GetExtensionValue(OcspObjectIdentifiers.PkixOcspNonce) as DerOctetString;
             if (nonceExt != null)
             {

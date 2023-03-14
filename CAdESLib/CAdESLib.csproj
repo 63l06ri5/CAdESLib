@@ -10,8 +10,8 @@
     <RepositoryUrl>https://github.com/63l06ri5/CAdESLib</RepositoryUrl>
     <PackageLicenseExpression></PackageLicenseExpression>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
-    <Version>1.2.3.1</Version>
-    <AssemblyVersion>1.2.3.1</AssemblyVersion>
+    <Version>1.2.4</Version>
+    <AssemblyVersion>1.2.4</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
