@@ -316,13 +316,13 @@ namespace CAdESLib.Document.Validation
                             }
                             Validate(trustedToken, noNeedToValidate);
                         }
-                        //else if (issuer.CertificateSource == CertificateSourceType.TRUSTED_LIST)
-                        //{
-                        //    ISignedToken trustedToken = certificateTokenFactory(issuer);
-                        //    RevocationData noNeedToValidate = new RevocationData();
-                        //    noNeedToValidate.SetRevocationData(CertificateSourceType.TRUSTED_LIST);
-                        //    Validate(trustedToken, noNeedToValidate);
-                        //}
+                        else if (issuer.CertificateSource == CertificateSourceType.TRUSTED_LIST)
+                        {
+                            ISignedToken trustedToken = certificateTokenFactory(issuer);
+                            RevocationData noNeedToValidate = new RevocationData();
+                            noNeedToValidate.SetRevocationData(CertificateSourceType.TRUSTED_LIST);
+                            Validate(trustedToken, noNeedToValidate);
+                        }
                     }
                     else
                     {
@@ -606,7 +606,7 @@ namespace CAdESLib.Document.Validation
                 throw new ArgumentNullException(nameof(cert));
             }
 
-            if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST && cert.Certificate.IsSignedBy(cert.Certificate))
+            if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST)
             {
                 CertificateStatus status = new CertificateStatus
                 {
@@ -690,7 +690,7 @@ namespace CAdESLib.Document.Validation
             var result = new SignatureValidationResult();
             var statuses = certificateAndContexts.Select(
                 x => x.CertificateStatus == null ?
-                    GetRevocationData(x) == null && !(x.CertificateSource == CertificateSourceType.TRUSTED_LIST && x.Certificate.IsSignedBy(x.Certificate)) ?
+                    GetRevocationData(x) == null && !(x.CertificateSource == CertificateSourceType.TRUSTED_LIST) ?
                         CertificateValidity.UNKNOWN
                         : CertificateValidity.VALID
                     : x.CertificateStatus.Validity).ToArray();
