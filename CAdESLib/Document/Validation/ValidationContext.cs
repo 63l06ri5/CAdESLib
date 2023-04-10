@@ -137,7 +137,7 @@ namespace CAdESLib.Document.Validation
                             logger?.Info(WasNotYetValidMessage);
                             continue;
                         }
-                        if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST && cert.Context != null)
+                        if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST && cert.Certificate.IsSignedBy(cert.Certificate) && cert.Context != null)
                         {
                             ServiceInfo info = (ServiceInfo) cert.Context;
                             if (info.StatusStartingDateAtReferenceTime != null && validationDate.CompareTo( //jbonilla Before
@@ -315,14 +315,7 @@ namespace CAdESLib.Document.Validation
                                 noNeedToValidate.SetRevocationData(CertificateSourceType.TRUSTED_LIST);
                             }
                             Validate(trustedToken, noNeedToValidate);
-                        }
-                        else if (issuer.CertificateSource == CertificateSourceType.TRUSTED_LIST)
-                        {
-                            ISignedToken trustedToken = certificateTokenFactory(issuer);
-                            RevocationData noNeedToValidate = new RevocationData();
-                            noNeedToValidate.SetRevocationData(CertificateSourceType.TRUSTED_LIST);
-                            Validate(trustedToken, noNeedToValidate);
-                        }
+                        }                        
                     }
                     else
                     {
@@ -606,7 +599,7 @@ namespace CAdESLib.Document.Validation
                 throw new ArgumentNullException(nameof(cert));
             }
 
-            if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST)
+            if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST && cert.Certificate.IsSignedBy(cert.Certificate))
             {
                 CertificateStatus status = new CertificateStatus
                 {
@@ -635,7 +628,7 @@ namespace CAdESLib.Document.Validation
             CertificateAndContext parent = ctx;
             while ((parent = GetIssuerCertificateFromThisContext(parent)) != null)
             {
-                if (parent.CertificateSource == CertificateSourceType.TRUSTED_LIST)
+                if (parent.CertificateSource == CertificateSourceType.TRUSTED_LIST && parent.Certificate.IsSignedBy(parent.Certificate))
                 {
                     logger?.Info("Parent from TrustedList found " + parent);
                     return parent;
@@ -690,7 +683,7 @@ namespace CAdESLib.Document.Validation
             var result = new SignatureValidationResult();
             var statuses = certificateAndContexts.Select(
                 x => x.CertificateStatus == null ?
-                    GetRevocationData(x) == null && !(x.CertificateSource == CertificateSourceType.TRUSTED_LIST) ?
+                    GetRevocationData(x) == null && !(x.CertificateSource == CertificateSourceType.TRUSTED_LIST && x.Certificate.IsSignedBy(x.Certificate)) ?
                         CertificateValidity.UNKNOWN
                         : CertificateValidity.VALID
                     : x.CertificateStatus.Validity).ToArray();
