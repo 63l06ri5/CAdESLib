@@ -59,7 +59,7 @@ namespace CAdESLib.Document.Signature.Extensions
             si = newSi;
             IDictionary unsignedAttrs = si.UnsignedAttributes.ToDictionary();
             CAdESSignature signature = new CAdESSignature(signedData, si.SignerID);
-            DateTime signingTime = signature.SigningTime.Value;
+            DateTime? signingTime = signature.SigningTime?.Value ?? null;
             if (signingTime == null)
             {
                 signingTime = parameters.SigningDate;
@@ -68,7 +68,7 @@ namespace CAdESLib.Document.Signature.Extensions
             {
                 signingTime = DateTime.Now;
             }
-            unsignedAttrs = ExtendUnsignedAttributes(unsignedAttrs, signature.SigningCertificate, signingTime, signature.CertificateSource, validationContext);
+            unsignedAttrs = ExtendUnsignedAttributes(unsignedAttrs, signature.SigningCertificate, signingTime.Value, signature.CertificateSource, validationContext);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrs));
             return (newsi, validationContext);
         }

@@ -211,7 +211,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 unsignedAttrs,
                 signature.SigningCertificate,
                 parameters,
-                signature.SigningTime.Value,
+                signature.SigningTime?.Value ?? DateTime.Now,
                 signature.CertificateSource,
                 validationContext);
             return (SignerInformation.ReplaceUnsignedAttributes(newSi, new BcCms.AttributeTable(unsignedAttrs)), validationContext);
