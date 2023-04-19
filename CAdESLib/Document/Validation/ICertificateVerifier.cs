@@ -10,6 +10,6 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Return a ValidationContext that contains every information available to validate a X509 Certificate.
         /// </summary>
-        IValidationContext ValidateCertificate(X509Certificate cert, DateTime validationDate, ICertificateSource optionalCertificateSource, IList<CertificateAndContext> usedCerts, ICrlSource optionalCRLSource = null, IOcspSource optionalOCSPSource = null, ICAdESLogger CadesLogger = null, IValidationContext inContext = null);
+        IValidationContext GetValidationContext(X509Certificate cert, DateTime validationDate, ICAdESLogger CadesLogger = null);
     }
 }

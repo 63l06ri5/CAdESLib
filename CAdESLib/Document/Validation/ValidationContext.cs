@@ -315,7 +315,7 @@ namespace CAdESLib.Document.Validation
                                 noNeedToValidate.SetRevocationData(CertificateSourceType.TRUSTED_LIST);
                             }
                             Validate(trustedToken, noNeedToValidate);
-                        }                        
+                        }
                     }
                     else
                     {
@@ -704,66 +704,66 @@ namespace CAdESLib.Document.Validation
             return result;
         }
 
-        private IEnumerable<CertificateAndContext> GetCertsChain(BasicOcspResp resp)
+        private List<CertificateAndContext> GetCertsChain(BasicOcspResp resp, List<CertificateAndContext> certSet = null)
         {
-            IEnumerable<CertificateAndContext> certSet = new List<CertificateAndContext>();
+            var certSetLocal = certSet ?? new List<CertificateAndContext>();
 
             if (resp is null)
             {
-                return certSet;
+                return certSetLocal;
             }
 
             if (RevocationInfo.Where(x => (x.Key as OCSPRespToken)?.GetOcspResp() == resp).FirstOrDefault().Value?.GetRevocationData() is CertificateAndContext certAndContext)
             {
-                certSet = certSet.Union(GetCertsChain(certAndContext));
+                certSetLocal = certSetLocal.Union(GetCertsChain(certAndContext, certSetLocal)).ToList();
             }
 
-            return certSet;
+            return certSetLocal;
         }
 
-        private IEnumerable<CertificateAndContext> GetCertsChain(X509Crl crl)
+        private List<CertificateAndContext> GetCertsChain(X509Crl crl, List<CertificateAndContext> certSet = null)
         {
-            IEnumerable<CertificateAndContext> certSet = new List<CertificateAndContext>();
+            var certSetLocal = certSet ?? new List<CertificateAndContext>();
 
             if (crl is null)
             {
-                return certSet;
+                return certSetLocal;
             }
 
             var certAndContext = RevocationInfo.Where(x => (x.Key as CRLToken)?.GetX509crl() == crl).FirstOrDefault().Value?.GetRevocationData() as CertificateAndContext;
 
-            if (certSet != null)
+            if (certSetLocal != null)
             {
-                certSet = certSet = certSet.Union(GetCertsChain(certAndContext));
+                certSetLocal = certSetLocal.Union(GetCertsChain(certAndContext, certSetLocal)).ToList();
             }
 
-            return certSet;
+            return certSetLocal;
         }
 
-        private IEnumerable<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext)
+        private List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext> certSet = null)
         {
-            var certSet = new List<CertificateAndContext>();
+            var certSetLocal = certSet ?? new List<CertificateAndContext>();
 
-            if (certificateAndContext is null)
+            if (certificateAndContext is null || certSetLocal.Exists(x => x == certificateAndContext))
             {
-                return certSet;
+                return certSetLocal;
             }
 
-            certSet.Add(certificateAndContext);
+            certSetLocal.Add(certificateAndContext);
             var revocationData = GetRevocationData(certificateAndContext);
 
             if (revocationData is BasicOcspResp)
             {
-                certSet = certSet.Union(GetCertsChain(revocationData as BasicOcspResp)).ToList();
+                certSetLocal = certSetLocal.Union(GetCertsChain(revocationData as BasicOcspResp, certSetLocal)).ToList();
             }
             else if (revocationData is X509Crl)
             {
-                certSet = certSet.Union(GetCertsChain(revocationData as X509Crl)).ToList();
+                certSetLocal = certSetLocal.Union(GetCertsChain(revocationData as X509Crl, certSetLocal)).ToList();
             }
 
-            certSet = certSet.Union(GetCertsChain(certificateAndContext.IssuerCertificate)).ToList();
+            certSetLocal = certSetLocal.Union(GetCertsChain(certificateAndContext.IssuerCertificate, certSetLocal)).ToList();
 
-            return certSet;
+            return certSetLocal;
         }
 
         private object GetRevocationData(CertificateAndContext certificateAndContext)

@@ -123,7 +123,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 var datediff = genTime.Subtract(utcNow);
                 if (datediff.TotalMilliseconds > 0)
                 {
-                    if (datediff.TotalMilliseconds < 30000)
+                    if (datediff.TotalMilliseconds < 60000)
                     {
                         Thread.Sleep((int) Math.Ceiling(datediff.TotalMilliseconds));
                     }

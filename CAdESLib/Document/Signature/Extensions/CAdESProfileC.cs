@@ -86,10 +86,7 @@ namespace CAdESLib.Document.Signature.Extensions
         private (IDictionary, IValidationContext) ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, SignatureParameters parameters, DateTime signingTime, ICertificateSource optionalCertificateSource, IValidationContext validationContext)
         {
             var usedCerts = new List<CertificateAndContext>();
-            validationContext = CertificateVerifier.ValidateCertificate(
-                signingCertificate,
-                signingTime,
-                new CompositeCertificateSource(new ListCertificateSource(parameters.CertificateChain), optionalCertificateSource), usedCerts, inContext: validationContext);
+            validationContext = validationContext ?? CertificateVerifier.GetValidationContext(signingCertificate, signingTime);
             BcCms.Attribute timeStampAttr = new BcCms.AttributeTable(unsignedAttrs)[PkcsObjectIdentifiers.IdAASignatureTimeStampToken];
             if (timeStampAttr != null)
             {
@@ -126,6 +123,8 @@ namespace CAdESLib.Document.Signature.Extensions
 
                 unsignedAttrs[PkcsObjectIdentifiers.IdAASignatureTimeStampToken] = new BcCms.Attribute(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER"))));
             }
+
+            validationContext.ValidateCertificate(signingCertificate, signingTime, new CompositeCertificateSource(new ListCertificateSource(parameters.CertificateChain), optionalCertificateSource), null, null, usedCerts);
 
             SetRefs(parameters.DigestAlgorithmOID, unsignedAttrs, signingCertificate, validationContext.NeededCertificateTokens.Where(x => x.RootCause is X509Certificate).Select(x => x.GetCertificateAndContext()), validationContext);
 

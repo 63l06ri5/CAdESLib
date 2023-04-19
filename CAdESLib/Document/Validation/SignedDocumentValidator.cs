@@ -97,7 +97,7 @@ namespace CAdESLib.Document.Validation
             var signatures = new List<IAdvancedSignature>();
             foreach (object o in cmsSignedData.GetSignerInfos().GetSigners())
             {
-                SignerInformation i = (SignerInformation)o;
+                SignerInformation i = (SignerInformation) o;
                 CAdESSignature info = new CAdESSignature(cmsSignedData, i);
                 signatures.Add(info);
             }
@@ -736,7 +736,7 @@ namespace CAdESLib.Document.Validation
                 var validationDate = signature.SignatureTimestamps?.FirstOrDefault()?.GetTimeStamp().TimeStampInfo.GenTime ?? DateTime.Now;
                 ctx = validationContextFactory(signature.SigningCertificate, validationDate, logger);
                 levelT = getLevelT(ctx);
-                ctx = CertificateVerifier.ValidateCertificate(signature.SigningCertificate, ctx.ValidationDate, signature.CertificateSource, usedCerts, signature.CRLSource, signature.OCSPSource, logger, ctx);
+                ctx.ValidateCertificate(signature.SigningCertificate, ctx.ValidationDate, signature.CertificateSource, signature.CRLSource, signature.OCSPSource, usedCerts);
                 signatureValidationContext.Contexts.Add(ctx);
             }
             else

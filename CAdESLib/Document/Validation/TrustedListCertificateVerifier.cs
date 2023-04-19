@@ -3,6 +3,7 @@ using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ConstrainedExecution;
 
 namespace CAdESLib.Document.Validation
 {
@@ -21,8 +22,7 @@ namespace CAdESLib.Document.Validation
             this.validationContextFactory = validationContextFactory;
         }
 
-        public virtual IValidationContext ValidateCertificate(
-            X509Certificate cert, DateTime validationDate, ICertificateSource optionalCertificateSource, IList<CertificateAndContext> usedCerts, ICrlSource optionalCRLSource = null, IOcspSource optionalOCSPSource = null, ICAdESLogger CadesLogger = null, IValidationContext inContext = null)
+        public IValidationContext GetValidationContext(X509Certificate cert, DateTime validationDate, ICAdESLogger CadesLogger = null)
         {
             if (cert == null || validationDate == null)
             {
@@ -35,17 +35,7 @@ namespace CAdESLib.Document.Validation
                 return alreadyUsed;
             }
 
-            IValidationContext context;
-            if (inContext is null)
-            {
-                context = validationContextFactory(cert, validationDate, CadesLogger);
-            }
-            else
-            {
-                context = inContext;
-            }
-
-            context.ValidateCertificate(cert, validationDate, optionalCertificateSource, optionalCRLSource, optionalOCSPSource, usedCerts);
+            IValidationContext context = validationContextFactory(cert, validationDate, CadesLogger);
             cache.Add(context);
 
             return context;
