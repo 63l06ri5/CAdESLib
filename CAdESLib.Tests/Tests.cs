@@ -212,9 +212,8 @@ namespace CAdESLib.Tests
 
                 var tsp = new X509Name("CN=tsp");
                 tspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-                tspCert = CryptoHelpers.GenerateCertificate(tspCA, tsp, tspCAKeyPair.Private, tspKeyPair.Public);
+                tspCert = CryptoHelpers.GenerateCertificate(tspCA, tsp, tspCAKeyPair.Private, tspKeyPair.Public, tsp: true);
             }
-
 
             var fakeOnlineOCSPSource = new FakeOnlineOcspSource(ocspCert, ocspKeyPair);
             var fakeOnlineCrlSource = new FakeOnlineCrlSource(crlCert, crlKeyPair);

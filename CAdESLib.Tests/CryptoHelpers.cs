@@ -36,7 +36,18 @@ namespace CAdESLib.Tests
             return keyGenerator.GenerateKeyPair();
         }
 
-        public static X509Certificate GenerateCertificate(X509Name issuer, X509Name subject, AsymmetricKeyParameter issuerPrivate, AsymmetricKeyParameter subjectPublic, DateTime? notBefore = null, DateTime? notAfter = null, bool ocsp = false)
+        public static X509Certificate GenerateCertificate(
+            X509Name issuer,
+            X509Name subject,
+            AsymmetricKeyParameter issuerPrivate,
+            AsymmetricKeyParameter subjectPublic,
+            DateTime? notBefore = null,
+            DateTime? notAfter = null,
+            bool ocsp = false,
+            bool tsp = false,
+            string[] issuerUrls = null,
+            string[] ocspUrls = null,
+            string[] crlUrls = null)
         {
             ISignatureFactory signatureFactory = new Asn1SignatureFactory(
                     PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(),
@@ -49,8 +60,57 @@ namespace CAdESLib.Tests
             certGenerator.SetNotAfter(notAfter ?? DateTime.UtcNow.AddDays(1));
             certGenerator.SetNotBefore(notBefore ?? DateTime.UtcNow.AddDays(-1));
             certGenerator.SetPublicKey(subjectPublic);
+
+            // Authority Information Access
+            var aiaAsn = new Asn1EncodableVector();
+
+            Action<string[], DerObjectIdentifier> aiaFunc = (string[] urls, DerObjectIdentifier identifier) =>
+            {
+                if (urls != null && urls.Length > 0)
+                {
+                    foreach (var item in urls)
+                    {
+                        AccessDescription caIssuersAsn = new AccessDescription(
+                            identifier, new GeneralName(
+                                GeneralName.UniformResourceIdentifier,
+                                new DerIA5String(item)
+                            )
+                        );
+                        aiaAsn.Add(caIssuersAsn);
+                    }
+                }
+            };
+
+            aiaFunc(issuerUrls, AccessDescription.IdADCAIssuers);
+            aiaFunc(ocspUrls, AccessDescription.IdADOcsp);
+
+            if (aiaAsn.Count > 0)
+            {
+                certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityInfoAccess, false, new DerSequence(aiaAsn));
+            }
+
+            // CrlDistributionPoints
+            if (crlUrls != null && crlUrls.Length > 0)
+            {
+                var cdps = new List<DistributionPoint>(crlUrls.Length);
+                foreach (string crlUrl in crlUrls)
+                {
+                    var uriGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, crlUrl);
+                    var cdpName = new DistributionPointName(DistributionPointName.FullName, uriGeneralName);
+                    var cdp = new DistributionPoint(cdpName, null, null);
+                    cdps.Add(cdp);
+                }
+                certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlDistributionPoints, false, new CrlDistPoint(cdps.ToArray()));
+            }
+
             certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyCertSign | KeyUsage.CrlSign));
-            var keySupposedIds = new List<KeyPurposeID> { KeyPurposeID.IdKPTimeStamping };
+
+            var keySupposedIds = new List<KeyPurposeID>();
+            if (tsp)
+            {
+                keySupposedIds.Add(KeyPurposeID.IdKPTimeStamping);
+            }
+
             if (ocsp)
             {
                 keySupposedIds.Add(KeyPurposeID.IdKPOcspSigning);
