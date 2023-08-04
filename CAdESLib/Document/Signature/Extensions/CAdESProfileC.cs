@@ -96,20 +96,22 @@ namespace CAdESLib.Document.Signature.Extensions
                 validationContext.ValidateTimestamp(token, optionalCertificateSource, null, null, usedCerts);
 
                 var unAttr = timeStampToken.UnsignedAttributes?.ToDictionary() ?? new Dictionary<object, object>();
+                logger.Trace("Refs for timestamp");
                 SetRefs(
                     parameters.DigestAlgorithmOID,
                     unAttr,
                     token.GetSigner(),
-                    validationContext.NeededCertificateTokens.Where(x => x.RootCause is TimestampToken && ((TimestampToken) x.RootCause).GetTimeStampType() == TimestampToken.TimestampType.SIGNATURE_TIMESTAMP).Select(x => x.GetCertificateAndContext()),
+                    validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(token.GetSigner()))),
                     validationContext);
 
                 if (new[] { SignatureProfile.XL, SignatureProfile.A }.Contains(SignatureProfile))
                 {
                     SetValues(
                        unAttr,
-                       validationContext.NeededCertificateTokens.Where(x => x.RootCause is TimestampToken && ((TimestampToken) x.RootCause).GetTimeStampType() == TimestampToken.TimestampType.SIGNATURE_TIMESTAMP).Select(x => x.GetCertificateAndContext()),
-                       validationContext.NeededCRLTokens.Where(x => x.RootCause is TimestampToken && ((TimestampToken) x.RootCause).GetTimeStampType() == TimestampToken.TimestampType.SIGNATURE_TIMESTAMP),
-                       validationContext.NeededOCSPRespTokens.Where(x => x.RootCause is TimestampToken && ((TimestampToken) x.RootCause).GetTimeStampType() == TimestampToken.TimestampType.SIGNATURE_TIMESTAMP));
+                       token.GetSigner(),
+                       validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(token.GetSigner()))),
+                       validationContext
+                       );
                 }
 
                 var tstSignedData = timeStampToken.ToCmsSignedData();
@@ -126,7 +128,19 @@ namespace CAdESLib.Document.Signature.Extensions
 
             validationContext.ValidateCertificate(signingCertificate, signingTime, new CompositeCertificateSource(new ListCertificateSource(parameters.CertificateChain), optionalCertificateSource), null, null, usedCerts);
 
-            SetRefs(parameters.DigestAlgorithmOID, unsignedAttrs, signingCertificate, validationContext.NeededCertificateTokens.Where(x => x.RootCause is X509Certificate).Select(x => x.GetCertificateAndContext()), validationContext);
+            logger.Trace("Refs for main");
+            if (logger.IsTraceEnabled)
+            {
+                foreach (var nct in validationContext.NeededCertificateTokens)
+                {
+                    logger.Trace($"root cause: {string.Join(", ", nct.RootCause.Select(x => x.GetType().ToString()))}, cert: {nct.GetCertificate().ToFineString()}");
+                }
+            }
+
+            SetRefs(
+                parameters.DigestAlgorithmOID, unsignedAttrs, signingCertificate,
+                validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signingCertificate))),
+                validationContext);
 
             return (unsignedAttrs, validationContext);
         }
@@ -136,7 +150,19 @@ namespace CAdESLib.Document.Signature.Extensions
             var digestId = new DerObjectIdentifier(digestOID);
             var completeCertificateRefs = new List<OtherCertID>();
             var completeRevocationRefs = new List<CrlOcspRef>();
-            foreach (CertificateAndContext c in certs)
+
+            var arrCerts = new List<CertificateAndContext>();
+            if (signingCertificate != null)
+            {
+                arrCerts.Add(certs.First(x => x.Certificate.Equals(signingCertificate)));
+                arrCerts.AddRange(certs.Where(x => !x.Certificate.Equals(signingCertificate)));
+            }
+            else
+            {
+                arrCerts = certs.ToList();
+            }
+
+            foreach (CertificateAndContext c in arrCerts)
             {
                 if (!c.Certificate.Equals(signingCertificate))
                 {
@@ -154,27 +180,50 @@ namespace CAdESLib.Document.Signature.Extensions
                 }
                 completeRevocationRefs.Add(new CrlOcspRef(crlListIdValues.Count == 0 || ocspListIDValues.Count != 0 ? null : new CrlListID(crlListIdValues.ToArray()), ocspListIDValues.Count == 0 ? null : new OcspListID(ocspListIDValues.ToArray()), null));
             }
-            unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsCertificateRefs, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsCertificateRefs, new DerSet(new DerSequence(completeCertificateRefs.ToArray()))));
-            unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationRefs, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationRefs, new DerSet(new DerSequence(completeRevocationRefs.ToArray()))));
+
+            if (completeCertificateRefs.Count != 0)
+            {
+                unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsCertificateRefs, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsCertificateRefs, new DerSet(new DerSequence(completeCertificateRefs.ToArray()))));
+            }
+
+            if (completeRevocationRefs.Count != 0)
+            {
+                unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationRefs, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationRefs, new DerSet(new DerSequence(completeRevocationRefs.ToArray()))));
+            }
         }
 
-        protected static void SetValues(IDictionary unsignedAttrs, IEnumerable<CertificateAndContext> certs, IEnumerable<CRLToken> crls, IEnumerable<OCSPRespToken> ocsps)
+        protected static void SetValues(IDictionary unsignedAttrs, X509Certificate? signingCertificate, IEnumerable<CertificateAndContext> certs, IValidationContext validationContext)
         {
             List<X509CertificateStructure> certificateValues = new List<X509CertificateStructure>();
             List<CertificateList> crlValues = new List<CertificateList>();
             List<BasicOcspResponse> ocspValues = new List<BasicOcspResponse>();
-            foreach (CertificateAndContext c in certs)
+
+            var arrCerts = new List<CertificateAndContext>();
+            if (signingCertificate != null)
+            {
+                arrCerts.Add(certs.First(x => x.Certificate.Equals(signingCertificate)));
+                arrCerts.AddRange(certs.Where(x => !x.Certificate.Equals(signingCertificate)));
+            }
+            else
+            {
+                arrCerts = certs.ToList();
+            }
+
+            foreach (CertificateAndContext c in arrCerts)
             {
                 certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence) Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
+
+
+                foreach (var relatedcrl in validationContext.GetRelatedCRLs(c))
+                {
+                    crlValues.Add(CertificateList.GetInstance((Asn1Sequence) Asn1Object.FromByteArray(relatedcrl.GetEncoded())));
+                }
+                foreach (var relatedocspresp in validationContext.GetRelatedOCSPResp(c))
+                {
+                    ocspValues.Add(RefineOcspResp(relatedocspresp));
+                }
             }
-            foreach (var relatedcrl in crls)
-            {
-                crlValues.Add(CertificateList.GetInstance((Asn1Sequence) Asn1Object.FromByteArray(relatedcrl.GetX509crl().GetEncoded())));
-            }
-            foreach (var relatedocspresp in ocsps)
-            {
-                ocspValues.Add(RefineOcspResp(relatedocspresp.GetOcspResp()));
-            }
+
             RevocationValues revocationValues = new RevocationValues(crlValues.Count == 0 ? null : crlValues.ToArray(), ocspValues.Count == 0 ? null : ocspValues.ToArray(), null);
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new DerSet(revocationValues)));
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsCertValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsCertValues, new DerSet(new DerSequence(certificateValues.ToArray()))));

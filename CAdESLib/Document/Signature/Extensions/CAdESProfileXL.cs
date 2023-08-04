@@ -41,9 +41,9 @@ namespace CAdESLib.Document.Signature.Extensions
         {
             SetValues(
                 unsignedAttrs,
-                validationContext.NeededCertificateTokens.Where(x => x.RootCause is X509Certificate).Select(x => x.GetCertificateAndContext()),
-                validationContext.NeededCRLTokens.Where(x => x.RootCause is X509Certificate),
-                validationContext.NeededOCSPRespTokens.Where(x => x.RootCause is X509Certificate));
+                signingCertificate,
+                validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signingCertificate))),
+                validationContext);
 
             return unsignedAttrs;
         }

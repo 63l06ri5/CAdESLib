@@ -1,6 +1,7 @@
 ﻿using CAdESLib.Document.Signature.Extensions;
 using CAdESLib.Document.Validation;
 using CAdESLib.Service;
+using NLog;
 using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
@@ -12,12 +13,16 @@ using Org.BouncyCastle.X509;
 using Org.BouncyCastle.X509.Store;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 
 namespace CAdESLib.Document.Signature
 {
     public class CAdESService : IDocumentSignatureService
     {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly ITspSource tspSource;
         private readonly ICertificateVerifier verifier;
         private readonly ISignedDocumentValidator validator;
@@ -32,6 +37,15 @@ namespace CAdESLib.Document.Signature
         ///// </param>
         //public ICertificateVerifier Verifier { get; set; }
         //public ISignedDocumentValidator Validator { get; }
+
+        private void PrintMetaInfo()
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
+            FileInfo fInfo = new System.IO.FileInfo(assembly.Location);
+
+            logger.Trace($"FileVersion: {fileVersionInfo.FileVersion}, LastWriteTimeUtc: {fInfo.LastWriteTimeUtc}");
+        }
 
         public CAdESService(ITspSource tspSource, ICertificateVerifier verifier, ISignedDocumentValidator validator)
         {
@@ -102,6 +116,7 @@ namespace CAdESLib.Document.Signature
 
         public virtual IDocument ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters)
         {
+            PrintMetaInfo();
             if (parameters is null)
             {
                 throw new ArgumentNullException(nameof(parameters));
@@ -120,11 +135,13 @@ namespace CAdESLib.Document.Signature
 
         public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null)
         {
+            PrintMetaInfo();
             return validator.ValidateDocument(document, checkIntegrity, externalContent);
         }
 
         public Stream ToBeSigned(IDocument document, SignatureParameters parameters)
         {
+            PrintMetaInfo();
             if (document is null)
             {
                 throw new ArgumentNullException(nameof(document));
@@ -156,6 +173,7 @@ namespace CAdESLib.Document.Signature
 
         public IDocument GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)
         {
+            PrintMetaInfo();
             if (document is null)
             {
                 throw new ArgumentNullException(nameof(document));

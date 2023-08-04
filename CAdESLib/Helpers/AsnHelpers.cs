@@ -96,33 +96,35 @@ namespace CAdESLib.Helpers
             var list = new List<CertificateRef>();
             if (unsignedAttributes != null)
             {
-                var completeCertRefsAttr = unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
-                if (completeCertRefsAttr != null && completeCertRefsAttr.AttrValues.Count > 0)
+                var unsignedAttributesHash = unsignedAttributes.ToDictionary();
+                if (unsignedAttributesHash.Contains(PkcsObjectIdentifiers.IdAAEtsCertificateRefs))
                 {
-                    DerSequence completeCertificateRefs = (DerSequence) completeCertRefsAttr.AttrValues[0];
-                    for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
+                    var completeCertRefsAttr = unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
+                    if (completeCertRefsAttr != null && completeCertRefsAttr.AttrValues.Count > 0)
                     {
-                        var otherCertId = OtherCertID.GetInstance(completeCertificateRefs[i1]);
-                        var certId = new CertificateRef
+                        DerSequence completeCertificateRefs = (DerSequence) completeCertRefsAttr.AttrValues[0];
+                        for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
                         {
-                            DigestAlgorithm = otherCertId.OtherCertHash.HashAlgorithm.Algorithm.Id
-                        };
-
-                        otherCertId.OtherCertHash.GetHashValue();
-
-                        certId.DigestValue = otherCertId.OtherCertHash.GetHashValue();
-                        if (otherCertId.IssuerSerial != null)
-                        {
-                            if (otherCertId.IssuerSerial.Issuer != null)
+                            var otherCertId = OtherCertID.GetInstance(completeCertificateRefs[i1]);
+                            var certId = new CertificateRef
                             {
-                                certId.IssuerName = otherCertId.IssuerSerial.Issuer.ToString();
-                            }
-                            if (otherCertId.IssuerSerial.Serial != null)
+                                DigestAlgorithm = otherCertId.OtherCertHash.HashAlgorithm.Algorithm.Id
+                            };
+
+                            certId.DigestValue = otherCertId.OtherCertHash.GetHashValue();
+                            if (otherCertId.IssuerSerial != null)
                             {
-                                certId.IssuerSerial = otherCertId.IssuerSerial.Serial.ToString();
+                                if (otherCertId.IssuerSerial.Issuer != null)
+                                {
+                                    certId.IssuerName = otherCertId.IssuerSerial.Issuer.ToString();
+                                }
+                                if (otherCertId.IssuerSerial.Serial != null)
+                                {
+                                    certId.IssuerSerial = otherCertId.IssuerSerial.Serial.ToString();
+                                }
                             }
+                            list.Add(certId);
                         }
-                        list.Add(certId);
                     }
                 }
             }
@@ -135,20 +137,23 @@ namespace CAdESLib.Helpers
             var list = new List<CRLRef>();
             if (unsignedAttributes != null)
             {
-                var completeRevocationRefsAttr = unsignedAttributes
-                    [PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
-                if (completeRevocationRefsAttr != null && completeRevocationRefsAttr.AttrValues
-                    .Count > 0)
+                var unsignedAttributesHash = unsignedAttributes.ToDictionary();
+                if (unsignedAttributesHash.Contains(PkcsObjectIdentifiers.IdAAEtsRevocationRefs))
                 {
-                    DerSequence completeCertificateRefs = (DerSequence) completeRevocationRefsAttr.AttrValues[0];
-                    for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
+                    var completeRevocationRefsAttr = unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
+                    if (completeRevocationRefsAttr != null && completeRevocationRefsAttr.AttrValues
+                        .Count > 0)
                     {
-                        CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeCertificateRefs[i1]);
-                        if (otherCertId.CrlIDs != null)
+                        DerSequence completeCertificateRefs = (DerSequence) completeRevocationRefsAttr.AttrValues[0];
+                        for (int i1 = 0; i1 < completeCertificateRefs.Count; i1++)
                         {
-                            foreach (CrlValidatedID id in otherCertId.CrlIDs.GetCrls())
+                            CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeCertificateRefs[i1]);
+                            if (otherCertId.CrlIDs != null)
                             {
-                                list.Add(new CRLRef(id));
+                                foreach (CrlValidatedID id in otherCertId.CrlIDs.GetCrls())
+                                {
+                                    list.Add(new CRLRef(id));
+                                }
                             }
                         }
                     }
@@ -163,18 +168,22 @@ namespace CAdESLib.Helpers
             var list = new List<OCSPRef>();
             if (unsignedAttributes != null)
             {
-                var completeRevocationRefsAttr = unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
-                if (completeRevocationRefsAttr != null && completeRevocationRefsAttr.AttrValues.Count > 0)
+                var unsignedAttributesHash = unsignedAttributes.ToDictionary();
+                if (unsignedAttributesHash.Contains(PkcsObjectIdentifiers.IdAAEtsRevocationRefs))
                 {
-                    DerSequence completeRevocationRefs = (DerSequence) completeRevocationRefsAttr.AttrValues[0];
-                    for (int i1 = 0; i1 < completeRevocationRefs.Count; i1++)
+                    var completeRevocationRefsAttr = unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
+                    if (completeRevocationRefsAttr != null && completeRevocationRefsAttr.AttrValues.Count > 0)
                     {
-                        CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeRevocationRefs[i1]);
-                        if (otherCertId.OcspIDs != null)
+                        DerSequence completeRevocationRefs = (DerSequence) completeRevocationRefsAttr.AttrValues[0];
+                        for (int i1 = 0; i1 < completeRevocationRefs.Count; i1++)
                         {
-                            foreach (OcspResponsesID id in otherCertId.OcspIDs.GetOcspResponses())
+                            CrlOcspRef otherCertId = CrlOcspRef.GetInstance(completeRevocationRefs[i1]);
+                            if (otherCertId.OcspIDs != null)
                             {
-                                list.Add(new OCSPRef(id, true));
+                                foreach (OcspResponsesID id in otherCertId.OcspIDs.GetOcspResponses())
+                                {
+                                    list.Add(new OCSPRef(id, true));
+                                }
                             }
                         }
                     }
@@ -309,10 +318,20 @@ namespace CAdESLib.Helpers
             if (dateTime.Millisecond != 0)
             {
                 int fCount = dateTime.Millisecond.ToString().TrimEnd('0').Length;
-               milliFrm = @"." + new string('f', fCount);
+                milliFrm = @"." + new string('f', fCount);
             }
 
             return dateTime.ToString(getFormatStr(milliFrm));
+        }
+
+        public static string ToFineString(this X509Certificate? cert)
+        {
+            if (cert != null)
+            {
+                return string.Empty;
+            }
+
+            return $"Serial Number: {cert.SerialNumber}\nIssuerDN: {cert.IssuerDN}\nStart date: {cert.NotBefore}\nEnd date: {cert.NotAfter}\nSubjectDN: {cert.SubjectDN}";
         }
     }
 }

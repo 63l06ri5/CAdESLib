@@ -1,4 +1,5 @@
 ﻿using Org.BouncyCastle.X509;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 namespace CAdESLib.Document.Validation
@@ -23,7 +24,7 @@ namespace CAdESLib.Document.Validation
             Context = context;
         }
 
-        public object RootCause { get; set; }
+        public List<object> RootCause { get; set; } = new List<object>();
         public virtual X509Certificate Certificate { get; set; }
         public virtual CertificateAndContext IssuerCertificate { get; set; }
         public virtual ISerializable Context { get; set; }

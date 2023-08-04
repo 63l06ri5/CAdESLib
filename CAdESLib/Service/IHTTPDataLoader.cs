@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 
 namespace CAdESLib.Service
 {
@@ -20,5 +21,6 @@ namespace CAdESLib.Service
         string ContentType { get; set; }
         string Accept { get; set; }
         int TimeOut { get; set; }
+        Dictionary<string, string> Headers { get; set; }
     }
 }

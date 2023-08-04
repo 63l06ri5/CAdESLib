@@ -120,8 +120,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        private bool IsCRLOK(X509Crl x509crl, X509Certificate issuerCertificate, DateTime
-             validationDate)
+        private bool IsCRLOK(X509Crl x509crl, X509Certificate issuerCertificate, DateTime validationDate)
         {
             if (issuerCertificate == null)
             {

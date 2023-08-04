@@ -361,7 +361,7 @@ namespace CAdESLib.Tests
 
         private static bool? GetBoolValue(string str)
         {
-            return str == "yes" ? true : str == "no" ? false : (bool?)null;
+            return str == "yes" ? true : str == "no" ? false : (bool?) null;
         }
 
         public class SignatureParams
@@ -513,5 +513,6 @@ namespace CAdESLib.Tests
 
         public IList<X509Certificate> TrustedCerts { get; set; } = new List<X509Certificate>();
 
+        public IList<X509Crl> Crls { get; set; } = new List<X509Crl>();
     }
 }

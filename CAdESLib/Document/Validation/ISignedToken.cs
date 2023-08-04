@@ -1,5 +1,6 @@
 ﻿using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.X509;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
@@ -27,6 +28,6 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Root reason to validate the token
         /// </summary>
-        object RootCause { get; }
+        List<object> RootCause { get; }
     }
 }

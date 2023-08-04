@@ -4,6 +4,7 @@ using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
 using System;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
@@ -18,7 +19,13 @@ namespace CAdESLib.Document.Validation
 
         private CertificateStatus status;
 
-        public object RootCause { get; }
+        public List<object> RootCause
+        {
+            get
+            {
+                return cert.RootCause;
+            }
+        }
 
         /// <summary>
         /// Create a CertificateToken
@@ -27,7 +34,6 @@ namespace CAdESLib.Document.Validation
         {
             this.cert = cert;
             this.sourceFactory = sourceFactory;
-            RootCause = cert.RootCause;
         }
 
         public virtual X509Name GetSignerSubjectName()
@@ -114,7 +120,7 @@ namespace CAdESLib.Document.Validation
             {
                 return false;
             }
-            CertificateToken other = (CertificateToken)obj;
+            CertificateToken other = (CertificateToken) obj;
             if (cert == null)
             {
                 if (other.cert != null)

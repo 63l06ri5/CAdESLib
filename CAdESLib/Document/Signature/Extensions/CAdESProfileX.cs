@@ -78,14 +78,23 @@ namespace CAdESLib.Document.Signature.Extensions
                         return (si, validationContext);
                     }
             }
-            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrType.GetDerEncoded());
-            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrValues.GetDerEncoded());
-            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrType.GetDerEncoded());
-            toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrValues.GetDerEncoded());
-            var unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
+            var unsignedAttributes = si.UnsignedAttributes.ToDictionary();
+
+            if (unsignedAttributes.Contains(PkcsObjectIdentifiers.IdAAEtsCertificateRefs) && unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs] != null)
+            {
+                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrType.GetDerEncoded());
+                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrValues.GetDerEncoded());
+            }
+
+            if (unsignedAttributes.Contains(PkcsObjectIdentifiers.IdAAEtsRevocationRefs) && unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs] != null)
+            {
+                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrType.GetDerEncoded());
+                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrValues.GetDerEncoded());
+            }
+
             BcCms.Attribute extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
-            unsignedAttrHash.Add(attributeId, extendedTimeStamp);
-            return (SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrHash)), validationContext);
+            unsignedAttributes.Add(attributeId, extendedTimeStamp);
+            return (SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttributes)), validationContext);
         }
     }
 }

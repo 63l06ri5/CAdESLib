@@ -28,6 +28,8 @@ namespace CAdESLib.Helpers
     public interface ICrlServiceSettings
     {
         string CrlSource { get; }
+
+        IList<X509Crl> Crls { get; }
     }
 
     public interface ICertificateSourceSettings

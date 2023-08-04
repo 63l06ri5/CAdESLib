@@ -18,14 +18,14 @@ namespace CAdESLib.Service
 
         private readonly X509Certificate certificate;
 
-        private readonly IHTTPDataLoader httpDataLoader;
+        private readonly Func<IHTTPDataLoader> httpDataLoaderFunc;
 
         /// <summary>The default constructor for AIACertificateSource.</summary>
         /// <remarks>The default constructor for AIACertificateSource.</remarks>
-        public AIACertificateSource(X509Certificate certificate, IHTTPDataLoader httpDataLoader)
+        public AIACertificateSource(X509Certificate certificate, Func<IHTTPDataLoader> httpDataLoaderFunc)
         {
             this.certificate = certificate;
-            this.httpDataLoader = httpDataLoader;
+            this.httpDataLoaderFunc = httpDataLoaderFunc;
         }
 
         public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name
@@ -38,7 +38,7 @@ namespace CAdESLib.Service
                 if (url != null)
                 {
                     X509CertificateParser parser = new X509CertificateParser();
-                    var bytes = GetBytes(httpDataLoader.Get(url));
+                    var bytes = GetBytes(httpDataLoaderFunc().Get(url));
                     var certs = parser.ReadCertificates(bytes).Cast<X509Certificate>();
 
                     foreach (var cert in certs)
@@ -86,7 +86,7 @@ namespace CAdESLib.Service
                     logger.Trace("not a uniform resource identifier");
                     continue;
                 }
-                DerIA5String str = (DerIA5String)((DerTaggedObject)gn.ToAsn1Object()).GetObject();
+                DerIA5String str = (DerIA5String) ((DerTaggedObject) gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
                 logger.Trace("access location: " + accessLocation);
                 return accessLocation;

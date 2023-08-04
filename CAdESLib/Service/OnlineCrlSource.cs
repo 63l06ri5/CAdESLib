@@ -41,53 +41,49 @@ namespace CAdESLib.Service
 
         public virtual IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
-            var crls = new List<X509Crl>();
-            try
+            if (this.settings.Crls != null)
             {
-                var crlURLs = string.IsNullOrEmpty(PresetCRLUri) ? GetCrlUri(certificate) : new List<string> { PresetCRLUri };
-                foreach (var crlURL in crlURLs)
+                foreach (var crl in this.settings.Crls)
                 {
-                    logger.Trace("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
-                    if (crlURL != null)
+                    yield return crl;
+                }
+            }
+
+            var certCrlUri = GetCrlUri(certificate);
+            var crlURLs = certCrlUri.Count > 0
+                ?
+                (!string.IsNullOrEmpty(PresetCRLUri) ? new List<string> { PresetCRLUri } : certCrlUri)
+                : certCrlUri;
+
+            foreach (var crlURL in crlURLs)
+            {
+                logger.Trace("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
+                if (crlURL != null)
+                {
+                    List<X509Crl> crls = new List<X509Crl>();
+                    if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
                     {
-                        X509Crl crl;
-                        if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
+                        var c = GetCrl(crlURL);
+                        if (c != null)
                         {
-                            crl = GetCrl(crlURL);
+                            crls.Add(c);
                         }
-                        else
-                        {
-                            crl = GetCrlFromFS(crlURL);
-                        }
+                    }
+                    else
+                    {
+                        crls = GetCrlFromFS(crlURL);
+                    }
 
-                        if (crl is null)
-                        {
-                            continue;
-                        }
+                    if (crls.Count == 0)
+                    {
+                        continue;
+                    }
 
-                        crls.Add(crl);
-
-                        return crls;
+                    foreach (var crl in crls)
+                    {
+                        yield return crl;
                     }
                 }
-
-                return crls;
-
-            }
-            catch (CrlException e)
-            {
-                logger.Error("error parsing CRL: " + e.Message);
-                throw;
-            }
-            catch (UriFormatException e)
-            {
-                logger.Error("error parsing CRL: " + e.Message);
-                throw;
-            }
-            catch (CertificateException e)
-            {
-                logger.Error("error parsing CRL: " + e.Message);
-                throw;
             }
         }
 
@@ -115,24 +111,58 @@ namespace CAdESLib.Service
             }
         }
 
-        private X509Crl GetCrlFromFS(string downloadUrl)
+        private List<X509Crl> GetCrlFromFS(string path)
         {
-            if (downloadUrl != null)
+            var resultCrls = new List<X509Crl>();
+            if (path != null)
             {
                 try
                 {
-                    using var input = File.OpenRead(downloadUrl);
-                    X509CrlParser parser = new X509CrlParser();
-                    X509Crl crl = parser.ReadCrl(input);
-                    logger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
-                    return crl;
+                    FileAttributes attributes = File.GetAttributes(path);
+
+                    switch (attributes)
+                    {
+                        case FileAttributes.Directory:
+                            foreach (var f in Directory.EnumerateFiles(path, "*.crl"))
+                            {
+                                var crl = ReadCrl(f);
+                                if (crl != null)
+                                {
+                                    resultCrls.Add(crl);
+                                }
+                            }
+                            break;
+                        default:
+                            {
+                                var crl = ReadCrl(path);
+                                if (crl != null)
+                                {
+                                    resultCrls.Add(crl);
+                                }
+                                break;
+                            }
+                    }
                 }
-                catch (CannotFetchDataException)
+                catch
                 {
-                    return null;
                 }
             }
-            else
+
+            return resultCrls;
+        }
+
+        private static X509Crl? ReadCrl(string path)
+        {
+            try
+            {
+                var input = File.OpenRead(path);
+                X509CrlParser parser = new X509CrlParser();
+                var crl = parser.ReadCrl(input);
+                logger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
+
+                return crl;
+            }
+            catch
             {
                 return null;
             }

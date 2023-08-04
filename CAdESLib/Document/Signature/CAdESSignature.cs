@@ -325,16 +325,29 @@ namespace CAdESLib.Document.Signature
             get
             {
                 var toTimestamp = new MemoryStream();
-                Org.BouncyCastle.Asn1.Cms.Attribute attrCertRefs;
-                Org.BouncyCastle.Asn1.Cms.Attribute attrRevocCertRefs;
-                if (signerInformation.UnsignedAttributes != null
-                    && (attrCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]) != null
-                    && (attrRevocCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]) != null)
+                if (signerInformation.UnsignedAttributes != null)
                 {
-                    toTimestamp.Write(attrCertRefs.AttrType.GetDerEncoded());
-                    toTimestamp.Write(attrCertRefs.AttrValues.GetDerEncoded());
-                    toTimestamp.Write(attrRevocCertRefs.AttrType.GetDerEncoded());
-                    toTimestamp.Write(attrRevocCertRefs.AttrValues.GetDerEncoded());
+                    var unsignedAttibutes = signerInformation.UnsignedAttributes.ToDictionary();
+                    
+                    if (unsignedAttibutes.Contains(PkcsObjectIdentifiers.IdAAEtsCertificateRefs))
+                    {
+                        var attrCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
+                        if (attrCertRefs != null)
+                        {
+                            toTimestamp.Write(attrCertRefs.AttrType.GetDerEncoded());
+                            toTimestamp.Write(attrCertRefs.AttrValues.GetDerEncoded());
+                        }
+                    }
+
+                    if (unsignedAttibutes.Contains(PkcsObjectIdentifiers.IdAAEtsRevocationRefs))
+                    {
+                        var attrRevocCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
+                        if (attrRevocCertRefs != null)
+                        {
+                            toTimestamp.Write(attrRevocCertRefs.AttrType.GetDerEncoded());
+                            toTimestamp.Write(attrRevocCertRefs.AttrValues.GetDerEncoded());
+                        }
+                    }
                 }
                 return toTimestamp.ToArray();
             }

@@ -2,9 +2,11 @@
 using NLog;
 using Org.BouncyCastle.Utilities.IO;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using static LdapForNet.Native.Native;
 
 namespace CAdESLib.Service
@@ -25,6 +27,7 @@ namespace CAdESLib.Service
         public string ContentType { get; set; }
         public string Accept { get; set; }
         public int TimeOut { get; set; }
+        public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
 
         public NetHttpDataLoader()
         {
@@ -68,9 +71,14 @@ namespace CAdESLib.Service
                 }
                 else
                 {
-                    var request = (HttpWebRequest)WebRequest.Create(URL);
+                    var request = (HttpWebRequest) WebRequest.Create(URL);
                     request.Timeout = TimeOut;
-                    var response = (HttpWebResponse)request.GetResponse();
+                    foreach (var keyvalue in Headers)
+                    {
+                        request.Headers[keyvalue.Key] = keyvalue.Value;
+                    }
+
+                    var response = (HttpWebResponse) request.GetResponse();
 
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
@@ -98,10 +106,14 @@ namespace CAdESLib.Service
 
                 byte[] data = Streams.ReadAll(content);
 
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(URL);
+                HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
                 request.Timeout = TimeOut;
                 request.Method = "POST";
                 request.ContentLength = data.Length;
+                foreach (var keyvalue in Headers)
+                {
+                    request.Headers[keyvalue.Key] = keyvalue.Value;
+                }
 
                 if (ContentType != null)
                 {
@@ -117,8 +129,16 @@ namespace CAdESLib.Service
                 dataStream.Write(data, 0, data.Length);
                 dataStream.Close();
 
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                HttpWebResponse response = (HttpWebResponse) request.GetResponse();
                 dataStream = response.GetResponseStream();
+
+                string encoding = response.ContentEncoding;
+                if (encoding != null && encoding.Equals("base64", StringComparison.OrdinalIgnoreCase))
+                {
+                    var respBytes = Streams.ReadAll(dataStream);
+                    respBytes = Convert.FromBase64String(Encoding.ASCII.GetString(respBytes));
+                    dataStream = new MemoryStream(respBytes);
+                }
 
                 return dataStream;
             }

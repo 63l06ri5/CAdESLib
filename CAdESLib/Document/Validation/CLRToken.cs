@@ -1,6 +1,7 @@
 ﻿using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
+using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
@@ -13,12 +14,12 @@ namespace CAdESLib.Document.Validation
 
         private X509Certificate signer;
 
-        public object RootCause { get; }
+        public List<object> RootCause { get; } = new List<object>();
 
         public CRLToken(X509Crl crl, object rootCause)
         {
             x509crl = crl;
-            RootCause = rootCause;
+            RootCause.Add(rootCause);
         }
         /// <returns>
         /// the x509crl
@@ -78,7 +79,7 @@ namespace CAdESLib.Document.Validation
             {
                 return false;
             }
-            CRLToken other = (CRLToken)obj;
+            CRLToken other = (CRLToken) obj;
             if (x509crl == null)
             {
                 if (other.x509crl != null)

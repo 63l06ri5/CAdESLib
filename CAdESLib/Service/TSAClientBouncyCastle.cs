@@ -44,8 +44,15 @@ namespace CAdESLib.Service
 
         public virtual string TsaPassword { get; private set; }
 
+        private readonly Func<IHTTPDataLoader> httpDataLoaderFunc;
+
         public TSAClientBouncyCastle()
         {
+        }
+
+        public TSAClientBouncyCastle(Func<IHTTPDataLoader> httpDataLoaderFunc)
+        {
+            this.httpDataLoaderFunc = httpDataLoaderFunc;
         }
 
         /**
@@ -173,27 +180,66 @@ namespace CAdESLib.Service
         */
         protected internal virtual byte[] GetTSAResponse(byte[] requestBytes)
         {
-            HttpWebRequest con = (HttpWebRequest)WebRequest.Create(TsaURL);
-            con.ContentLength = requestBytes.Length;
-            con.ContentType = "application/timestamp-query";
-            con.Method = "POST";
+            Stream inp;
+            HttpWebResponse response = null;
+            string autorizationHeader = null;
+            Func<string, Func<byte[], byte[]>> postProcessFunc = (string encoding) => (byte[] respBytes) =>
+            {
+                if (this.httpDataLoaderFunc == null)
+                {
+                    if (encoding != null && encoding.Equals("base64", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return Convert.FromBase64String(Encoding.ASCII.GetString(respBytes));
+                    }
+                }
+
+                return respBytes;
+            };
+
+            Func<byte[], byte[]> postProcessHandler = null;
+
             if ((TsaUsername != null) && !TsaUsername.Equals(""))
             {
                 string authInfo = TsaUsername + ":" + TsaPassword;
                 authInfo = Convert.ToBase64String(Encoding.Default.GetBytes(authInfo), Base64FormattingOptions.None);
-                con.Headers["Authorization"] = "Basic " + authInfo;
+                autorizationHeader = "Basic " + authInfo;
             }
-            Stream outp = con.GetRequestStream();
-            outp.Write(requestBytes, 0, requestBytes.Length);
-            outp.Close();
-            HttpWebResponse response = (HttpWebResponse)con.GetResponse();
-            if (response.StatusCode != HttpStatusCode.OK)
+
+            if (this.httpDataLoaderFunc != null)
             {
-                throw new IOException($"invalid.http.response.1, {(int)response.StatusCode}");
+                var con = this.httpDataLoaderFunc();
+                con.ContentType = "application/timestamp-query";
+                if (!string.IsNullOrEmpty(autorizationHeader))
+                {
+                    con.Headers["Authorization"] = autorizationHeader;
+                }
+                inp = con.Post(TsaURL, new MemoryStream(requestBytes));
             }
+            else
+            {
+                HttpWebRequest con = (HttpWebRequest) WebRequest.Create(TsaURL);
+                con.ContentLength = requestBytes.Length;
+                con.ContentType = "application/timestamp-query";
+                con.Method = "POST";
+                if (!string.IsNullOrEmpty(autorizationHeader))
+                {
+                    con.Headers["Authorization"] = autorizationHeader;
+                }
+                Stream outp = con.GetRequestStream();
+                outp.Write(requestBytes, 0, requestBytes.Length);
+                outp.Close();
+                response = (HttpWebResponse) con.GetResponse();
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new IOException($"invalid.http.response.1, {(int) response.StatusCode}");
+                }
 
-            Stream inp = response.GetResponseStream();
+                inp = response.GetResponseStream();
+                string encoding = response.ContentEncoding;
+                
 
+                postProcessHandler = postProcessFunc(encoding);
+            }
 
             using MemoryStream baos = new MemoryStream();
             byte[] buffer = new byte[1024];
@@ -203,16 +249,16 @@ namespace CAdESLib.Service
                 baos.Write(buffer, 0, bytesRead);
             }
 
+            inp.Close();
+            response?.Close();
+
             byte[] respBytes = baos.ToArray();
 
-            string encoding = response.ContentEncoding;
-            if (encoding != null && encoding.Equals("base64", StringComparison.OrdinalIgnoreCase))
+            if (postProcessHandler != null)
             {
-                respBytes = Convert.FromBase64String(Encoding.ASCII.GetString(respBytes));
+                respBytes = postProcessHandler(respBytes);
             }
 
-            inp.Close();
-            response.Close();
 
             return respBytes;
         }

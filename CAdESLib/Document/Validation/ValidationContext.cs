@@ -1,4 +1,5 @@
 ﻿using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
@@ -35,6 +36,7 @@ namespace CAdESLib.Document.Validation
         CertificateStatus GetCertificateStatusFromContext(CertificateAndContext cert);
         SignatureValidationResult GetOcspStatus(BasicOcspResp x);
         SignatureValidationResult GetCrlStatus(CRLToken crlToken);
+        List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext> certSet = null);
     }
 
     /// <summary>
@@ -53,7 +55,7 @@ namespace CAdESLib.Document.Validation
         private const string VerifyWithOfflineServiceMessage = "Verify with offline services";
         private const string VerifyWithOnlineServiceMessage = "Verify with online services";
         private readonly ICAdESLogger logger;
-
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         public IList<BasicOcspResp> NeededOCSPResp => NeededOCSPRespTokens.Select(x => x.GetOcspResp()).ToList();
         public IList<OCSPRespToken> NeededOCSPRespTokens { get; } = new List<OCSPRespToken>();
@@ -251,7 +253,7 @@ namespace CAdESLib.Document.Validation
                 }
             }
 
-            AddNotYetVerifiedToken(certificateTokenFactory(trustedCert ?? new CertificateAndContext(certificate) { RootCause = certificate }));
+            AddNotYetVerifiedToken(certificateTokenFactory(trustedCert ?? new CertificateAndContext(certificate) { RootCause = new List<object> { certificate } }));
 
             Validate(
                 certificate,
@@ -292,18 +294,21 @@ namespace CAdESLib.Document.Validation
             ISignedToken signedToken = GetOneNotYetVerifiedToken();
             if (signedToken != null)
             {
+                nloglogger?.Trace($"rootValidationCause: {rootValidationCause.GetType()}, signedTokenType: {signedToken.GetType()}, signedToken: {signedToken}");
                 // TODO: for certificateToken the source is aia, so put it at position of last resort (will be valuable to rearange composite sources so sources that use network connection will be used at a last time)
-                ICertificateSource otherSource = new CompositeCertificateSource(optionalSource, signedToken.GetWrappedCertificateSource());
+                ICertificateSource otherSource = new CompositeCertificateSource(new ListCertificateSource(this.NeededCertificates.Select(x => x.Certificate).ToList()), optionalSource, signedToken.GetWrappedCertificateSource());
                 CertificateAndContext issuer = GetIssuerCertificate(signedToken, otherSource, validationDate);
                 RevocationData data = null;
                 if (issuer != null)
                 {
+                    nloglogger?.Trace($"issuer: {issuer}");
                     var alreadyProcessed = NeededCertificates.FirstOrDefault(x => x.Certificate.Equals(issuer.Certificate));
 
                     if (alreadyProcessed is null)
                     {
+                        nloglogger?.Trace($"NOT already processed");
                         usedCerts?.Add(issuer);
-                        issuer.RootCause = rootValidationCause;
+                        issuer.RootCause.Add(rootValidationCause);
                         var certToken = certificateTokenFactory(issuer);
                         AddNotYetVerifiedToken(certToken);
                         if (issuer.Certificate.SubjectDN.Equals(issuer.Certificate.IssuerDN) && issuer.Certificate.IsSignedBy(issuer.Certificate))
@@ -319,6 +324,7 @@ namespace CAdESLib.Document.Validation
                     }
                     else
                     {
+                        nloglogger?.Trace($"already processed");
                         issuer = alreadyProcessed;
                         if (!(usedCerts?.Any(x => x.Certificate.Equals(issuer.Certificate))) ?? false)
                         {
@@ -328,8 +334,31 @@ namespace CAdESLib.Document.Validation
                                 if (!(usedCerts?.Any(x => x.Certificate.Equals(c.Certificate))) ?? false)
                                 {
                                     usedCerts?.Add(c);
+
                                 }
                             }
+                        }
+
+                        if (rootValidationCause is X509Certificate && !issuer.RootCause.Any(x => x is X509Certificate))
+                        {
+                            nloglogger?.Trace($"Root cause is not X509Certificate");
+                            issuer.RootCause.Add(rootValidationCause);
+                            foreach (var c in GetCertsChain(issuer))
+                            {
+                                nloglogger?.Trace($"Root cause in cert chain, cert: {c}");
+                                c.RootCause.Add(rootValidationCause);
+                                foreach (var crlt in GetRelatedCRLTokens(c))
+                                {
+                                    nloglogger?.Trace($"Root cause in cert chain, related crl: {crlt}");
+                                    crlt.RootCause.Add(rootValidationCause);
+                                }
+                                foreach (var crlt in GetRelatedOCSPRespTokens(c))
+                                {
+                                    nloglogger?.Trace($"Root cause in cert chain, related ocsp: {crlt}");
+                                    crlt.RootCause.Add(rootValidationCause);
+                                }
+                            }
+
                         }
                     }
                 }
@@ -384,7 +413,7 @@ namespace CAdESLib.Document.Validation
                 int newVerified = VerifiedTokenCount();
                 if (newSize != previousSize || newVerified != previousVerified)
                 {
-                    Validate(rootValidationCause, validationDate, otherSource, optionalCRLSource, optionalOCPSSource, usedCerts);
+                    Validate(rootValidationCause, validationDate, optionalSource, optionalCRLSource, optionalOCPSSource, usedCerts);
                 }
             }
         }
@@ -740,7 +769,7 @@ namespace CAdESLib.Document.Validation
             return certSetLocal;
         }
 
-        private List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext> certSet = null)
+        public List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext> certSet = null)
         {
             var certSetLocal = certSet ?? new List<CertificateAndContext>();
 

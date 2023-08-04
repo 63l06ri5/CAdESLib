@@ -1,21 +1,22 @@
 ﻿using CAdESLib.Document.Validation;
 using Org.BouncyCastle.X509;
+using System;
 
 namespace CAdESLib.Service
 {
     public class AIACertificateFactoryImpl : ICertificateSourceFactory
     {
-        private readonly IHTTPDataLoader httpDataLoader;
+        private readonly Func<IHTTPDataLoader> httpDataLoaderFunc;
 
-        /// <param name="httpDataLoader">the httpDataLoader to set</param>
-        public AIACertificateFactoryImpl(IHTTPDataLoader httpDataLoader)
+        /// <param name="httpDataLoaderFunc">the httpDataLoaderFunc to set</param>
+        public AIACertificateFactoryImpl(Func<IHTTPDataLoader> httpDataLoaderFunc)
         {
-            this.httpDataLoader = httpDataLoader;
+            this.httpDataLoaderFunc = httpDataLoaderFunc;
         }
 
         public virtual ICertificateSource CreateAIACertificateSource(X509Certificate certificate)
         {
-            return new AIACertificateSource(certificate, httpDataLoader);
+            return new AIACertificateSource(certificate, httpDataLoaderFunc);
         }
     }
 

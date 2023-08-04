@@ -39,8 +39,9 @@ namespace CAdESLib.Tests
     [TestFixture]
     public class ComplexTests
     {
-        [Test]
-        public void XLT1_with_same_issuers_chain()
+        [TestCase(true, Description = "crlOnline")]
+        [TestCase(false, Description = "crlOffline")]
+        public void XLT1_with_same_issuers_chain(bool crlOnline)
         {
             // Signer certificate issued by Intermediate, Intermediate by CA.
             // Signer verified by OCSP, which issued by an ocsp provider
@@ -87,6 +88,20 @@ namespace CAdESLib.Tests
             var tspCertName = new X509Name("CN=tsp_cert");
             var tspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
             var tspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, tspCertName, intermediateKeyPair.Private, tspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlUrl }, ocspUrls: new string[] { ocspUrl }, tsp: true);
+
+            // CRL
+            var lastCRLNumber = BigInteger.One;
+            var crlGen = new X509V2CrlGenerator();
+            crlGen.SetIssuerDN(caCert.SubjectDN);
+            DateTime skewedNow = DateTime.UtcNow.AddHours(-1);
+            crlGen.SetThisUpdate(skewedNow);
+            crlGen.SetNextUpdate(skewedNow.AddHours(12));
+            //crlGen.SetSignatureAlgorithm(SignatureAlgorithm.SHA256withRSA.jcaString());
+            crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(caCert));
+            crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlNumber, false, new CrlNumber(lastCRLNumber));
+            //crlGen.addCRL(previousCRL);
+            //crlGen.addCRLEntry(revokedCertificate.getSerialNumber(), skewedNow.toDate(), reason.reason());
+            var crl = crlGen.Generate(new Asn1SignatureFactory(caCert.SigAlgOid, caKeyPair.Private, null));
 
             #endregion
 
@@ -154,21 +169,8 @@ namespace CAdESLib.Tests
                 {
                     return new MemoryStream(caCert.GetEncoded());
                 }
-                else if (url == crlUrl)
+                else if (crlOnline && url == crlUrl)
                 {
-                    var lastCRLNumber = BigInteger.One;
-                    var crlGen = new X509V2CrlGenerator();
-                    crlGen.SetIssuerDN(caCert.SubjectDN);
-                    DateTime skewedNow = DateTime.UtcNow.AddHours(-1);
-                    crlGen.SetThisUpdate(skewedNow);
-                    crlGen.SetNextUpdate(skewedNow.AddHours(12));
-                    //crlGen.SetSignatureAlgorithm(SignatureAlgorithm.SHA256withRSA.jcaString());
-                    crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(caCert));
-                    crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlNumber, false, new CrlNumber(lastCRLNumber));
-                    //crlGen.addCRL(previousCRL);
-                    //crlGen.addCRLEntry(revokedCertificate.getSerialNumber(), skewedNow.toDate(), reason.reason());
-                    var crl = crlGen.Generate(new Asn1SignatureFactory(caCert.SigAlgOid, caKeyPair.Private, null));
-
                     return new MemoryStream(crl.GetEncoded());
                 }
 
@@ -241,6 +243,16 @@ namespace CAdESLib.Tests
                 TrustedCerts = new List<X509Certificate> { caCert }
             };
 
+            if (!crlOnline)
+            {
+                if (cadesSettings.Crls == null)
+                {
+                    cadesSettings.Crls = new List<X509Crl>();
+                }
+
+                cadesSettings.Crls.Add(crl);
+            }
+
             var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
             // to be signed
             var inputData = Encoding.UTF8.GetBytes("anydataanydataanydataanydataanydataanydataanydataanydata");
@@ -272,8 +284,8 @@ namespace CAdESLib.Tests
             {
                 // tsp - 2, ocsp - 2
                 fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(4));
-                // intermediate - 1, crl - 1, ca - 0 (it is present because of a trusted list)
-                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(2));
+                // intermediate - 1, crl - 1 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
+                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(crlOnline ? 2 : 1));
             };
 
             callsChecker();

@@ -11,7 +11,12 @@ namespace CAdESLib.Service
     public class OnlineTspSource : TSAClientBouncyCastle, ITspSource
     {
         private readonly ITSPServiceSettings settings;
-        public OnlineTspSource(ICAdESServiceSettings settings)
+
+        public OnlineTspSource(ICAdESServiceSettings settings) : this(settings, null)
+        {
+        }
+
+        public OnlineTspSource(ICAdESServiceSettings settings, Func<IHTTPDataLoader> httpDataLoader) : base(httpDataLoader)
         {
             this.settings = settings;
         }

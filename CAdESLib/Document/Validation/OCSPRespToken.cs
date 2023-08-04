@@ -24,12 +24,12 @@ namespace CAdESLib.Document.Validation
 
         private bool isSignerNotFound = false;
 
-        public object RootCause { get; }
+        public List<object> RootCause { get; } = new List<object>();
 
         public OCSPRespToken(BasicOcspResp ocspResp, object rootValidationCause)
         {
             this.ocspResp = ocspResp;
-            RootCause = rootValidationCause;
+            RootCause.Add(rootValidationCause);
         }
 
         /// <returns>

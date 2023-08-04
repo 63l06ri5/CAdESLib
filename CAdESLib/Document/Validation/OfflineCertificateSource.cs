@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1.X509;
+﻿using NLog;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
 
@@ -10,6 +11,8 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public abstract class OfflineCertificateSource : ICertificateSource
     {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private CertificateSourceType sourceType;
 
         /// <param>

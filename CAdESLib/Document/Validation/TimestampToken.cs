@@ -37,7 +37,7 @@ namespace CAdESLib.Document.Validation
 
         private readonly TimestampToken.TimestampType timeStampType;
 
-        public object RootCause { get; }
+        public List<object> RootCause { get; } = new List<object>();
 
         private TimestampToken(TimeStampToken timeStamp, object rootCause)
         {
@@ -49,7 +49,7 @@ namespace CAdESLib.Document.Validation
             // CAdES: id-aa-ets-escTimeStamp, XAdES: SigAndRefsTimeStamp
             // CAdES: id-aa-ets-archiveTimestamp, XAdES: ArchiveTimeStamp, PAdES-LTV "document timestamp"
             this.timeStamp = timeStamp;
-            RootCause = rootCause;
+            RootCause.Add(rootCause);
         }
 
         /// <summary>

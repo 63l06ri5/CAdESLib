@@ -52,7 +52,11 @@ namespace CAdESLib.Service
         {
             try
             {
-                OcspUri = string.IsNullOrEmpty(PresetOCSPUri) ? GetAccessLocation(certificate, X509ObjectIdentifiers.OcspAccessMethod) : PresetOCSPUri;
+                var certAccessLocation = GetAccessLocation(certificate, X509ObjectIdentifiers.OcspAccessMethod);
+                OcspUri = !string.IsNullOrEmpty(certAccessLocation)
+                    ?
+                    (!string.IsNullOrEmpty(PresetOCSPUri) ? PresetOCSPUri : certAccessLocation)
+                    : null;
                 logger.Trace("OCSP URI: " + OcspUri);
                 if (OcspUri == null)
                 {
