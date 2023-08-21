@@ -9,7 +9,7 @@ namespace CAdESLib.Helpers
     {
         SignaturePackaging SignaturePackaging { get; }
         SignatureProfile SignatureProfile { get; }
-        SignatureType SignatureType { get; }
+        SignatureType SignatureType { get; }        
     }
 
     public interface ITSPServiceSettings

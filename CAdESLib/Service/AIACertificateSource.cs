@@ -1,4 +1,5 @@
 ﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
 using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
@@ -15,7 +16,7 @@ namespace CAdESLib.Service
     public class AIACertificateSource : ICertificateSource
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
+        private readonly ICAdESServiceSettings settings;
         private readonly X509Certificate certificate;
 
         private readonly Func<IHTTPDataLoader> httpDataLoaderFunc;
@@ -28,8 +29,7 @@ namespace CAdESLib.Service
             this.httpDataLoaderFunc = httpDataLoaderFunc;
         }
 
-        public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name
-             subjectName)
+        public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName)
         {
             IList<CertificateAndContext> list = new List<CertificateAndContext>();
             try
@@ -38,7 +38,13 @@ namespace CAdESLib.Service
                 if (url != null)
                 {
                     X509CertificateParser parser = new X509CertificateParser();
-                    var bytes = GetBytes(httpDataLoaderFunc().Get(url));
+                    var response = httpDataLoaderFunc().Get(url);
+                    if (response == null)
+                    {
+                        return list;
+                    }
+
+                    var bytes = GetBytes(response);
                     var certs = parser.ReadCertificates(bytes).Cast<X509Certificate>();
 
                     foreach (var cert in certs)
@@ -64,7 +70,7 @@ namespace CAdESLib.Service
         private string GetAccessLocation(X509Certificate certificate, DerObjectIdentifier
              accessMethod)
         {
-            Asn1OctetString authInfoAccessExtensionValue = certificate.GetExtensionValue(X509Extensions
+            Asn1OctetString authInfoAccessExtensionValue = certificate.GetExtensionValue(Org.BouncyCastle.Asn1.X509.X509Extensions
                 .AuthorityInfoAccess);
             if (null == authInfoAccessExtensionValue)
             {

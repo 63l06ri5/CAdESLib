@@ -1,5 +1,6 @@
 ﻿using CAdESLib.Document.Signature.Extensions;
 using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
 using CAdESLib.Service;
 using NLog;
 using Org.BouncyCastle.Asn1.Cms;
@@ -22,7 +23,7 @@ namespace CAdESLib.Document.Signature
     public class CAdESService : IDocumentSignatureService
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
+        private readonly RuntimeValidatingParams runtimeValidatingParams;
         private readonly ITspSource tspSource;
         private readonly ICertificateVerifier verifier;
         private readonly ISignedDocumentValidator validator;
@@ -47,11 +48,12 @@ namespace CAdESLib.Document.Signature
             logger.Trace($"FileVersion: {fileVersionInfo.FileVersion}, LastWriteTimeUtc: {fInfo.LastWriteTimeUtc}");
         }
 
-        public CAdESService(ITspSource tspSource, ICertificateVerifier verifier, ISignedDocumentValidator validator)
+        public CAdESService(Func<IRuntimeValidatingParams, ITspSource> tspSourceFunc, Func<IRuntimeValidatingParams, ICertificateVerifier> verifierFunc, Func<IRuntimeValidatingParams, ISignedDocumentValidator> validatorFunc)
         {
-            this.tspSource = tspSource;
-            this.verifier = verifier;
-            this.validator = validator;
+            this.runtimeValidatingParams = new RuntimeValidatingParams();
+            this.tspSource = tspSourceFunc(this.runtimeValidatingParams);
+            this.verifier = verifierFunc(this.runtimeValidatingParams);
+            this.validator = validatorFunc(this.runtimeValidatingParams);
         }
 
         private CAdESSignatureExtension GetExtensionProfile(SignatureParameters parameters)
@@ -125,7 +127,9 @@ namespace CAdESLib.Document.Signature
             CAdESSignatureExtension extension = GetExtensionProfile(parameters);
             if (extension != null)
             {
-                return extension.ExtendSignatures(document, originalDocument, parameters);
+                var (result, validationContexts) = extension.ExtendSignatures(document, originalDocument, parameters);
+
+                return result;
             }
             else
             {
@@ -133,10 +137,10 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null)
+        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null)
         {
             PrintMetaInfo();
-            return validator.ValidateDocument(document, checkIntegrity, externalContent);
+            return validator.ValidateDocument(document, checkIntegrity, externalContent, validationContexts);
         }
 
         public Stream ToBeSigned(IDocument document, SignatureParameters parameters)
@@ -171,7 +175,7 @@ namespace CAdESLib.Document.Signature
             return new MemoryStream(si.GetEncodedSignedAttributes());
         }
 
-        public IDocument GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)
+        public (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)
         {
             PrintMetaInfo();
             if (document is null)
@@ -199,12 +203,23 @@ namespace CAdESLib.Document.Signature
             CmsSignedData data = generator.Generate(content, includeContent);
             CAdESSignatureExtension extension = GetExtensionProfile(parameters);
             IDocument signedDocument = new CMSSignedDocument(data);
+            ValidationReport validationReport = null;
             if (extension != null)
             {
-                signedDocument = extension.ExtendSignatures(signedDocument, document, parameters);
+                ICollection<IValidationContext> validationContexts;
+                (signedDocument, validationContexts) = extension.ExtendSignatures(signedDocument, document, parameters);
+                runtimeValidatingParams.OfflineValidating = true;
+                try
+                {
+                    validationReport = this.ValidateDocument(signedDocument, false, validationContexts: validationContexts);
+                }
+                finally
+                {
+                    runtimeValidatingParams.OfflineValidating = false;
+                }
             }
 
-            return signedDocument;
+            return (signedDocument, validationReport);
         }
 
         /// <summary>

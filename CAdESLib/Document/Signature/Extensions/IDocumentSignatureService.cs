@@ -1,4 +1,5 @@
 ﻿using CAdESLib.Document.Validation;
+using System.Collections.Generic;
 using System.IO;
 
 namespace CAdESLib.Document.Signature
@@ -13,7 +14,7 @@ namespace CAdESLib.Document.Signature
         /// </param>
         IDocument ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters);
 
-        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null);
+        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null);
 
         /// <summary>
         /// Prerate data for singing
@@ -30,6 +31,6 @@ namespace CAdESLib.Document.Signature
         /// <param name="parameters"></param>
         /// <param name="signatureValue">generated signature</param>
         /// <returns></returns>
-        public IDocument GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue);
+        public (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue);
     }
 }

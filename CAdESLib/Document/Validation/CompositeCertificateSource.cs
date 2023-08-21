@@ -15,8 +15,7 @@ namespace CAdESLib.Document.Validation
             this.sources = sources;
         }
 
-        public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name
-             subjectName)
+        public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName)
         {
             List<CertificateAndContext> list = new List<CertificateAndContext>();
             foreach (ICertificateSource source in sources)

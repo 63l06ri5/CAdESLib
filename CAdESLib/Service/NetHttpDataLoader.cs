@@ -1,4 +1,5 @@
-﻿using LdapForNet;
+﻿using CAdESLib.Helpers;
+using LdapForNet;
 using NLog;
 using Org.BouncyCastle.Utilities.IO;
 using System;
@@ -27,15 +28,24 @@ namespace CAdESLib.Service
         public string ContentType { get; set; }
         public string Accept { get; set; }
         public int TimeOut { get; set; }
+
+        private IRuntimeValidatingParams runtimeValidatingParams;
+
         public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
 
-        public NetHttpDataLoader()
+        public NetHttpDataLoader(IRuntimeValidatingParams runtimeValidatingParams)
         {
             TimeOut = 500;
+            this.runtimeValidatingParams = runtimeValidatingParams;
         }
 
         public Stream Get(string URL)
         {
+            if (runtimeValidatingParams.OfflineValidating)
+            {
+                return null;
+            }
+
             try
             {
                 logger.Trace("Fetching data from url " + URL);
@@ -100,6 +110,11 @@ namespace CAdESLib.Service
 
         public Stream Post(string URL, Stream content)
         {
+            if (runtimeValidatingParams.OfflineValidating)
+            {
+                return null;
+            }
+
             try
             {
                 logger.Trace("Post data to url " + URL);

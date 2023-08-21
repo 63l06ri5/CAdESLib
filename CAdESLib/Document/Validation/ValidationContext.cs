@@ -1,5 +1,6 @@
 ﻿using CAdESLib.Helpers;
 using NLog;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
@@ -24,6 +25,7 @@ namespace CAdESLib.Document.Validation
         IOcspSource OcspSource { get; }
         ICertificateSource TrustedListCertificatesSource { get; }
         IDictionary<ISignedToken, RevocationData> RevocationInfo { get; }
+        IList<X509Name> NotFoundIssuers { get; }
         void ValidateCertificate(X509Certificate certificate, DateTime validationDate, ICertificateSource optionalSource, ICrlSource optionalCRLSource, IOcspSource optionalOCSPSource, IList<CertificateAndContext> usedCerts);
         IList<X509Crl> GetRelatedCRLs(CertificateAndContext cert);
         IList<CRLToken> GetRelatedCRLTokens(CertificateAndContext cert);
@@ -76,6 +78,8 @@ namespace CAdESLib.Document.Validation
         public IOcspSource OcspSource { get; set; }
         public ICertificateSource TrustedListCertificatesSource { get; set; }
 
+        public IList<X509Name> NotFoundIssuers { get; } = new List<X509Name>();
+
         /// <summary>
         /// The default constructor for ValidationContextV2.
         /// </summary>
@@ -113,10 +117,12 @@ namespace CAdESLib.Document.Validation
 
         internal virtual CertificateAndContext GetIssuerCertificate(ISignedToken signedToken, ICertificateSource optionalSource, DateTime validationDate)
         {
-            if (signedToken.GetSignerSubjectName() == null)
+            var issuerSubjectName = signedToken?.GetSignerSubjectName();
+            if (issuerSubjectName == null || NotFoundIssuers.Contains(issuerSubjectName))
             {
                 return null;
             }
+
             var list = new CompositeCertificateSource(TrustedListCertificatesSource, optionalSource).GetCertificateBySubjectName(signedToken.GetSignerSubjectName());
             if (list != null)
             {
@@ -166,7 +172,10 @@ namespace CAdESLib.Document.Validation
                     }
                 }
             }
+
             logger?.Warn("Don't found any issuer for token " + signedToken);
+            NotFoundIssuers.Add(issuerSubjectName);
+
             return null;
         }
 
@@ -358,7 +367,6 @@ namespace CAdESLib.Document.Validation
                                     crlt.RootCause.Add(rootValidationCause);
                                 }
                             }
-
                         }
                     }
                 }

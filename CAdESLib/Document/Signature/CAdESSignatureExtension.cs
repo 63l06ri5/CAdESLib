@@ -30,7 +30,7 @@ namespace CAdESLib.Document.Signature.Extensions
 
         public virtual SignatureProfile SignatureProfile => throw new NotImplementedException();
 
-        public virtual IDocument ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters)
+        public virtual (IDocument, ICollection<IValidationContext>) ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters)
         {
             if (document is null)
             {
@@ -42,6 +42,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 CmsSignedData signedData = new CmsSignedData(document.OpenStream());
                 SignerInformationStore signerStore = signedData.GetSignerInfos();
                 var siArray = new List<SignerInformation>();
+                var validationContexts = new List<IValidationContext>();
 
                 foreach (SignerInformation si in signerStore.GetSigners())
                 {
@@ -52,8 +53,9 @@ namespace CAdESLib.Document.Signature.Extensions
                         // TODO jbonilla - It should be validated to what extent it was extended (BES, T, C, X, XL).
                         if (si.UnsignedAttributes == null || si.UnsignedAttributes.Count == 0)
                         {
-                            var (signerInformation, _) = ExtendCMSSignature(signedData, si, parameters, originalData);
+                            var (signerInformation, validationContext) = ExtendCMSSignature(signedData, si, parameters, originalData);
                             siArray.Add(signerInformation);
+                            validationContexts.Add(validationContext);
                         }
                         else
                         {
@@ -70,7 +72,7 @@ namespace CAdESLib.Document.Signature.Extensions
 
                 SignerInformationStore newSignerStore = new SignerInformationStore(siArray);
                 CmsSignedData extended = CmsSignedData.ReplaceSigners(signedData, newSignerStore);
-                return new InMemoryDocument(extended.GetEncoded());
+                return (new InMemoryDocument(extended.GetEncoded()), validationContexts);
             }
             catch (CmsException)
             {

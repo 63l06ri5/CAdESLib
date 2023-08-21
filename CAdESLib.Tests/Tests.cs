@@ -63,7 +63,7 @@ namespace CAdESLib.Tests
             }
             if (sigParams.SignatureCertOCSP ?? false)
             {
-                var fakeOcsp = unityContainer.Resolve<IOcspSource>() as FakeOnlineOcspSource;
+                var fakeOcsp = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(null, null) as FakeOnlineOcspSource;
                 fakeOcsp.AddNotRevokedCert(signingCert, caCert);
             }
             if (sigParams.OCSPCertTrusted ?? false)
@@ -72,13 +72,13 @@ namespace CAdESLib.Tests
             }
             if (!(sigParams.SignatureCertCRL ?? false))
             {
-                var fakeCrl = unityContainer.Resolve<ICrlSource>() as FakeOnlineCrlSource;
+                var fakeCrl = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(null, null) as FakeOnlineCrlSource;
                 fakeCrl.AddRevokedCert(!(sigParams.SignatureCertCRL ?? false) ? signingCert : null, caCert, caKeyPair);
             }
             if (sigParams.TSSignatureCertTrusted ?? false)
             {
                 cadesSettings.TrustedCerts.Add(tspCACert);
-                var fakeOcsp = unityContainer.Resolve<IOcspSource>() as FakeOnlineOcspSource;
+                var fakeOcsp = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(null, null) as FakeOnlineOcspSource;
                 fakeOcsp.AddNotRevokedCert(tspCert, tspCACert);
             }
             var cadesService = unityContainer.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
@@ -109,7 +109,7 @@ namespace CAdESLib.Tests
                 signatureValue[0] ^= 1;
             }
             // make pkcs7
-            var signedDocument = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+            var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
 
             // validate
             var report = cadesService.ValidateDocument(signedDocument, true, inputDocument);
@@ -223,41 +223,76 @@ namespace CAdESLib.Tests
 
             unityContainer
                 .RegisterFactory<Func<ICAdESServiceSettings, IDocumentSignatureService>>(c => new Func<ICAdESServiceSettings, IDocumentSignatureService>(
-                    (settings) => new CAdESService(c.Resolve<Func<ICAdESServiceSettings, ITspSource>>()(settings), c.Resolve<Func<ICAdESServiceSettings, ICertificateVerifier>>()(settings), c.Resolve<Func<ICAdESServiceSettings, ISignedDocumentValidator>>()(settings))
+                    (settings) => new CAdESService(
+                        (runtimeValidatingParams) => c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ITspSource>>()(runtimeValidatingParams, settings),
+                        (runtimeValidatingParams) => c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>>()(runtimeValidatingParams, settings),
+                        (runtimeValidatingParams) => c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ISignedDocumentValidator>>()(runtimeValidatingParams, settings))
                     ))
 
 
-                .RegisterFactory<Func<ICAdESServiceSettings, ICertificateVerifier>>(c => new Func<ICAdESServiceSettings, ICertificateVerifier>((settings) => new TrustedListCertificateVerifier(c.Resolve<Func<ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(settings))))
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>>(c => new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>((runtimeValidationSettings, settings) =>
+                    new TrustedListCertificateVerifier(
+                        c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(runtimeValidationSettings, settings))))
 
-                .RegisterFactory<Func<ICAdESServiceSettings, ISignedDocumentValidator>>(c => new Func<ICAdESServiceSettings, ISignedDocumentValidator>((settings) => new SignedDocumentValidator(c.Resolve<Func<ICAdESServiceSettings, ICertificateVerifier>>()(settings), c.Resolve<Func<ICAdESLogger>>(), c.Resolve<Func<ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(settings))))
-
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ISignedDocumentValidator>>(c => new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ISignedDocumentValidator>((runtimeValidationSettings, settings) =>
+                    new SignedDocumentValidator(
+                        c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>>()(runtimeValidationSettings, settings),
+                        c.Resolve<Func<ICAdESLogger>>(),
+                        c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings,
+                        Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(runtimeValidationSettings, settings))))
 
                 .RegisterType<ICAdESLogger, CAdESLogger>(new TransientLifetimeManager())
 
-                // for testing purposes
-                .RegisterFactory<IOcspSource>(c => fakeOnlineOCSPSource)
-                // for testing purposes
-                .RegisterFactory<ICrlSource>(c => fakeOnlineCrlSource)
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ITspSource>>(
+                    c =>
+                    new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ITspSource>(
+                        (runtimeValidatingParams, settings) =>
+                            fakeOnlineTspSource))
 
-                .RegisterFactory<Func<ICAdESServiceSettings, ITspSource>>(c => new Func<ICAdESServiceSettings, ITspSource>((settings) => fakeOnlineTspSource))
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>(
+                    c =>
+                    new Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>(
+                        (runtimeValidatingParams, settings) =>
+                        fakeOnlineOCSPSource))
 
-                .RegisterFactory<Func<ICAdESServiceSettings, IOcspSource>>(c => new Func<ICAdESServiceSettings, IOcspSource>((settings) => fakeOnlineOCSPSource))
-
-                .RegisterFactory<Func<ICAdESServiceSettings, ICrlSource>>(c => new Func<ICAdESServiceSettings, ICrlSource>((settings) => fakeOnlineCrlSource))
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>(
+                    c =>
+                    new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>(
+                        (runtimeValidatingParams, settings) =>
+                        fakeOnlineCrlSource))
 
                 .RegisterFactory<Func<ICAdESServiceSettings, ICertificateSource>>(c => new Func<ICAdESServiceSettings, ICertificateSource>((settings) => new ListCertificateSourceWithSetttings(settings)))
 
-                .RegisterType<ICertificateSourceFactory, FakeAIACertificateFactoryImpl>(new TransientLifetimeManager())
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICertificateSourceFactory>>(
+                    c =>
+                    new Func<IRuntimeValidatingParams, ICertificateSourceFactory>(
+                        (runtimeValidatingParams) =>
+                            new FakeAIACertificateFactoryImpl()))
 
-                .RegisterFactory<Func<ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>(c => new Func<ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>(
-                  (settings) => (cert, date, logger) => new ValidationContext(cert, date, logger, c.Resolve<Func<ICAdESServiceSettings, IOcspSource>>()(settings), c.Resolve<Func<ICAdESServiceSettings, ICrlSource>>()(settings), c.Resolve<Func<ICAdESServiceSettings, ICertificateSource>>()(settings), c.Resolve<Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>>(), c.Resolve<Func<CertificateAndContext, CertificateToken>>()))
-                )
+                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>(
+                    c =>
+                    new Func<IRuntimeValidatingParams, ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>(
+                        (runtimeValidatingParams, settings) => (cert, date, logger) =>
+                        new ValidationContext(
+                              cert,
+                              date,
+                              logger,
+                              c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(runtimeValidatingParams, settings),
+                              c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(runtimeValidatingParams, settings),
+                              c.Resolve<Func<ICAdESServiceSettings, ICertificateSource>>()(settings),
+                              c.Resolve<Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>>(),
+                              (context) => c.Resolve<Func<IRuntimeValidatingParams, CertificateAndContext, CertificateToken>>()(runtimeValidatingParams, context))
+                        ))
+
                 .RegisterFactory<Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>>(c =>
                     new Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>((ocspVerifier, crlVerifier) => new OCSPAndCRLCertificateVerifier(new OCSPCertificateVerifier(ocspVerifier), new CRLCertificateVerifier(crlVerifier)))
                 )
-                .RegisterFactory<Func<CertificateAndContext, CertificateToken>>(c =>
-                    new Func<CertificateAndContext, CertificateToken>((context) => new CertificateToken(context, c.Resolve<ICertificateSourceFactory>()))
-                )
+
+                .RegisterFactory<Func<IRuntimeValidatingParams, CertificateAndContext, CertificateToken>>(
+                    c =>
+                    new Func<IRuntimeValidatingParams, CertificateAndContext, CertificateToken>(
+                        (runtimeValidatingParams, context) =>
+                            new CertificateToken(context, c.Resolve<Func<IRuntimeValidatingParams, ICertificateSourceFactory>>()(runtimeValidatingParams))))
             ;
         }
 

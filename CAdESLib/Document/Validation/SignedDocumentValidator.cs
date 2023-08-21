@@ -16,7 +16,7 @@ namespace CAdESLib.Document.Validation
 
     public interface ISignedDocumentValidator
     {
-        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity = true, IDocument externalContent = null);
+        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity = true, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null);
     }
 
     /// <summary>
@@ -704,7 +704,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the report part pertaining to the signature
         /// </returns>
-        protected internal virtual SignatureInformation ValidateSignature(IAdvancedSignature signature, ICAdESLogger logger, SignatureValidationContext signatureValidationContext, bool checkIntegrity, IDocument externalContent)
+        protected internal virtual SignatureInformation ValidateSignature(IAdvancedSignature signature, IValidationContext existedContext, ICAdESLogger logger, SignatureValidationContext signatureValidationContext, bool checkIntegrity, IDocument externalContent)
         {
             if (signature is null)
             {
@@ -718,7 +718,7 @@ namespace CAdESLib.Document.Validation
             }
 
             var signatureVerification = new SignatureVerification(new SignatureValidationResult(!checkIntegrity || signature.CheckIntegrity(externalContent)), signature.SignatureAlgorithm);
-            IValidationContext ctx = signatureValidationContext.GetExisted(signature.SigningCertificate, signature.SigningTime?.Value ?? DateTime.Now);
+            IValidationContext ctx = existedContext ?? signatureValidationContext.GetExisted(signature.SigningCertificate, signature.SigningTime?.Value ?? DateTime.Now);
             IList<CertificateAndContext> usedCerts = new List<CertificateAndContext>();
             SignatureLevelT levelT;
             Func<IValidationContext, SignatureLevelT> getLevelT = (IValidationContext ctx) =>
@@ -777,7 +777,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the validation report
         /// </returns>
-        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity = true, IDocument externalContent = null)
+        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity = true, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null)
         {
             var cmsSignedData = GetCmsSignedData(document);
             var verificationTime = DateTime.Now;
@@ -785,10 +785,13 @@ namespace CAdESLib.Document.Validation
             var signatureInformationList = new List<SignatureInformation>();
             var context = new SignatureValidationContext();
 
+            var vcEnumerator = validationContexts?.GetEnumerator();
             foreach (IAdvancedSignature signature in GetSignatures(cmsSignedData))
             {
+                vcEnumerator?.MoveNext();
+                var existedValidationContext = vcEnumerator?.Current;
                 var logger = loggerFactory();
-                var validationInfo = ValidateSignature(signature, logger, context, checkIntegrity, externalContent);
+                var validationInfo = ValidateSignature(signature, existedValidationContext, logger, context, checkIntegrity, externalContent);
                 validationInfo.ValidationLog = logger.GetEntries();
 
                 signatureInformationList.Add(validationInfo);
