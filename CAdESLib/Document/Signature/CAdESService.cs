@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace CAdESLib.Document.Signature
@@ -116,7 +117,7 @@ namespace CAdESLib.Document.Signature
         }
 
 
-        public virtual IDocument ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters)
+        public virtual (IDocument, ValidationReport) ExtendDocument(IDocument signedDocument, IDocument originalDocument, SignatureParameters parameters)
         {
             PrintMetaInfo();
             if (parameters is null)
@@ -125,16 +126,26 @@ namespace CAdESLib.Document.Signature
             }
 
             CAdESSignatureExtension extension = GetExtensionProfile(parameters);
-            if (extension != null)
-            {
-                var (result, validationContexts) = extension.ExtendSignatures(document, originalDocument, parameters);
+            ValidationReport validationReport = null;
+            IDocument result = signedDocument;
+            ICollection<IValidationContext> validationContexts;
 
-                return result;
-            }
-            else
+            (result, validationContexts) = extension?.ExtendSignatures(signedDocument, originalDocument, parameters) ?? (signedDocument, null);
+
+            if (validationContexts != null && !validationContexts.All(x => x is null))
             {
-                throw new ArgumentException("No extension for " + parameters.SignatureProfile);
+                runtimeValidatingParams.OfflineValidating = true;
             }
+            try
+            {
+                validationReport = this.ValidateDocument(result, false, validationContexts: validationContexts);
+            }
+            finally
+            {
+                runtimeValidatingParams.OfflineValidating = false;
+            }
+
+            return (result, validationReport);
         }
 
         public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null)
@@ -201,25 +212,11 @@ namespace CAdESLib.Document.Signature
                 includeContent = false;
             }
             CmsSignedData data = generator.Generate(content, includeContent);
-            CAdESSignatureExtension extension = GetExtensionProfile(parameters);
             IDocument signedDocument = new CMSSignedDocument(data);
-            ValidationReport validationReport = null;
-            if (extension != null)
-            {
-                ICollection<IValidationContext> validationContexts;
-                (signedDocument, validationContexts) = extension.ExtendSignatures(signedDocument, document, parameters);
-                runtimeValidatingParams.OfflineValidating = true;
-                try
-                {
-                    validationReport = this.ValidateDocument(signedDocument, false, validationContexts: validationContexts);
-                }
-                finally
-                {
-                    runtimeValidatingParams.OfflineValidating = false;
-                }
-            }
 
-            return (signedDocument, validationReport);
+            var (result, validationReport) = this.ExtendDocument(signedDocument, document, parameters);
+
+            return (result, validationReport);
         }
 
         /// <summary>

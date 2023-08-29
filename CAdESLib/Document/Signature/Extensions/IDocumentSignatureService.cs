@@ -12,7 +12,7 @@ namespace CAdESLib.Document.Signature
         /// <param name="originalDocument">
         /// Нужен для создания подписи уровня A
         /// </param>
-        IDocument ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters);
+        (IDocument, ValidationReport) ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters);
 
         ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null);
 
@@ -22,7 +22,7 @@ namespace CAdESLib.Document.Signature
         /// <param name="document"></param>
         /// <param name="parameters"></param>
         /// <returns></returns>
-        public Stream ToBeSigned(IDocument document, SignatureParameters parameters);
+        Stream ToBeSigned(IDocument document, SignatureParameters parameters);
 
         /// <summary>
         /// Build PKCS#7-format signature file
@@ -31,6 +31,6 @@ namespace CAdESLib.Document.Signature
         /// <param name="parameters"></param>
         /// <param name="signatureValue">generated signature</param>
         /// <returns></returns>
-        public (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue);
+        (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue);
     }
 }

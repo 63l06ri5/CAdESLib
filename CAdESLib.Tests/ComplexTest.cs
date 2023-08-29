@@ -195,10 +195,10 @@ namespace CAdESLib.Tests
 
             Action callsChecker = () =>
             {
-                // tsp - 1, ocsp - 0
-                fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(1));
-                // intermediate - 1, crl - 0 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
-                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(1));
+                // tsp - 1, ocsp - 2(on validation)
+                fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(3));
+                // intermediate - 1, crl - 1 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
+                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(2));
             };
 
             callsChecker();
