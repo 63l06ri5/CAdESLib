@@ -2,6 +2,7 @@
 using CAdESLib.Document.Validation;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Esf;
+using Org.BouncyCastle.Asn1.Ocsp;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
@@ -14,6 +15,18 @@ namespace CAdESLib.Helpers
 {
     public static class AsnHelpers
     {
+
+        /// <summary>
+        /// Remove certs field. Certificates are carried in a CertValues
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static BasicOcspResponse RefineOcspResp(this BasicOcspResp input)
+        {
+            var original = (BasicOcspResponse.GetInstance((Asn1Sequence) Asn1Object.FromByteArray(input.GetEncoded())));
+            return new BasicOcspResponse(original.TbsResponseData, original.SignatureAlgorithm, original.Signature, null);
+        }
+
         public static bool EqualsWithDerNull(this CertificateID certificateID, CertificateID otherCertificateID)
         {
             var asnCertificateID = certificateID?.ToAsn1Object();

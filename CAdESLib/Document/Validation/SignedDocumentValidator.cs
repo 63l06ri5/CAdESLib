@@ -508,7 +508,7 @@ namespace CAdESLib.Document.Validation
 
             foreach (var ocspRespToken in ctx.NeededOCSPRespTokens)
             {
-                var ocspResp = ocspRespToken.GetOcspResp();
+                var ocspResp = new BasicOcspResp(ocspRespToken.GetOcspResp().RefineOcspResp());
                 logger.Info("Looking for the OcspResp produced at " + ocspResp.ProducedAt);
                 bool found = false;
                 foreach (object valueOrRef in ocspValuesOrRef)

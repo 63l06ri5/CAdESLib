@@ -176,7 +176,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 }
                 foreach (BasicOcspResp relatedocspresp in validationContext.GetRelatedOCSPResp(c))
                 {
-                    ocspListIDValues.Add(MakeOcspResponsesID(new BasicOcspResp(RefineOcspResp(relatedocspresp)), digestId));
+                    ocspListIDValues.Add(MakeOcspResponsesID(new BasicOcspResp(relatedocspresp.RefineOcspResp()), digestId));
                 }
                 completeRevocationRefs.Add(new CrlOcspRef(crlListIdValues.Count == 0 || ocspListIDValues.Count != 0 ? null : new CrlListID(crlListIdValues.ToArray()), ocspListIDValues.Count == 0 ? null : new OcspListID(ocspListIDValues.ToArray()), null));
             }
@@ -220,24 +220,13 @@ namespace CAdESLib.Document.Signature.Extensions
                 }
                 foreach (var relatedocspresp in validationContext.GetRelatedOCSPResp(c))
                 {
-                    ocspValues.Add(RefineOcspResp(relatedocspresp));
+                    ocspValues.Add(relatedocspresp.RefineOcspResp());
                 }
             }
 
             RevocationValues revocationValues = new RevocationValues(crlValues.Count == 0 ? null : crlValues.ToArray(), ocspValues.Count == 0 ? null : ocspValues.ToArray(), null);
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsRevocationValues, new DerSet(revocationValues)));
             unsignedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsCertValues, new BcCms.Attribute(PkcsObjectIdentifiers.IdAAEtsCertValues, new DerSet(new DerSequence(certificateValues.ToArray()))));
-        }
-
-        /// <summary>
-        /// Remove certs field. Certificates are carried in a CertValues
-        /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
-        private static BasicOcspResponse RefineOcspResp(BasicOcspResp input)
-        {
-            var original = (BasicOcspResponse.GetInstance((Asn1Sequence) Asn1Object.FromByteArray(input.GetEncoded())));
-            return new BasicOcspResponse(original.TbsResponseData, original.SignatureAlgorithm, original.Signature, null);
         }
 
         protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)

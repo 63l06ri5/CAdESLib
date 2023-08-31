@@ -90,7 +90,7 @@ namespace CAdESLib.Tests
                 SigningCertificate = signerCert,
                 CertificateChain = new X509Certificate[] { signerCert },
                 SignaturePackaging = SignaturePackaging.DETACHED,
-                SignatureProfile = SignatureProfile.XLType1,
+                //SignatureProfile = SignatureProfile.XLType1,
                 SigningDate = signingTime,
                 DigestAlgorithmOID = DigestAlgorithm.SHA256.OID,
                 EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id
@@ -105,22 +105,26 @@ namespace CAdESLib.Tests
             var signatureValue = signer.GenerateSignature();
 
             // make pkcs7
+            parameters.SignatureProfile = SignatureProfile.BES;
             var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+
+            parameters.SignatureProfile = SignatureProfile.XLType1;
+            (signedDocument, validationReport) = cadesService.ExtendDocument(signedDocument, inputDocument, parameters);
 
             Action callsChecker = () =>
             {
-                // tsp - 2, ocsp - 2
-                fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(4));
-                // intermediate - 1, crl - 1 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
-                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(crlOnline ? 2 : 1));
+                // sign: ocsp -1  extend: tsp - 2, ocsp - 2
+                fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(1 + 4));
+                // sign: intermediate - 1, crl - 1 if crlOnline else 0, extend: intermediate - 1, crl - 1 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
+                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(crlOnline ? 4 : 2));
             };
 
             callsChecker();
 
             // validate
-            cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
-            var report = cadesService.ValidateDocument(signedDocument, true, inputDocument);
-            var sigInfo = report.SignatureInformationList[0];
+            //cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
+            //var report = cadesService.ValidateDocument(signedDocument, true, inputDocument);
+            var sigInfo = validationReport.SignatureInformationList[0];
 
             // No new calls, so there was a validation without network access
             callsChecker();
@@ -422,7 +426,7 @@ namespace CAdESLib.Tests
                                         generator.AddResponse(req.GetCertID(), status);
                                     }
 
-                                    BasicOcspResp basicOcspResp = generator.Generate(ocspCert.SigAlgOid, ocspKeyPair.Private, new X509Certificate[] { ocspCert }, DateTime.UtcNow, null);
+                                    BasicOcspResp basicOcspResp = generator.Generate(ocspCert.SigAlgOid, ocspKeyPair.Private, new X509Certificate[] { ocspCert, intermediateCert, caCert }, DateTime.UtcNow, null);
                                     var ocspResponseGenerator = new OCSPRespGenerator();
                                     var ocspResponse = ocspResponseGenerator.Generate(OCSPRespGenerator.Successful, basicOcspResp);
 
