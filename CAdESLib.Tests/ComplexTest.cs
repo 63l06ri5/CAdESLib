@@ -215,6 +215,48 @@ namespace CAdESLib.Tests
             Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.All(x => x.SameDigest.IsValid), "timestamps are not valid");
         }
 
+        [Test]
+        public void BesDoesntAddSectionForUnsignedAttributes()
+        {
+            var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
+            // to be signed
+            var inputData = Encoding.UTF8.GetBytes("anydataanydataanydataanydataanydataanydataanydataanydata");
+            var inputDocument = new InMemoryDocument(inputData);
+            var signingTime = DateTime.Now;
+            var parameters = new SignatureParameters
+            {
+                SigningCertificate = signerCert,
+                CertificateChain = new X509Certificate[] { signerCert },
+                SignaturePackaging = SignaturePackaging.DETACHED,
+                SignatureProfile = SignatureProfile.BES,
+                SigningDate = signingTime,
+                DigestAlgorithmOID = DigestAlgorithm.SHA256.OID,
+                EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id
+            };
+            var toBeSignedStream = cadesService.ToBeSigned(inputDocument, parameters);
+            // sign
+            ISigner signer = SignerUtilities.InitSigner(parameters.DigestWithEncriptionOID, true, signerKeyPair.Private, null);
+            toBeSignedStream.Position = 0;
+            toBeSignedStream.Seek(0, SeekOrigin.Begin);
+            var b = Streams.ReadAll(toBeSignedStream);
+            signer.BlockUpdate(b, 0, b.Length);
+            var signatureValue = signer.GenerateSignature();
+
+            // make pkcs7
+            var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+
+            // validate
+            var sigInfo = validationReport.SignatureInformationList[0];
+            Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelBES.LevelReached.IsValid);
+
+            var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
+            var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
+            signers.MoveNext();
+            var signerInformation = (SignerInformation) signers.Current;
+
+            Assert.IsNull(signerInformation.UnsignedAttributes);
+        }
+
         [OneTimeSetUp]
         public void SetupFixture()
         {

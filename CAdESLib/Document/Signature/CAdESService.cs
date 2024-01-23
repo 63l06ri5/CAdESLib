@@ -203,7 +203,7 @@ namespace CAdESLib.Document.Signature
             {
                 throw new ArgumentException("Unsupported signature packaging " + parameters.SignaturePackaging);
             }
-            CmsSignedDataGenerator generator = CreateCMSSignedDataGenerator(parameters, GetSigningProfile(parameters), true, null, signatureValue);
+            CmsSignedDataGenerator generator = CreateCMSSignedDataGenerator(parameters, GetSigningProfile(parameters), parameters.SignatureProfile != SignatureProfile.BES, null, signatureValue);
             byte[] toBeSigned = Streams.ReadAll(document.OpenStream());
             CmsProcessableByteArray content = new CmsProcessableByteArray(toBeSigned);
             bool includeContent = true;
