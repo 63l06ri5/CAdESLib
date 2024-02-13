@@ -12,7 +12,7 @@ namespace CAdESLib.Document
 
         /// <summary>Return the name of the document</summary>
         /// <returns></returns>
-        string GetName();
+        string? GetName();
     }
 
 }

@@ -48,7 +48,7 @@ namespace CAdESLib.Document.Signature
             return result;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (this == obj)
             {

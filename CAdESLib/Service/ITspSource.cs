@@ -37,7 +37,7 @@ namespace CAdESLib.Service
          * Gets the MessageDigest to digest the data imprint
          * @return the digest algorithm name
          */
-        IDigest GetMessageDigest();
+        IDigest? GetMessageDigest();
 
         /**
          * Get RFC 3161 timeStampToken.
@@ -49,12 +49,12 @@ namespace CAdESLib.Service
         byte[] GetTimeStampToken(byte[] imprint);
 
         /** URL of the Time Stamp Authority */
-        string TsaURL { get; }
+        string? TsaURL { get; }
         /** TSA Username */
-        string TsaUsername { get; }
+        string? TsaUsername { get; }
         /** TSA password */
-        string TsaPassword { get; }
-        string TsaDigestAlgorithmOID { get; }
+        string? TsaPassword { get; }
+        string? TsaDigestAlgorithmOID { get; }
     }
 
     /**

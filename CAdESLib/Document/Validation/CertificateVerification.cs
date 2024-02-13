@@ -9,15 +9,11 @@ namespace CAdESLib.Document.Validation
     {
         public CertificateAndContext CertificateAndContext { get; set; }
 
-        private Result validityPeriodVerification;
+        private Result? validityPeriodVerification;
 
-        private SignatureVerification signatureVerification;
+        private SignatureVerification? signatureVerification;
 
-        private RevocationVerificationResult certificateStatus;
-
-        public CertificateVerification()
-        {
-        }
+        private RevocationVerificationResult? certificateStatus;
 
         public CertificateVerification(CertificateAndContext cert, IValidationContext ctx)
         {
@@ -42,14 +38,14 @@ namespace CAdESLib.Document.Validation
                 {
                     validityPeriodVerification = new Result(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CertificateNotYetValid");
                 }
-                CertificateStatus status = ctx.GetCertificateStatusFromContext(cert);
+                var status = ctx.GetCertificateStatusFromContext(cert);
                 if (status != null)
                 {
                     certificateStatus = new RevocationVerificationResult(status);
                 }
 
                 Summary.SetStatus(ResultStatus.VALID, null);
-                if (ValidityPeriodVerification.IsInvalid)
+                if (validityPeriodVerification.IsInvalid)
                 {
                     Summary.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CertificateIsNotValid");
                 }
@@ -67,7 +63,7 @@ namespace CAdESLib.Document.Validation
                         }
                     }
                 }
-                else if (!ValidityPeriodVerification.IsInvalid)
+                else if (!validityPeriodVerification.IsInvalid)
                 {
                     Summary.SetStatus(ResultStatus.UNDETERMINED, "$UI_Signatures_ValidationText_NoRevocationData");
                 }
@@ -86,12 +82,12 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the validityPeriodVerification
         /// </returns>
-        public virtual Result ValidityPeriodVerification => validityPeriodVerification;
+        public virtual Result? ValidityPeriodVerification => validityPeriodVerification;
 
         /// <returns>
         /// the signatureVerification
         /// </returns>
-        public virtual SignatureVerification SignatureVerification => signatureVerification;
+        public virtual SignatureVerification? SignatureVerification => signatureVerification;
 
         /// <returns>
         /// the certificateStatus

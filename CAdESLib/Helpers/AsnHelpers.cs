@@ -42,16 +42,16 @@ namespace CAdESLib.Helpers
                 return false;
             }
 
-            if (!(asnCertificateID.HashAlgorithm?.Equals(asnOtherCertificateID.HashAlgorithm) ?? false))
+            if (!(asnCertificateID.HashAlgorithm?.Equals(asnOtherCertificateID?.HashAlgorithm) ?? false))
             {
-                if (asnCertificateID.HashAlgorithm != asnOtherCertificateID.HashAlgorithm)
+                if (asnCertificateID.HashAlgorithm != asnOtherCertificateID?.HashAlgorithm)
                 {
                     if (asnCertificateID.HashAlgorithm == null)
                     {
                         return false;
                     }
 
-                    if (!(asnCertificateID.HashAlgorithm.Algorithm?.Equals(asnOtherCertificateID.HashAlgorithm.Algorithm) ?? false))
+                    if (!(asnCertificateID.HashAlgorithm.Algorithm?.Equals(asnOtherCertificateID?.HashAlgorithm.Algorithm) ?? false))
                     {
                         return false;
                     }
@@ -66,7 +66,7 @@ namespace CAdESLib.Helpers
                 }
             }
 
-            if (!(asnCertificateID.IssuerKeyHash?.Equals(asnOtherCertificateID.IssuerKeyHash) ?? false))
+            if (!(asnCertificateID.IssuerKeyHash?.Equals(asnOtherCertificateID?.IssuerKeyHash) ?? false))
             {
                 return false;
             }
@@ -256,7 +256,7 @@ namespace CAdESLib.Helpers
             return list;
         }
 
-        public static IList<TimestampToken> GetTimestampList(this SignerInformation signerInformation, DerObjectIdentifier attrType, TimestampToken.TimestampType timestampType)
+        public static IList<TimestampToken>? GetTimestampList(this SignerInformation signerInformation, DerObjectIdentifier attrType, TimestampToken.TimestampType timestampType)
         {
             if (signerInformation.UnsignedAttributes != null)
             {
@@ -286,13 +286,13 @@ namespace CAdESLib.Helpers
             }
         }
 
-        public static IList<TimestampToken> GetSignatureTimestamps(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, TimestampToken.TimestampType.SIGNATURE_TIMESTAMP);
+        public static IList<TimestampToken>? GetSignatureTimestamps(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, TimestampToken.TimestampType.SIGNATURE_TIMESTAMP);
 
-        public static IList<TimestampToken> GetTimestampsX1(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAAEtsEscTimeStamp, TimestampToken.TimestampType.VALIDATION_DATA_TIMESTAMP);
+        public static IList<TimestampToken>? GetTimestampsX1(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAAEtsEscTimeStamp, TimestampToken.TimestampType.VALIDATION_DATA_TIMESTAMP);
 
-        public static IList<TimestampToken> GetTimestampsX2(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp, TimestampToken.TimestampType.VALIDATION_DATA_REFSONLY_TIMESTAMP);
+        public static IList<TimestampToken>? GetTimestampsX2(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp, TimestampToken.TimestampType.VALIDATION_DATA_REFSONLY_TIMESTAMP);
 
-        public static IList<TimestampToken> GetArchiveTimestamps(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAAEtsArchiveTimestamp, TimestampToken.TimestampType.ARCHIVE_TIMESTAMP);
+        public static IList<TimestampToken>? GetArchiveTimestamps(this SignerInformation signerInformation) => signerInformation.GetTimestampList(PkcsObjectIdentifiers.IdAAEtsArchiveTimestamp, TimestampToken.TimestampType.ARCHIVE_TIMESTAMP);
 
         public static IList<TimestampToken> GetAllTimestampTokens(this SignerInformation signerInformation)
         {
@@ -339,7 +339,7 @@ namespace CAdESLib.Helpers
 
         public static string ToFineString(this X509Certificate? cert)
         {
-            if (cert != null)
+            if (cert is null)
             {
                 return string.Empty;
             }

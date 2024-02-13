@@ -31,7 +31,7 @@ namespace CAdESLib.Document
             return signedData;
         }
 
-        public virtual string GetName()
+        public virtual string? GetName()
         {
             return null;
         }

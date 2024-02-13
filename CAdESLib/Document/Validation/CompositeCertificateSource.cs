@@ -1,24 +1,20 @@
-﻿using NLog;
-using Org.BouncyCastle.Asn1.X509;
+﻿using Org.BouncyCastle.Asn1.X509;
 using System.Collections.Generic;
 
 namespace CAdESLib.Document.Validation
 {
     public class CompositeCertificateSource : ICertificateSource
     {
-        private readonly ICertificateSource[] sources;
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly ICertificateSource?[] sources;
 
-
-        public CompositeCertificateSource(params ICertificateSource[] sources)
+        public CompositeCertificateSource(params ICertificateSource?[] sources)
         {
             this.sources = sources;
         }
 
         public virtual IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName)
         {
-            List<CertificateAndContext> list = new List<CertificateAndContext>();
-            foreach (ICertificateSource source in sources)
+            foreach (var source in sources)
             {
                 if (source != null)
                 {

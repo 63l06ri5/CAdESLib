@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1.CryptoPro;
+﻿using System.Linq;
+using Org.BouncyCastle.Asn1.CryptoPro;
 using Org.BouncyCastle.Asn1.Oiw;
 using Org.BouncyCastle.Asn1.Rosstandart;
 using Org.BouncyCastle.Cms;
@@ -21,10 +22,10 @@ namespace CAdESLib.Helpers
             return signerInformationStore.GetFirstSigner(id);
         }
 
-        public static SignerInformation GetSignerInfoByEnumeration(SignerInformationStore signerInformationStore, SignerID id)
+        public static SignerInformation? GetSignerInfoByEnumeration(SignerInformationStore signerInformationStore, SignerID id)
         {
-            SignerInformation si = null;
-            foreach (SignerInformation s in signerInformationStore.GetSigners())
+            SignerInformation? si = null;
+            foreach (var s in signerInformationStore.GetSigners().Cast<SignerInformation>())
             {
                 if (s.SignerID == id)
                 {

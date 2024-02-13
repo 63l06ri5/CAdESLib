@@ -7,6 +7,7 @@ using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CAdESLib.Document.Validation
 {
@@ -32,9 +33,14 @@ namespace CAdESLib.Document.Validation
 
             var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
             signers.MoveNext();
+            var signer = signers.Current as SignerInformation;
+            if (signer is null)
+            {
+                throw new ArgumentNullException(nameof(signer));
+            }
 
             cmsSignedData = cms;
-            signerId = ((SignerInformation)signers.Current).SignerID;
+            signerId = signer.SignerID;
             onlyExtended = false;
         }
 
@@ -52,7 +58,7 @@ namespace CAdESLib.Document.Validation
             if (!onlyExtended)
             {
                 logger.Trace(cmsSignedData.GetCertificates("Collection").GetMatches(null).Count + " certificate in collection");
-                foreach (X509Certificate ch in cmsSignedData.GetCertificates("Collection").GetMatches(null))
+                foreach (var ch in cmsSignedData.GetCertificates("Collection").GetMatches(null).Cast<X509Certificate>())
                 {
                     X509Certificate c = ch;
                     logger.Trace($"Certificate {c.SubjectDN},{c.SerialNumber.ToString(16)}");

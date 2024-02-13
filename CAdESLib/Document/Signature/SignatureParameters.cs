@@ -16,12 +16,12 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Get or Set the signing certificate
         /// </summary>        
-        public virtual X509Certificate SigningCertificate { get; set; }
+        public virtual X509Certificate? SigningCertificate { get; set; }
 
         /// <summary>
         /// Get or Set the certificate chain
         /// </summary>		
-        public virtual IList<X509Certificate> CertificateChain { get; set; }
+        public virtual IList<X509Certificate>? CertificateChain { get; set; }
 
         /// <summary>
         /// Return or Set the type of signature policy
@@ -31,24 +31,24 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Get or Set the signature policy (EPES)
         /// </summary>
-        public virtual string SignaturePolicyID { get; set; }
+        public virtual string? SignaturePolicyID { get; set; }
 
         /// <summary>
         /// Return or Set the hash algorithm for the signature policy 
         /// or Set the hash algorithm for the explicit signature policy
         /// </summary>
-        public virtual string SignaturePolicyHashAlgo { get; set; }
+        public virtual string? SignaturePolicyHashAlgo { get; set; }
 
         /// <summary>
         /// Get the hash value of the explicit signature policy 
         /// or Set the hash value of implicit signature policy
         /// </summary>        
-        public virtual byte[] SignaturePolicyHashValue { get; set; }
+        public virtual byte[]? SignaturePolicyHashValue { get; set; }
 
         /// <summary>
         /// Get or Set claimed role
         /// </summary>
-        public virtual string ClaimedSignerRole { get; set; }
+        public virtual string? ClaimedSignerRole { get; set; }
 
         /// <summary>
         /// Get or Set signature format

@@ -16,7 +16,7 @@ namespace CAdESLib.Service
         {
         }
 
-        public OnlineTspSource(ICAdESServiceSettings settings, Func<IHTTPDataLoader> httpDataLoader) : base(httpDataLoader)
+        public OnlineTspSource(ICAdESServiceSettings settings, Func<IHTTPDataLoader>? httpDataLoader) : base(httpDataLoader)
         {
             this.settings = settings;
         }

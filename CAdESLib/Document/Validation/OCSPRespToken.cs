@@ -16,15 +16,15 @@ namespace CAdESLib.Document.Validation
 
         private readonly BasicOcspResp ocspResp;
 
-        private X509Name signerSubjectName;
+        private X509Name? signerSubjectName;
 
-        private BigInteger signerSerialNumber;
+        private BigInteger? signerSerialNumber;
 
-        private X509Certificate signerCertificate;
+        private X509Certificate? signerCertificate;
 
         private bool isSignerNotFound = false;
 
-        public List<object> RootCause { get; } = new List<object>();
+        public List<object?> RootCause { get; } = new List<object?>();
 
         public OCSPRespToken(BasicOcspResp ocspResp, object rootValidationCause)
         {
@@ -40,7 +40,7 @@ namespace CAdESLib.Document.Validation
             return ocspResp;
         }
 
-        public virtual X509Name GetSignerSubjectName()
+        public virtual X509Name? GetSignerSubjectName()
         {
             if (signerSubjectName != null)
             {
@@ -76,7 +76,7 @@ namespace CAdESLib.Document.Validation
             return null;
         }
 
-        public virtual BigInteger GetSignerSerialNumber()
+        public virtual BigInteger? GetSignerSerialNumber()
         {
             if (signerSerialNumber != null)
             {
@@ -135,7 +135,7 @@ namespace CAdESLib.Document.Validation
             return result;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (this == obj)
             {
@@ -172,7 +172,7 @@ namespace CAdESLib.Document.Validation
             return "OcspResp[signedBy=" + GetSignerSubjectName() + "]";
         }
 
-        private X509Certificate GetSigningCert()
+        private X509Certificate? GetSigningCert()
         {
             IList<X509Certificate> certs = ((OCSPRespCertificateSource)GetWrappedCertificateSource()).GetCertificates();
             foreach (X509Certificate c in certs)

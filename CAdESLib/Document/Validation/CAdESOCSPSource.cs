@@ -1,6 +1,7 @@
 ﻿using CAdESLib.Helpers;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Ocsp;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -23,9 +24,13 @@ namespace CAdESLib.Document.Validation
         {
             var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
             signers.MoveNext();
+            var signer = signers.Current as SignerInformation;
+            if (signer is null) {
+                throw new ArgumentNullException(nameof(signer));
+            }
 
             cmsSignedData = cms;
-            signerId = ((SignerInformation) signers.Current).SignerID;
+            signerId = signer.SignerID;
         }
 
         public CAdESOCSPSource(CmsSignedData cms, SignerID id)

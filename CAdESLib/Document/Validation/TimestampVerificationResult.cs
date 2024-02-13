@@ -10,23 +10,19 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class TimestampVerificationResult
     {
-        private SignatureValidationResult sameDigest;
+        private SignatureValidationResult? sameDigest;
 
         private SignatureValidationResult certPathVerification = new SignatureValidationResult();
 
-        private string signatureAlgorithm;
+        private string? signatureAlgorithm;
 
-        private string serialNumber;
+        private string? serialNumber;
 
         private DateTime creationTime;
 
-        private string issuerName;
+        private string? issuerName;
 
-        private readonly X509Certificate issuer;
-
-        public TimestampVerificationResult()
-        {
-        }
+        private readonly X509Certificate? issuer;
 
         public TimestampVerificationResult(TimestampToken token)
         {
@@ -34,10 +30,16 @@ namespace CAdESLib.Document.Validation
             {
                 var signers = token.GetTimeStamp().ToCmsSignedData().GetSignerInfos().GetSigners().GetEnumerator();
                 signers.MoveNext();
-                signatureAlgorithm = ((SignerInformation)signers.Current).EncryptionAlgOid;
+                var signer = signers.Current as SignerInformation;
+                if (signer is null)
+                {
+                    throw new ArgumentNullException(nameof(signer));
+                }
+
+                signatureAlgorithm = signer.EncryptionAlgOid;
                 serialNumber = token.GetTimeStamp().TimeStampInfo.SerialNumber.ToString();
                 creationTime = token.GetTimeStamp().TimeStampInfo.GenTime;
-                issuerName = token.GetSignerSubjectName().ToString();
+                issuerName = token.GetSignerSubjectName()?.ToString();
                 issuer = token.GetSigner();
             }
         }
@@ -55,17 +57,17 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the sameDigest
         /// </returns>
-        public virtual SignatureValidationResult SameDigest => sameDigest;
+        public virtual SignatureValidationResult? SameDigest => sameDigest;
 
-        public virtual string SignatureAlgorithm => signatureAlgorithm;
+        public virtual string? SignatureAlgorithm => signatureAlgorithm;
 
-        public virtual string SerialNumber => serialNumber;
+        public virtual string? SerialNumber => serialNumber;
 
         public virtual DateTime CreationTime => creationTime;
 
-        public virtual string IssuerName => issuerName;
+        public virtual string? IssuerName => issuerName;
 
-        public virtual X509Certificate Issuer => issuer;
+        public virtual X509Certificate? Issuer => issuer;
 
         public virtual SignatureValidationResult CertPathUpToTrustedList => certPathVerification;
 

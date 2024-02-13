@@ -32,8 +32,7 @@ namespace CAdESLib.Service
         /// </summary>
         public IHTTPDataLoader HttpDataLoader { get; set; }
 
-        //jbonilla
-        public string OcspUri { get; set; }
+        public string? OcspUri { get; set; }
 
         /// <summary>
         /// Create an OCSP source The default constructor for OnlineOCSPSource.
@@ -48,7 +47,7 @@ namespace CAdESLib.Service
             HttpDataLoader = dataLoader;
         }
 
-        public BasicOcspResp GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate)
+        public BasicOcspResp? GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate)
         {
             try
             {
@@ -66,7 +65,7 @@ namespace CAdESLib.Service
                 var digestOid = CertificateID.HashSha1;
                 try
                 {
-                    digestOid = new DefaultDigestAlgorithmIdentifierFinder().find(new AlgorithmIdentifier(certificate.SigAlgOid)).Algorithm.Id;
+                    digestOid = new DefaultDigestAlgorithmIdentifierFinder().find(new AlgorithmIdentifier(certificate.CertificateStructure.SignatureAlgorithm.Algorithm)).Algorithm.Id;
                 }
                 catch { }
 
@@ -74,7 +73,7 @@ namespace CAdESLib.Service
                 // TODO: should use from settings?
                 CertificateID certId = new CertificateID(digestOid, issuerCertificate, certificate.SerialNumber);
                 var certCertId = certId.ToAsn1Object();
-                certId = new CertificateID(new CertID(new AlgorithmIdentifier(certCertId.HashAlgorithm.Algorithm.Id), certCertId.IssuerNameHash, certCertId.IssuerKeyHash, certCertId.SerialNumber));
+                certId = new CertificateID(new CertID(new AlgorithmIdentifier(certCertId.HashAlgorithm.Algorithm), certCertId.IssuerNameHash, certCertId.IssuerKeyHash, certCertId.SerialNumber));
                 ocspReqGenerator.AddRequest(certId);
 
                 var nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
@@ -88,7 +87,7 @@ namespace CAdESLib.Service
                 OcspResp ocspResp = new OcspResp(HttpDataLoader.Post(OcspUri, new MemoryStream(ocspReqData)));
                 try
                 {
-                    var respObj = (BasicOcspResp) ocspResp.GetResponseObject();
+                    var respObj = (BasicOcspResp)ocspResp.GetResponseObject();
 
                     if (!CheckNonce(respObj, nonceValue))
                     {
@@ -115,8 +114,7 @@ namespace CAdESLib.Service
             }
         }
 
-        private string GetAccessLocation(X509Certificate certificate, DerObjectIdentifier
-             accessMethod)
+        private string? GetAccessLocation(X509Certificate certificate, DerObjectIdentifier accessMethod)
         {
             Asn1OctetString authInfoAccessExtensionValue = certificate.GetExtensionValue(X509Extensions.AuthorityInfoAccess);
             if (null == authInfoAccessExtensionValue)
@@ -124,8 +122,8 @@ namespace CAdESLib.Service
                 return null;
             }
             AuthorityInformationAccess authorityInformationAccess;
-            DerOctetString oct = (DerOctetString) authInfoAccessExtensionValue;
-            authorityInformationAccess = AuthorityInformationAccess.GetInstance((Asn1Sequence) new Asn1InputStream
+            DerOctetString oct = (DerOctetString)authInfoAccessExtensionValue;
+            authorityInformationAccess = AuthorityInformationAccess.GetInstance((Asn1Sequence)new Asn1InputStream
                 (oct.GetOctets()).ReadObject());
             AccessDescription[] accessDescriptions = authorityInformationAccess.GetAccessDescriptions
                 ();
@@ -143,7 +141,7 @@ namespace CAdESLib.Service
                     logger.Trace("not a uniform resource identifier");
                     continue;
                 }
-                DerIA5String str = (DerIA5String) ((DerTaggedObject) gn.ToAsn1Object()).GetObject();
+                DerIA5String str = (DerIA5String)((DerTaggedObject)gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
                 logger.Trace("access location: " + accessLocation);
                 return accessLocation;

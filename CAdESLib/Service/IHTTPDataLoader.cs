@@ -11,15 +11,15 @@ namespace CAdESLib.Service
         /// <summary>
         /// Execute a HTTP GET operation
         /// </summary>
-        Stream Get(string URL);
+        Stream? Get(string URL);
 
         /// <summary>
         /// Execute a HTTP POST operation
         /// </summary>
-        Stream Post(string URL, Stream content);
+        Stream? Post(string URL, Stream content);
 
-        string ContentType { get; set; }
-        string Accept { get; set; }
+        string? ContentType { get; set; }
+        string? Accept { get; set; }
         int TimeOut { get; set; }
         Dictionary<string, string> Headers { get; set; }
     }

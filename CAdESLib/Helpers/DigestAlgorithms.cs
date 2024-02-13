@@ -133,9 +133,9 @@ namespace CAdESLib.Helpers
          * @param oid   an id (for instance "1.2.840.113549.2.5")
          * @return  a digest name (for instance "MD5")
          */
-        public static string GetDigest(string oid)
+        public static string? GetDigest(string oid)
         {
-            if (digestNames.TryGetValue(oid, out string ret))
+            if (digestNames.TryGetValue(oid, out string? ret))
             {
                 return ret;
             }
@@ -151,9 +151,9 @@ namespace CAdESLib.Helpers
          * @param name  the name of the digest algorithm
          * @return  an oid
          */
-        public static string GetAllowedDigests(string name)
+        public static string? GetAllowedDigests(string name)
         {
-            allowedDigests.TryGetValue(name.ToUpperInvariant(), out string ret);
+            allowedDigests.TryGetValue(name.ToUpperInvariant(), out string? ret);
             return ret;
         }
 

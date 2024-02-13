@@ -12,7 +12,7 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Name of the signed of this token
         /// </summary>
-        X509Name GetSignerSubjectName();
+        X509Name? GetSignerSubjectName();
 
         /// <summary>
         /// Check if the SignedToken is signed by the issuer
@@ -22,12 +22,12 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Retrieve certificates from the SignedToken
         /// </summary>
-        ICertificateSource GetWrappedCertificateSource();
+        ICertificateSource? GetWrappedCertificateSource();
 
 
         /// <summary>
         /// Root reason to validate the token
         /// </summary>
-        List<object> RootCause { get; }
+        List<object?> RootCause { get; }
     }
 }

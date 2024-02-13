@@ -7,7 +7,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class SignatureLevelEPES : SignatureLevel
     {
-        private readonly PolicyValue signaturePolicy;
+        private readonly PolicyValue? signaturePolicy;
 
         public SignatureLevelEPES(IAdvancedSignature signature, SignatureValidationResult levelReached) : base
             (levelReached)
@@ -18,6 +18,6 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        public virtual PolicyValue PolicyId => signaturePolicy;
+        public virtual PolicyValue? PolicyId => signaturePolicy;
     }
 }

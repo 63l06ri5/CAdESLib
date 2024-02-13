@@ -28,10 +28,15 @@ namespace CAdESLib.Document.Validation
             this.crlSource = crlSource;
         }
 
-        public virtual CertificateStatus Check(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
+        public virtual CertificateStatus? Check(X509Certificate childCertificate, X509Certificate? certificate, DateTime validationDate)
         {
             try
             {
+                if (certificate is null) {
+                    logger.Warn("Issuer certificate is null");
+                    return null;
+                }
+
                 CertificateStatus report = new CertificateStatus
                 {
                     Certificate = childCertificate,
@@ -64,7 +69,7 @@ namespace CAdESLib.Document.Validation
                 }
                 else
                 {
-                    if (crlEntry.RevocationDate.CompareTo(validationDate) > 0) //jbonilla - After
+                    if (crlEntry.RevocationDate.CompareTo(validationDate) > 0)
                     {
                         logger.Trace($"CRL OK for: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} at {validationDate}");
                         report.Validity = CertificateValidity.VALID;
@@ -87,7 +92,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        private X509Crl GetX509Crl(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
+        private X509Crl? GetX509Crl(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
         {
             var crls = crlSource.FindCrls(childCertificate, certificate);
 
@@ -106,8 +111,7 @@ namespace CAdESLib.Document.Validation
             return null;
         }
 
-        private bool IsCRLValid(X509Crl x509crl, X509Certificate issuerCertificate, DateTime
-             validationDate)
+        private bool IsCRLValid(X509Crl x509crl, X509Certificate issuerCertificate, DateTime validationDate)
         {
             if (!IsCRLOK(x509crl, issuerCertificate, validationDate))
             {
@@ -148,7 +152,7 @@ namespace CAdESLib.Document.Validation
             //            return false;
             //        }
             logger.Trace("CRL next update: " + x509crl.NextUpdate);
-            if (x509crl.NextUpdate != null && validationDate.CompareTo(x509crl.NextUpdate.Value) > 0) //jbonilla After
+            if (x509crl.NextUpdate != null && validationDate.CompareTo(x509crl.NextUpdate.Value) > 0)
             {
                 logger.Trace("CRL too old");
                 return false;
@@ -167,30 +171,18 @@ namespace CAdESLib.Document.Validation
             return true;
         }
 
-        private BigInteger GetCrlNumber(X509Crl crl)
+        private BigInteger? GetCrlNumber(X509Crl crl)
         {
-            //byte[] crlNumberExtensionValue = crl.GetExtensionValue(X509Extensions.CrlNumber);
             Asn1OctetString crlNumberExtensionValue = crl.GetExtensionValue(X509Extensions.CrlNumber);
             if (null == crlNumberExtensionValue)
             {
                 return null;
             }
-            //try
-            //{
-            //DerOctetString octetString = (DerOctetString)(new ASN1InputStream(new ByteArrayInputStream
-            //    (crlNumberExtensionValue)).ReadObject());
-            DerOctetString octetString = (DerOctetString) crlNumberExtensionValue;
+            DerOctetString octetString = (DerOctetString)crlNumberExtensionValue;
             byte[] octets = octetString.GetOctets();
-            DerInteger integer = (DerInteger) new Asn1InputStream(octets).ReadObject();
+            DerInteger integer = (DerInteger)new Asn1InputStream(octets).ReadObject();
             BigInteger crlNumber = integer.PositiveValue;
             return crlNumber;
-            //}
-            //catch (IOException e)
-            //{
-            //    throw new RuntimeException("IO error: " + e.Message, e);
-            //}
         }
-
-
     }
 }

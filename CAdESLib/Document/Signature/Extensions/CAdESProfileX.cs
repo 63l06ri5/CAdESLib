@@ -1,5 +1,5 @@
-﻿
-using CAdESLib.Document.Validation;
+﻿using CAdESLib.Document.Validation;
+using CAdESLib.Service;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
@@ -19,6 +19,8 @@ namespace CAdESLib.Document.Signature.Extensions
         protected int extendedValidationType = 1;
 
         public override SignatureProfile SignatureProfile => SignatureProfile.XType1;
+
+        public CAdESProfileX(ITspSource signatureTsa, ICertificateVerifier certificateVerifier) : base(signatureTsa, certificateVerifier) { }
 
         /// <summary>
         /// Gets the type of the CAdES-X signature (Type 1 with id-aa-ets-escTimeStamp or Type 2 with

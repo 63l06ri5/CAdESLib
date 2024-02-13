@@ -11,10 +11,6 @@ namespace CAdESLib.Document.Validation
     {
         private readonly string policyOid;
 
-        public PolicyIdCondition()
-        {
-        }
-
         public PolicyIdCondition(string policyId)
         {
             policyOid = policyId;

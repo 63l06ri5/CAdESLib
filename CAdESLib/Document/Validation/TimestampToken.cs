@@ -37,9 +37,9 @@ namespace CAdESLib.Document.Validation
 
         private readonly TimestampToken.TimestampType timeStampType;
 
-        public List<object> RootCause { get; } = new List<object>();
+        public List<object?> RootCause { get; } = new List<object?>();
 
-        private TimestampToken(TimeStampToken timeStamp, object rootCause)
+        private TimestampToken(TimeStampToken timeStamp, object? rootCause)
         {
             // CAdES: id-aa-ets-contentTimestamp, XAdES: AllDataObjectsTimeStamp, PAdES standard
             // timestamp
@@ -55,12 +55,12 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Constructor with an indication of the time-stamp type The default constructor for TimestampToken.
         /// </summary>
-        public TimestampToken(TimeStampToken timeStamp, TimestampToken.TimestampType type, object rootCause = null) : this(timeStamp, rootCause)
+        public TimestampToken(TimeStampToken timeStamp, TimestampToken.TimestampType type, object? rootCause = null) : this(timeStamp, rootCause)
         {
             timeStampType = type;
         }
 
-        public virtual X509Name GetSignerSubjectName()
+        public virtual X509Name? GetSignerSubjectName()
         {
             ICollection<X509Certificate> certs = ((CAdESCertificateSource) GetWrappedCertificateSource()).GetCertificates
                 ();
@@ -74,7 +74,7 @@ namespace CAdESLib.Document.Validation
             return null;
         }
 
-        public virtual X509Certificate GetSigner()
+        public virtual X509Certificate? GetSigner()
         {
             ICollection<X509Certificate> certs = ((CAdESCertificateSource) GetWrappedCertificateSource()).GetCertificates();
             foreach (X509Certificate cert in certs)

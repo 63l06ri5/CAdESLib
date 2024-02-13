@@ -135,7 +135,7 @@ namespace CAdESLib.Helpers
         public string GetDigestAlgName(
             string digestAlgOid)
         {
-            string algName = (string)digestAlgs[digestAlgOid];
+            var algName = digestAlgs[digestAlgOid] as string;
 
             if (algName != null)
             {
@@ -150,10 +150,10 @@ namespace CAdESLib.Helpers
         * JCA string representations rather than the algorithm identifier (if
         * possible).
         */
-        public string GetEncryptionAlgName(
+        public string? GetEncryptionAlgName(
             string encryptionAlgOid)
         {
-            string algName = (string)encryptionAlgs[encryptionAlgOid];
+            var algName = encryptionAlgs[encryptionAlgOid] as string;
 
             if (algName != null)
             {

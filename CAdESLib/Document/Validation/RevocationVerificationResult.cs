@@ -10,7 +10,7 @@ namespace CAdESLib.Document.Validation
     {
         private readonly CertificateStatus certificateStatus;
 
-        public RevocationVerificationResult(CertificateStatus certificateStatus)
+        public RevocationVerificationResult(CertificateStatus? certificateStatus)
         {
             if (certificateStatus != null)
             {
@@ -41,7 +41,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        public virtual DateTimeObject RevocationDate
+        public virtual DateTimeObject? RevocationDate
         {
             get
             {
@@ -62,7 +62,7 @@ namespace CAdESLib.Document.Validation
 
         public virtual CertificateStatus CertificateStatus => certificateStatus;
 
-        public virtual DateTimeObject IssuingTime
+        public virtual DateTimeObject? IssuingTime
         {
             get
             {

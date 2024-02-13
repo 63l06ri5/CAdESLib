@@ -5,52 +5,20 @@
     /// </summary>
     public class QCStatementInformation
     {
-        private SignatureValidationResult qCPPresent;
+        public SignatureValidationResult? QCPPresent { get; set; }
 
-        private SignatureValidationResult qCPPlusPresent;
+        public SignatureValidationResult? QCPPlusPresent { get; set; }
 
-        private SignatureValidationResult qcCompliancePresent;
+        public SignatureValidationResult? QcCompliancePresent { get; set; }
 
-        private SignatureValidationResult qcSCCDPresent;
+        public SignatureValidationResult? QcSCCDPresent { get; set; }
 
-        public virtual SignatureValidationResult QCPPresent => qCPPresent;
-
-        /// <param name="qCPPresent"></param>
-        public virtual void SetQCPPresent(SignatureValidationResult qCPPresent)
+        public QCStatementInformation(SignatureValidationResult? qCPPresent, SignatureValidationResult? qCPPlusPresent, SignatureValidationResult? qcCompliancePresent, SignatureValidationResult? qcSCCDPresent)
         {
-            this.qCPPresent = qCPPresent;
-        }
-
-        public virtual SignatureValidationResult QCPPlusPresent => qCPPlusPresent;
-
-        /// <param name="qCPPlusPresent"></param>
-        public virtual void SetQCPPlusPresent(SignatureValidationResult qCPPlusPresent)
-        {
-            this.qCPPlusPresent = qCPPlusPresent;
-        }
-
-        public virtual SignatureValidationResult QcCompliancePresent => qcCompliancePresent;
-
-        /// <param name="qcCompliancePresent"></param>
-        public virtual void SetQcCompliancePresent(SignatureValidationResult qcCompliancePresent)
-        {
-            this.qcCompliancePresent = qcCompliancePresent;
-        }
-
-        public virtual SignatureValidationResult QcSCCDPresent => qcSCCDPresent;
-
-        /// <param name="qcSCCDPresent"></param>
-        public virtual void SetQcSCCDPresent(SignatureValidationResult qcSCCDPresent)
-        {
-            this.qcSCCDPresent = qcSCCDPresent;
-        }
-
-        public QCStatementInformation(SignatureValidationResult qCPPresent, SignatureValidationResult qCPPlusPresent, SignatureValidationResult qcCompliancePresent, SignatureValidationResult qcSCCDPresent)
-        {
-            this.qCPPresent = qCPPresent;
-            this.qCPPlusPresent = qCPPlusPresent;
-            this.qcCompliancePresent = qcCompliancePresent;
-            this.qcSCCDPresent = qcSCCDPresent;
+            this.QCPPresent = qCPPresent;
+            this.QCPPlusPresent = qCPPlusPresent;
+            this.QcCompliancePresent = qcCompliancePresent;
+            this.QcSCCDPresent = qcSCCDPresent;
         }
     }
 }

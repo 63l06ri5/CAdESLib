@@ -1,12 +1,13 @@
 ﻿using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Asn1.Ess;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Security;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using Attribute = Org.BouncyCastle.Asn1.Cms.Attribute;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
@@ -18,21 +19,27 @@ namespace CAdESLib.Document.Signature.Extensions
 
         private Attribute MakeSigningCertificateAttribute(SignatureParameters parameters)
         {
-            byte[] certHash = DigestUtilities.CalculateDigest(Helpers.CmsSignedHelper.Instance.GetDigestAlgName(parameters.DigestAlgorithmOID), parameters.SigningCertificate.GetEncoded());
+            var signingCertificate = parameters.SigningCertificate;
+            if (signingCertificate is null)
+            {
+                throw new ArgumentException(nameof(signingCertificate));
+            }
+
+            byte[] certHash = DigestUtilities.CalculateDigest(Helpers.CmsSignedHelper.Instance.GetDigestAlgName(parameters.DigestAlgorithmOID), signingCertificate.GetEncoded());
 
             if (parameters.DigestAlgorithmOID == DigestAlgorithm.SHA1.OID)
             {
                 SigningCertificate sc = new SigningCertificate(new EssCertID(certHash, new IssuerSerial(
-                    new GeneralNames(new GeneralName(parameters.SigningCertificate.IssuerDN)),
-                    new DerInteger(parameters.SigningCertificate.SerialNumber))));
+                    new GeneralNames(new GeneralName(signingCertificate.IssuerDN)),
+                    new DerInteger(signingCertificate.SerialNumber))));
                 //SigningCertificate sc = new SigningCertificate(new EssCertID(certHash));
                 return new Attribute(PkcsObjectIdentifiers.IdAASigningCertificate, new DerSet(sc));
             }
             else
             {
                 EssCertIDv2 essCert = new EssCertIDv2(new AlgorithmIdentifier(new DerObjectIdentifier(parameters.DigestAlgorithmOID)), certHash, new IssuerSerial(
-                    new GeneralNames(new GeneralName(parameters.SigningCertificate.IssuerDN)),
-                    new DerInteger(parameters.SigningCertificate.SerialNumber)));
+                    new GeneralNames(new GeneralName(signingCertificate.IssuerDN)),
+                    new DerInteger(signingCertificate.SerialNumber)));
                 SigningCertificateV2 scv2 = new SigningCertificateV2(new EssCertIDv2[] { essCert });
                 return new Attribute(PkcsObjectIdentifiers.IdAASigningCertificateV2, new DerSet(scv2));
             }
@@ -42,16 +49,6 @@ namespace CAdESLib.Document.Signature.Extensions
         private Attribute MakeSigningTimeAttribute(SignatureParameters parameters)
         {
             return new Attribute(PkcsObjectIdentifiers.Pkcs9AtSigningTime, new DerSet(new Org.BouncyCastle.Asn1.X509.Time(parameters.SigningDate)));
-        }
-
-#pragma warning disable IDE0051 // Remove unused private members
-        private Attribute MakeSignerAttrAttribute(SignatureParameters parameters)
-#pragma warning restore IDE0051 // Remove unused private members
-        {
-            DerOctetString[] roles = new DerOctetString[1];
-            roles[0] = new DerOctetString(Encoding.UTF8.GetBytes(parameters.ClaimedSignerRole));
-            return new Attribute(PkcsObjectIdentifiers.IdAAEtsSignerAttr, new DerSet(new SignerAttribute
-                (new DerSequence(roles))));
         }
 
         public virtual IDictionary<DerObjectIdentifier, Asn1Encodable> GetSignedAttributes(SignatureParameters parameters)

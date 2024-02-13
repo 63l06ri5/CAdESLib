@@ -28,9 +28,14 @@ namespace CAdESLib.Document.Validation
             this.ocspSource = ocspSource;
         }
 
-        public virtual CertificateStatus Check(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
+        public virtual CertificateStatus? Check(X509Certificate certificate, X509Certificate? issuerCertificate, DateTime validationDate)
         {
-            var ocspNoCheck = childCertificate.GetExtensionValue(X509Consts.OCSPNoCheck);
+            if (issuerCertificate is null)
+            {
+                throw new ArgumentNullException(nameof(issuerCertificate));
+            }
+
+            var ocspNoCheck = certificate.GetExtensionValue(X509Consts.OCSPNoCheck);
             if (ocspNoCheck != null)
             {
                 logger.Trace("OCSPNoCheck");
@@ -39,9 +44,9 @@ namespace CAdESLib.Document.Validation
 
             CertificateStatus status = new CertificateStatus
             {
-                Certificate = childCertificate,
+                Certificate = certificate,
                 ValidationDate = validationDate,
-                IssuerCertificate = certificate
+                IssuerCertificate = issuerCertificate
             };
             if (ocspSource == null)
             {
@@ -50,18 +55,18 @@ namespace CAdESLib.Document.Validation
             }
             try
             {
-                BasicOcspResp ocspResp = ocspSource.GetOcspResponse(childCertificate, certificate);
+                var ocspResp = ocspSource.GetOcspResponse(certificate, issuerCertificate);
                 if (null == ocspResp)
                 {
                     logger.Trace("OCSP response not found");
                     return null;
                 }
-                BasicOcspResp basicOCSPResp = ocspResp;                
+                BasicOcspResp basicOCSPResp = ocspResp;
                 SingleResp[] singleResps = basicOCSPResp.Responses;
                 foreach (SingleResp singleResp in singleResps)
                 {
                     CertificateID responseCertificateId = singleResp.GetCertID();
-                    CertificateID certificateId = new CertificateID(responseCertificateId.HashAlgOid, certificate, childCertificate.SerialNumber);
+                    CertificateID certificateId = new CertificateID(responseCertificateId.HashAlgOid, issuerCertificate, certificate.SerialNumber);
 
                     if (!certificateId.EqualsWithDerNull(responseCertificateId))
                     {
@@ -75,7 +80,7 @@ namespace CAdESLib.Document.Validation
                     status.RevocationObjectIssuingTime = ocspResp.ProducedAt;
                     if (null == singleResp.GetCertStatus())
                     {
-                        logger.Trace("OCSP OK for: " + childCertificate.SubjectDN);
+                        logger.Trace("OCSP OK for: " + certificate.SubjectDN);
                         status.Validity = CertificateValidity.VALID;
                     }
                     else

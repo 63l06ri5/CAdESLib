@@ -9,7 +9,7 @@ namespace CAdESLib.Document.Validation
     [System.Serializable]
     public class ServiceInfo
     {
-        public virtual string Type { get; set; }
+        public virtual string? Type { get; set; }
 
         private readonly IDictionary<string, ICondition> qualifiersAndConditions = new Dictionary<string, ICondition>();
 
@@ -45,21 +45,21 @@ namespace CAdESLib.Document.Validation
             return list;
         }
 
-        public virtual string TspName { get; set; }
+        public virtual string? TspName { get; set; }
 
-        public virtual string TspTradeName { get; set; }
+        public virtual string? TspTradeName { get; set; }
 
-        public virtual string TspPostalAddress { get; set; }
+        public virtual string? TspPostalAddress { get; set; }
 
-        public virtual string TspElectronicAddress { get; set; }
+        public virtual string? TspElectronicAddress { get; set; }
 
-        public virtual string ServiceName { get; set; }
+        public virtual string? ServiceName { get; set; }
 
-        public virtual string CurrentStatus { get; set; }
+        public virtual string? CurrentStatus { get; set; }
 
         public virtual DateTime CurrentStatusStartingDate { get; set; }
 
-        public virtual string StatusAtReferenceTime { get; set; }
+        public virtual string? StatusAtReferenceTime { get; set; }
 
         public virtual DateTime StatusStartingDateAtReferenceTime { get; set; }
 

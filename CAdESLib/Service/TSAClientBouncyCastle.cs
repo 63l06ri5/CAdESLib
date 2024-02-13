@@ -26,7 +26,7 @@ namespace CAdESLib.Service
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         /** An interface that allows you to inspect the timestamp info. */
-        protected ITSAInfoBouncyCastle tsaInfo;
+        protected ITSAInfoBouncyCastle? tsaInfo;
         /** The default value for the hash algorithm */
         public const int DEFAULTTOKENSIZE = 4096;
 
@@ -36,21 +36,17 @@ namespace CAdESLib.Service
         /** The default value for the hash algorithm */
         public const string DEFAULTHASHALGORITHMOID = "2.16.840.1.101.3.4.2.1";
 
-        public virtual string TsaDigestAlgorithmOID { get; private set; }
+        public virtual string? TsaDigestAlgorithmOID { get; private set; }
 
-        public virtual string TsaURL { get; private set; }
+        public virtual string? TsaURL { get; private set; }
 
-        public virtual string TsaUsername { get; private set; }
+        public virtual string? TsaUsername { get; private set; }
 
-        public virtual string TsaPassword { get; private set; }
+        public virtual string? TsaPassword { get; private set; }
 
-        private readonly Func<IHTTPDataLoader> httpDataLoaderFunc;
+        private readonly Func<IHTTPDataLoader>? httpDataLoaderFunc;
 
-        public TSAClientBouncyCastle()
-        {
-        }
-
-        public TSAClientBouncyCastle(Func<IHTTPDataLoader> httpDataLoaderFunc)
+        public TSAClientBouncyCastle(Func<IHTTPDataLoader>? httpDataLoaderFunc)
         {
             this.httpDataLoaderFunc = httpDataLoaderFunc;
         }
@@ -85,7 +81,7 @@ namespace CAdESLib.Service
         * @param password String - password
         * @param tokSzEstimate int - estimated size of received time stamp token (DER encoded)
         */
-        public TSAClientBouncyCastle(string url, string username, string password, int tokSzEstimate, string digestAlgorithmOid)
+        public TSAClientBouncyCastle(string url, string? username, string? password, int tokSzEstimate, string digestAlgorithmOid)
         {
             TsaURL = url;
             TsaUsername = username;
@@ -116,9 +112,9 @@ namespace CAdESLib.Service
          * Gets the MessageDigest to digest the data imprint
          * @return the digest algorithm name
          */
-        public IDigest GetMessageDigest()
+        public IDigest? GetMessageDigest()
         {
-            return DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOID);
+            return TsaDigestAlgorithmOID is null ? null : DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOID);
         }
 
         /**
@@ -180,9 +176,9 @@ namespace CAdESLib.Service
         */
         protected internal virtual byte[] GetTSAResponse(byte[] requestBytes)
         {
-            Stream inp;
-            HttpWebResponse response = null;
-            string autorizationHeader = null;
+            Stream? inp;
+            HttpWebResponse? response = null;
+            string? autorizationHeader = null;
             Func<string, Func<byte[], byte[]>> postProcessFunc = (string encoding) => (byte[] respBytes) =>
             {
                 if (this.httpDataLoaderFunc == null)
@@ -196,7 +192,7 @@ namespace CAdESLib.Service
                 return respBytes;
             };
 
-            Func<byte[], byte[]> postProcessHandler = null;
+            Func<byte[], byte[]>? postProcessHandler = null;
 
             if ((TsaUsername != null) && !TsaUsername.Equals(""))
             {
@@ -205,7 +201,7 @@ namespace CAdESLib.Service
                 autorizationHeader = "Basic " + authInfo;
             }
 
-            if (this.httpDataLoaderFunc != null)
+            if (this.httpDataLoaderFunc != null && TsaURL != null)
             {
                 var con = this.httpDataLoaderFunc();
                 con.ContentType = "application/timestamp-query";
@@ -217,7 +213,7 @@ namespace CAdESLib.Service
             }
             else
             {
-                HttpWebRequest con = (HttpWebRequest) WebRequest.Create(TsaURL);
+                HttpWebRequest con = (HttpWebRequest)WebRequest.Create(TsaURL);
                 con.ContentLength = requestBytes.Length;
                 con.ContentType = "application/timestamp-query";
                 con.Method = "POST";
@@ -228,15 +224,15 @@ namespace CAdESLib.Service
                 Stream outp = con.GetRequestStream();
                 outp.Write(requestBytes, 0, requestBytes.Length);
                 outp.Close();
-                response = (HttpWebResponse) con.GetResponse();
+                response = (HttpWebResponse)con.GetResponse();
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new IOException($"invalid.http.response.1, {(int) response.StatusCode}");
+                    throw new IOException($"invalid.http.response.1, {(int)response.StatusCode}");
                 }
 
                 inp = response.GetResponseStream();
                 string encoding = response.ContentEncoding;
-                
+
 
                 postProcessHandler = postProcessFunc(encoding);
             }
@@ -244,12 +240,12 @@ namespace CAdESLib.Service
             using MemoryStream baos = new MemoryStream();
             byte[] buffer = new byte[1024];
             int bytesRead = 0;
-            while ((bytesRead = inp.Read(buffer, 0, buffer.Length)) > 0)
+            while ((bytesRead = inp?.Read(buffer, 0, buffer.Length) ?? 0) > 0)
             {
                 baos.Write(buffer, 0, bytesRead);
             }
 
-            inp.Close();
+            inp?.Close();
             response?.Close();
 
             byte[] respBytes = baos.ToArray();

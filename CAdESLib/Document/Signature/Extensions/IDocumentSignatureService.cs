@@ -14,7 +14,7 @@ namespace CAdESLib.Document.Signature
         /// </param>
         (IDocument, ValidationReport) ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters);
 
-        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null);
+        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument? externalContent = null, ICollection<IValidationContext?>? validationContexts = null);
 
         /// <summary>
         /// Prerate data for singing

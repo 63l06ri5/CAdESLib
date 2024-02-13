@@ -16,6 +16,6 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Get and OCSPResp for the given certificate/issuerCertificate couple.
         /// </summary>
-        BasicOcspResp GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate);
+        BasicOcspResp? GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate);
     }
 }

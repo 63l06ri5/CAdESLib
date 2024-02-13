@@ -1,5 +1,6 @@
 ﻿using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
+using CAdESLib.Service;
 using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Esf;
@@ -34,6 +35,11 @@ namespace CAdESLib.Document.Signature.Extensions
 
         public override SignatureProfile SignatureProfile => SignatureProfile.C;
 
+        public CAdESProfileC(ITspSource signatureTsa, ICertificateVerifier certificateVerifier) : base(signatureTsa)
+        {
+            this.CertificateVerifier = certificateVerifier;
+        }
+
         /// <summary>
         /// Create a reference to a X509Certificate
         /// </summary>
@@ -57,9 +63,9 @@ namespace CAdESLib.Document.Signature.Extensions
             var crlNumberExtensionValue = crl.GetExtensionValue(crlExt);
             if (crlNumberExtensionValue != null)
             {
-                var octetString = (DerOctetString) crlNumberExtensionValue;
+                var octetString = (DerOctetString)crlNumberExtensionValue;
                 var octets = octetString.GetOctets();
-                var integer = (DerInteger) new Asn1InputStream(octets).ReadObject();
+                var integer = (DerInteger)new Asn1InputStream(octets).ReadObject();
                 crlid = new CrlIdentifier(crl.IssuerDN, crl.ThisUpdate, integer.PositiveValue);
             }
             else
@@ -83,7 +89,7 @@ namespace CAdESLib.Document.Signature.Extensions
             return ocsprespid;
         }
 
-        private (IDictionary, IValidationContext) ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, SignatureParameters parameters, DateTime signingTime, ICertificateSource optionalCertificateSource, IValidationContext validationContext)
+        private (IDictionary, IValidationContext) ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, SignatureParameters parameters, DateTime signingTime, ICertificateSource optionalCertificateSource, IValidationContext? validationContext)
         {
             var usedCerts = new List<CertificateAndContext>();
             validationContext = validationContext ?? CertificateVerifier.GetValidationContext(signingCertificate, signingTime);
@@ -94,22 +100,27 @@ namespace CAdESLib.Document.Signature.Extensions
                 var timeStampToken = new TimeStampToken(new CmsSignedData(value));
                 var token = new TimestampToken(timeStampToken, TimestampToken.TimestampType.SIGNATURE_TIMESTAMP);
                 validationContext.ValidateTimestamp(token, optionalCertificateSource, null, null, usedCerts);
+                var signer = token.GetSigner();
+                if (signer is null)
+                {
+                    throw new ArgumentNullException(nameof(signer));
+                }
 
                 var unAttr = timeStampToken.UnsignedAttributes?.ToDictionary() ?? new Dictionary<object, object>();
                 logger.Trace("Refs for timestamp");
                 SetRefs(
                     parameters.DigestAlgorithmOID,
                     unAttr,
-                    token.GetSigner(),
-                    validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(token.GetSigner()))),
+                    signer,
+                    validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signer))),
                     validationContext);
 
                 if (new[] { SignatureProfile.XL, SignatureProfile.A }.Contains(SignatureProfile))
                 {
                     SetValues(
                        unAttr,
-                       token.GetSigner(),
-                       validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(token.GetSigner()))),
+                       signer,
+                       validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signer))),
                        validationContext
                        );
                 }
@@ -126,14 +137,20 @@ namespace CAdESLib.Document.Signature.Extensions
                 unsignedAttrs[PkcsObjectIdentifiers.IdAASignatureTimeStampToken] = new BcCms.Attribute(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER"))));
             }
 
-            validationContext.ValidateCertificate(signingCertificate, signingTime, new CompositeCertificateSource(new ListCertificateSource(parameters.CertificateChain), optionalCertificateSource), null, null, usedCerts);
+            validationContext.ValidateCertificate(
+                signingCertificate,
+                signingTime,
+                new CompositeCertificateSource(parameters.CertificateChain is null ? null : new ListCertificateSource(parameters.CertificateChain), optionalCertificateSource),
+                null,
+                null,
+                usedCerts);
 
             logger.Trace("Refs for main");
             if (logger.IsTraceEnabled)
             {
                 foreach (var nct in validationContext.NeededCertificateTokens)
                 {
-                    logger.Trace($"root cause: {string.Join(", ", nct.RootCause.Select(x => x.GetType().ToString()))}, cert: {nct.GetCertificate().ToFineString()}");
+                    logger.Trace($"root cause: {string.Join(", ", nct.RootCause.Where(x => !(x is null)).Select(x => x!.GetType().ToString()))}, cert: {nct.GetCertificate().ToFineString()}");
                 }
             }
 
@@ -211,12 +228,12 @@ namespace CAdESLib.Document.Signature.Extensions
 
             foreach (CertificateAndContext c in arrCerts)
             {
-                certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence) Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
+                certificateValues.Add(X509CertificateStructure.GetInstance(((Asn1Sequence)Asn1Object.FromByteArray(c.Certificate.GetEncoded()))));
 
 
                 foreach (var relatedcrl in validationContext.GetRelatedCRLs(c))
                 {
-                    crlValues.Add(CertificateList.GetInstance((Asn1Sequence) Asn1Object.FromByteArray(relatedcrl.GetEncoded())));
+                    crlValues.Add(CertificateList.GetInstance((Asn1Sequence)Asn1Object.FromByteArray(relatedcrl.GetEncoded())));
                 }
                 foreach (var relatedocspresp in validationContext.GetRelatedOCSPResp(c))
                 {
@@ -244,9 +261,15 @@ namespace CAdESLib.Document.Signature.Extensions
             var (newSi, validationContext) = base.ExtendCMSSignature(signedData, si, parameters, originalData);
             IDictionary unsignedAttrs = newSi.UnsignedAttributes.ToDictionary();
             CAdESSignature signature = new CAdESSignature(signedData, si.SignerID);
+            var signingCertificate = signature.SigningCertificate;
+            if (signingCertificate is null)
+            {
+                throw new ArgumentNullException(nameof(signingCertificate));
+            }
+
             (unsignedAttrs, validationContext) = ExtendUnsignedAttributes(
                 unsignedAttrs,
-                signature.SigningCertificate,
+                signingCertificate,
                 parameters,
                 signature.SigningTime?.Value ?? DateTime.Now,
                 signature.CertificateSource,

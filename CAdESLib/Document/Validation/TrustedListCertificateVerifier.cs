@@ -14,15 +14,15 @@ namespace CAdESLib.Document.Validation
     {
         //private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext> validationContextFactory;
+        private readonly Func<X509Certificate, DateTime, ICAdESLogger?, IValidationContext> validationContextFactory;
         private readonly List<IValidationContext> cache = new List<IValidationContext>();
 
-        public TrustedListCertificateVerifier(Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext> validationContextFactory)
+        public TrustedListCertificateVerifier(Func<X509Certificate, DateTime, ICAdESLogger?, IValidationContext> validationContextFactory)
         {
             this.validationContextFactory = validationContextFactory;
         }
 
-        public IValidationContext GetValidationContext(X509Certificate cert, DateTime validationDate, ICAdESLogger CadesLogger = null)
+        public IValidationContext GetValidationContext(X509Certificate cert, DateTime validationDate, ICAdESLogger? CadesLogger = null)
         {
             if (cert == null || validationDate == null)
             {

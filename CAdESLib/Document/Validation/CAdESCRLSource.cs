@@ -4,6 +4,7 @@ using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,9 +27,14 @@ namespace CAdESLib.Document.Validation
         {
             var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
             signers.MoveNext();
+            var signer = signers.Current as SignerInformation;
+            if (signer is null)
+            {
+                throw new ArgumentNullException(nameof(signer));
+            }
 
             cmsSignedData = cms;
-            signerId = ((SignerInformation) signers.Current).SignerID;
+            signerId = signer.SignerID;
         }
 
         public CAdESCRLSource(CmsSignedData cms, SignerID id)
@@ -46,18 +52,17 @@ namespace CAdESLib.Document.Validation
 
             if (si != null)
             {
-                var unsignedAttributes = si?.UnsignedAttributes;
-                foreach (X509Crl crl in cmsSignedData.GetCrls("Collection").GetMatches(null))
+                foreach (var crl in cmsSignedData.GetCrls("Collection").GetMatches(null).Cast<X509Crl>())
                 {
                     list.Add(crl);
                 }
 
                 list.AddRange(si?.UnsignedAttributes.GetCrls()?.ToList() ?? new List<X509Crl>());
 
-                foreach (var tst in si.GetAllTimestampTokens())
+                foreach (var tst in si!.GetAllTimestampTokens())
                 {
                     var t = tst.GetTimeStamp();
-                    foreach (X509Crl crl in t.GetCrls("Collection").GetMatches(null))
+                    foreach (var crl in t.GetCrls("Collection").GetMatches(null).Cast<X509Crl>())
                     {
                         list.Add(crl);
                     }

@@ -15,7 +15,7 @@ namespace CAdESLib.Document.Validation
     {
         IList<BasicOcspResp> NeededOCSPResp { get; }
         IList<OCSPRespToken> NeededOCSPRespTokens { get; }
-        X509Certificate Certificate { get; }
+        X509Certificate? Certificate { get; }
         IList<X509Crl> NeededCRL { get; }
         IList<CRLToken> NeededCRLTokens { get; }
         IList<CertificateAndContext> NeededCertificates { get; }
@@ -24,21 +24,21 @@ namespace CAdESLib.Document.Validation
         ICrlSource CrlSource { get; }
         IOcspSource OcspSource { get; }
         ICertificateSource TrustedListCertificatesSource { get; }
-        IDictionary<ISignedToken, RevocationData> RevocationInfo { get; }
+        IDictionary<ISignedToken, RevocationData?> RevocationInfo { get; }
         IList<X509Name> NotFoundIssuers { get; }
-        void ValidateCertificate(X509Certificate certificate, DateTime validationDate, ICertificateSource optionalSource, ICrlSource optionalCRLSource, IOcspSource optionalOCSPSource, IList<CertificateAndContext> usedCerts);
+        void ValidateCertificate(X509Certificate certificate, DateTime validationDate, ICertificateSource? optionalSource, ICrlSource? optionalCRLSource, IOcspSource? optionalOCSPSource, IList<CertificateAndContext> usedCerts);
         IList<X509Crl> GetRelatedCRLs(CertificateAndContext cert);
         IList<CRLToken> GetRelatedCRLTokens(CertificateAndContext cert);
         IList<BasicOcspResp> GetRelatedOCSPResp(CertificateAndContext cert);
         IList<OCSPRespToken> GetRelatedOCSPRespTokens(CertificateAndContext cert);
-        void ValidateTimestamp(TimestampToken timestamp, ICertificateSource optionalSource, ICrlSource optionalCRLSource, IOcspSource optionalOCPSSource, IList<CertificateAndContext> usedCerts);
-        CertificateAndContext GetParentFromTrustedList(CertificateAndContext ctx);
-        IList<string> GetQualificationStatement();
-        ServiceInfo GetRelevantServiceInfo();
-        CertificateStatus GetCertificateStatusFromContext(CertificateAndContext cert);
+        void ValidateTimestamp(TimestampToken timestamp, ICertificateSource? optionalSource, ICrlSource? optionalCRLSource, IOcspSource? optionalOCPSSource, IList<CertificateAndContext> usedCerts);
+        CertificateAndContext? GetParentFromTrustedList(CertificateAndContext ctx);
+        IList<string>? GetQualificationStatement();
+        ServiceInfo? GetRelevantServiceInfo();
+        CertificateStatus? GetCertificateStatusFromContext(CertificateAndContext cert);
         SignatureValidationResult GetOcspStatus(BasicOcspResp x);
         SignatureValidationResult GetCrlStatus(CRLToken crlToken);
-        List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext> certSet = null);
+        List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext>? certSet = null);
     }
 
     /// <summary>
@@ -56,23 +56,23 @@ namespace CAdESLib.Document.Validation
         private const string WasNotValidTSLMessage = "Was not valid in the TSL";
         private const string VerifyWithOfflineServiceMessage = "Verify with offline services";
         private const string VerifyWithOnlineServiceMessage = "Verify with online services";
-        private readonly ICAdESLogger logger;
+        private readonly ICAdESLogger? logger;
         private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         public IList<BasicOcspResp> NeededOCSPResp => NeededOCSPRespTokens.Select(x => x.GetOcspResp()).ToList();
         public IList<OCSPRespToken> NeededOCSPRespTokens { get; } = new List<OCSPRespToken>();
-        public X509Certificate Certificate { get; }
+        public X509Certificate? Certificate { get; }
         public IList<X509Crl> NeededCRL => NeededCRLTokens.Select(x => x.GetX509crl()).ToList();
         public IList<CRLToken> NeededCRLTokens { get; } = new List<CRLToken>();
         public IList<CertificateAndContext> NeededCertificates => NeededCertificateTokens.Select(x => x.GetCertificateAndContext()).ToList();
         public IList<CertificateToken> NeededCertificateTokens { get; } = new List<CertificateToken>();
-        public IDictionary<ISignedToken, RevocationData> RevocationInfo { get; } = new Dictionary<ISignedToken, RevocationData>();
+        public IDictionary<ISignedToken, RevocationData?> RevocationInfo { get; } = new Dictionary<ISignedToken, RevocationData?>();
 
 
         public DateTime ValidationDate { get; set; }
 
 
-        private readonly Func<IOcspSource, ICrlSource, ICertificateStatusVerifier> certificateVerifierFactory;
+        private readonly Func<IOcspSource?, ICrlSource?, ICertificateStatusVerifier> certificateVerifierFactory;
         private readonly Func<CertificateAndContext, CertificateToken> certificateTokenFactory;
         public ICrlSource CrlSource { get; set; }
         public IOcspSource OcspSource { get; set; }
@@ -86,25 +86,33 @@ namespace CAdESLib.Document.Validation
         /// <param>
         /// The certificate that will be validated.
         /// </param>
-        public ValidationContext(X509Certificate certificate, DateTime validationDate, ICAdESLogger cadesLogger, IOcspSource ocspSource, ICrlSource crlSource, ICertificateSource certificateSource, Func<IOcspSource, ICrlSource, ICertificateStatusVerifier> certificateVerifierFactory, Func<CertificateAndContext, CertificateToken> certificateTokenFactory)
+        public ValidationContext(
+            X509Certificate? certificate,
+            DateTime validationDate,
+            ICAdESLogger? cadesLogger,
+            IOcspSource ocspSource,
+            ICrlSource crlSource,
+            ICertificateSource certificateSource,
+            Func<IOcspSource?, ICrlSource?, ICertificateStatusVerifier> certificateVerifierFactory,
+            Func<CertificateAndContext, CertificateToken> certificateTokenFactory)
         {
             this.certificateTokenFactory = certificateTokenFactory;
-            OcspSource = ocspSource;
-            CrlSource = crlSource;
-            TrustedListCertificatesSource = certificateSource;
-            logger = cadesLogger;
+            this.OcspSource = ocspSource;
+            this.CrlSource = crlSource;
+            this.TrustedListCertificatesSource = certificateSource;
+            this.logger = cadesLogger;
             if (certificate != null)
             {
                 logger?.Info($"New context for {certificate.SubjectDN}, {certificate.SerialNumber.ToString(16)}");
-                Certificate = certificate;
+                this.Certificate = certificate;
             }
-            ValidationDate = validationDate;
+            this.ValidationDate = validationDate;
             this.certificateVerifierFactory = certificateVerifierFactory;
         }
 
-        internal virtual ISignedToken GetOneNotYetVerifiedToken()
+        internal virtual ISignedToken? GetOneNotYetVerifiedToken()
         {
-            foreach (KeyValuePair<ISignedToken, RevocationData> e in RevocationInfo)
+            foreach (var e in RevocationInfo)
             {
                 if (e.Value == null)
                 {
@@ -115,15 +123,15 @@ namespace CAdESLib.Document.Validation
             return null;
         }
 
-        internal virtual CertificateAndContext GetIssuerCertificate(ISignedToken signedToken, ICertificateSource optionalSource, DateTime validationDate)
+        internal virtual CertificateAndContext? GetIssuerCertificate(ISignedToken signedToken, ICertificateSource optionalSource, DateTime validationDate)
         {
             var issuerSubjectName = signedToken?.GetSignerSubjectName();
-            if (issuerSubjectName == null || NotFoundIssuers.Contains(issuerSubjectName))
+            if (signedToken is null || issuerSubjectName == null || NotFoundIssuers.Contains(issuerSubjectName))
             {
                 return null;
             }
 
-            var list = new CompositeCertificateSource(TrustedListCertificatesSource, optionalSource).GetCertificateBySubjectName(signedToken.GetSignerSubjectName());
+            var list = new CompositeCertificateSource(TrustedListCertificatesSource, optionalSource).GetCertificateBySubjectName(issuerSubjectName);
             if (list != null)
             {
                 foreach (CertificateAndContext cert in list)
@@ -147,8 +155,8 @@ namespace CAdESLib.Document.Validation
                         }
                         if (cert.CertificateSource == CertificateSourceType.TRUSTED_LIST && cert.Certificate.IsSignedBy(cert.Certificate) && cert.Context != null)
                         {
-                            ServiceInfo info = (ServiceInfo) cert.Context;
-                            if (info.StatusStartingDateAtReferenceTime != null && validationDate.CompareTo( //jbonilla Before
+                            ServiceInfo info = (ServiceInfo)cert.Context;
+                            if (info.StatusStartingDateAtReferenceTime != null && validationDate.CompareTo(
                                 info.StatusStartingDateAtReferenceTime) < 0)
                             {
                                 logger?.Info(WasNotValidTSLMessage);
@@ -156,8 +164,8 @@ namespace CAdESLib.Document.Validation
                             }
                             else
                             {
-                                if (info.StatusEndingDateAtReferenceTime != null && validationDate.CompareTo(info //jbonilla After
-                                    .StatusEndingDateAtReferenceTime) > 0)
+                                if (info.StatusEndingDateAtReferenceTime != null
+                                 && validationDate.CompareTo(info.StatusEndingDateAtReferenceTime) > 0)
                                 {
                                     logger?.Info(WasNotValidTSLMessage);
                                     continue;
@@ -241,14 +249,20 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Validate the timestamp
         /// </summary>
-        public virtual void ValidateCertificate(X509Certificate certificate, DateTime validationDate, ICertificateSource optionalSource, ICrlSource optionalCRLSource, IOcspSource optionalOCSPSource, IList<CertificateAndContext> usedCerts)
+        public virtual void ValidateCertificate(
+            X509Certificate certificate,
+            DateTime validationDate,
+            ICertificateSource? optionalSource,
+            ICrlSource? optionalCRLSource,
+            IOcspSource? optionalOCSPSource,
+            IList<CertificateAndContext> usedCerts)
         {
             if (certificate is null)
             {
                 throw new ArgumentNullException(nameof(certificate));
             }
 
-            CertificateAndContext trustedCert = null;
+            CertificateAndContext? trustedCert = null;
             var possibleCerts = TrustedListCertificatesSource?.GetCertificateBySubjectName(certificate.SubjectDN);
             if (possibleCerts != null)
             {
@@ -262,7 +276,7 @@ namespace CAdESLib.Document.Validation
                 }
             }
 
-            AddNotYetVerifiedToken(certificateTokenFactory(trustedCert ?? new CertificateAndContext(certificate) { RootCause = new List<object> { certificate } }));
+            AddNotYetVerifiedToken(certificateTokenFactory(trustedCert ?? new CertificateAndContext(certificate) { RootCause = new List<object?> { certificate } }));
 
             Validate(
                 certificate,
@@ -276,7 +290,12 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Validate the timestamp
         /// </summary>
-        public virtual void ValidateTimestamp(TimestampToken timestamp, ICertificateSource optionalSource, ICrlSource optionalCRLSource, IOcspSource optionalOCPSSource, IList<CertificateAndContext> usedCerts)
+        public virtual void ValidateTimestamp(
+            TimestampToken timestamp,
+            ICertificateSource? optionalSource,
+            ICrlSource? optionalCRLSource,
+            IOcspSource? optionalOCPSSource,
+            IList<CertificateAndContext> usedCerts)
         {
             if (timestamp is null)
             {
@@ -296,18 +315,24 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Build the validation context for the specific date
         /// </summary>
-        public virtual void Validate(object rootValidationCause, DateTime validationDate, ICertificateSource optionalSource, ICrlSource optionalCRLSource, IOcspSource optionalOCPSSource, IList<CertificateAndContext> usedCerts)
+        public virtual void Validate(
+            object rootValidationCause,
+            DateTime validationDate,
+            ICertificateSource? optionalSource,
+            ICrlSource? optionalCRLSource,
+            IOcspSource? optionalOCPSSource,
+            IList<CertificateAndContext>? usedCerts)
         {
             int previousSize = RevocationInfo.Count;
             int previousVerified = VerifiedTokenCount();
-            ISignedToken signedToken = GetOneNotYetVerifiedToken();
+            var signedToken = GetOneNotYetVerifiedToken();
             if (signedToken != null)
             {
                 nloglogger?.Trace($"rootValidationCause: {rootValidationCause.GetType()}, signedTokenType: {signedToken.GetType()}, signedToken: {signedToken}");
                 // TODO: for certificateToken the source is aia, so put it at position of last resort (will be valuable to rearange composite sources so sources that use network connection will be used at a last time)
                 ICertificateSource otherSource = new CompositeCertificateSource(new ListCertificateSource(this.NeededCertificates.Select(x => x.Certificate).ToList()), optionalSource, signedToken.GetWrappedCertificateSource());
-                CertificateAndContext issuer = GetIssuerCertificate(signedToken, otherSource, validationDate);
-                RevocationData data = null;
+                CertificateAndContext? issuer = GetIssuerCertificate(signedToken, otherSource, validationDate);
+                RevocationData? data = null;
                 if (issuer != null)
                 {
                     nloglogger?.Trace($"issuer: {issuer}");
@@ -379,7 +404,7 @@ namespace CAdESLib.Document.Validation
                         usedCerts?.Add(certAndContext);
                     }
                     certAndContext.IssuerCertificate = issuer;
-                    CertificateStatus status = GetCertificateValidity(certAndContext, issuer, validationDate, optionalCRLSource, optionalOCPSSource);
+                    CertificateStatus? status = GetCertificateValidity(certAndContext, issuer, validationDate, optionalCRLSource, optionalOCPSSource);
                     certAndContext.CertificateStatus = status;
                     data = new RevocationData(signedToken);
                     if (status != null)
@@ -429,7 +454,7 @@ namespace CAdESLib.Document.Validation
         internal virtual int VerifiedTokenCount()
         {
             int count = 0;
-            foreach (KeyValuePair<ISignedToken, RevocationData> e in RevocationInfo)
+            foreach (var e in RevocationInfo)
             {
                 if (e.Value != null)
                 {
@@ -443,7 +468,7 @@ namespace CAdESLib.Document.Validation
         {
             int count = 0;
             StringBuilder builder = new StringBuilder();
-            foreach (KeyValuePair<ISignedToken, RevocationData> e in RevocationInfo)
+            foreach (var e in RevocationInfo)
             {
                 if (e.Value != null)
                 {
@@ -459,7 +484,7 @@ namespace CAdESLib.Document.Validation
             return $"ValidationContext contains {RevocationInfo.Count} ISignedToken and {count} of them have been verified. List : {builder.ToString()}";
         }
 
-        private CertificateStatus GetCertificateValidity(CertificateAndContext cert, CertificateAndContext potentialIssuer, DateTime validationDate, ICrlSource optionalCRLSource, IOcspSource optionalOCSPSource)
+        private CertificateStatus? GetCertificateValidity(CertificateAndContext cert, CertificateAndContext? potentialIssuer, DateTime validationDate, ICrlSource? optionalCRLSource, IOcspSource? optionalOCSPSource)
         {
             if (optionalCRLSource != null || optionalOCSPSource != null)
             {
@@ -485,11 +510,11 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the issuer's X509Certificate
         /// </returns>
-        public virtual CertificateAndContext GetIssuerCertificateFromThisContext(CertificateAndContext cert) => cert.IssuerCertificate;
+        public virtual CertificateAndContext? GetIssuerCertificateFromThisContext(CertificateAndContext cert) => cert.IssuerCertificate;
 
         private bool ConcernsCertificate(X509Crl x509crl, CertificateAndContext cert)
         {
-            CertificateAndContext issuerCertificate = GetIssuerCertificateFromThisContext(cert);
+            var issuerCertificate = GetIssuerCertificateFromThisContext(cert);
             if (issuerCertificate == null)
             {
                 return false;
@@ -503,7 +528,7 @@ namespace CAdESLib.Document.Validation
         private bool ConcernsCertificate(BasicOcspResp basicOcspResp, CertificateAndContext
              cert)
         {
-            CertificateAndContext issuerCertificate = GetIssuerCertificateFromThisContext(cert);
+            var issuerCertificate = GetIssuerCertificateFromThisContext(cert);
             if (issuerCertificate == null)
             {
                 return false;
@@ -573,8 +598,8 @@ namespace CAdESLib.Document.Validation
             //return crlTokens;
 
             var crls = RevocationInfo
-                .Where(x => x.Key is CertificateToken token && token.GetCertificateAndContext().Equals(cert) && x.Value.GetRevocationData() is X509Crl)
-                .Select(x => (x.Value.GetRevocationData() as X509Crl)).ToList();
+                .Where(x => x.Key is CertificateToken token && token.GetCertificateAndContext().Equals(cert) && x.Value?.GetRevocationData() is X509Crl)
+                .Select(x => (x.Value!.GetRevocationData() as X509Crl)).ToList();
 
             return NeededCRLTokens.Where(x => crls.Contains(x.GetX509crl())).ToList();
         }
@@ -629,7 +654,7 @@ namespace CAdESLib.Document.Validation
             return ocspresps;
         }
 
-        public virtual CertificateStatus GetCertificateStatusFromContext(CertificateAndContext cert)
+        public virtual CertificateStatus? GetCertificateStatusFromContext(CertificateAndContext cert)
         {
             if (cert is null)
             {
@@ -646,7 +671,7 @@ namespace CAdESLib.Document.Validation
                 };
                 return status;
             }
-            CertificateAndContext issuer = GetIssuerCertificateFromThisContext(cert);
+            var issuer = GetIssuerCertificateFromThisContext(cert);
             if (issuer == null)
             {
                 return null;
@@ -660,9 +685,9 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Retrieve the parent from the trusted list
         /// </summary>
-        public virtual CertificateAndContext GetParentFromTrustedList(CertificateAndContext ctx)
+        public virtual CertificateAndContext? GetParentFromTrustedList(CertificateAndContext ctx)
         {
-            CertificateAndContext parent = ctx;
+            var parent = ctx;
             while ((parent = GetIssuerCertificateFromThisContext(parent)) != null)
             {
                 if (parent.CertificateSource == CertificateSourceType.TRUSTED_LIST && parent.Certificate.IsSignedBy(parent.Certificate))
@@ -678,17 +703,22 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Return the ServiceInfo of the parent (in the Trusted List) of the certificate
         /// </summary>
-        public virtual ServiceInfo GetRelevantServiceInfo()
+        public virtual ServiceInfo? GetRelevantServiceInfo()
         {
-            CertificateAndContext cert = new CertificateAndContext(Certificate);
-            CertificateAndContext parent = GetParentFromTrustedList(cert);
+            if (Certificate is null)
+            {
+                return null;
+            }
+
+            var cert = new CertificateAndContext(Certificate);
+            var parent = GetParentFromTrustedList(cert);
             if (parent == null)
             {
                 return null;
             }
             else
             {
-                ServiceInfo info = (ServiceInfo) parent.Context;
+                var info = parent.Context as ServiceInfo;
                 return info;
             }
         }
@@ -696,9 +726,9 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Return the qualifications statement for the signing certificate
         /// </summary>
-        public virtual IList<string> GetQualificationStatement()
+        public virtual IList<string>? GetQualificationStatement()
         {
-            ServiceInfo info = GetRelevantServiceInfo();
+            var info = GetRelevantServiceInfo();
             logger?.Info("Service Information " + info);
             if (info == null)
             {
@@ -706,6 +736,11 @@ namespace CAdESLib.Document.Validation
             }
             else
             {
+                if (Certificate is null)
+                {
+                    return null;
+                }
+
                 return info.GetQualifiers(new CertificateAndContext(Certificate));
             }
         }
@@ -741,7 +776,7 @@ namespace CAdESLib.Document.Validation
             return result;
         }
 
-        private List<CertificateAndContext> GetCertsChain(BasicOcspResp resp, List<CertificateAndContext> certSet = null)
+        private List<CertificateAndContext> GetCertsChain(BasicOcspResp resp, List<CertificateAndContext>? certSet = null)
         {
             var certSetLocal = certSet ?? new List<CertificateAndContext>();
 
@@ -758,7 +793,7 @@ namespace CAdESLib.Document.Validation
             return certSetLocal;
         }
 
-        private List<CertificateAndContext> GetCertsChain(X509Crl crl, List<CertificateAndContext> certSet = null)
+        private List<CertificateAndContext> GetCertsChain(X509Crl crl, List<CertificateAndContext>? certSet = null)
         {
             var certSetLocal = certSet ?? new List<CertificateAndContext>();
 
@@ -769,15 +804,15 @@ namespace CAdESLib.Document.Validation
 
             var certAndContext = RevocationInfo.Where(x => (x.Key as CRLToken)?.GetX509crl() == crl).FirstOrDefault().Value?.GetRevocationData() as CertificateAndContext;
 
-            if (certSetLocal != null)
+            if (certSetLocal != null && certAndContext != null)
             {
                 certSetLocal = certSetLocal.Union(GetCertsChain(certAndContext, certSetLocal)).ToList();
             }
 
-            return certSetLocal;
+            return certSetLocal!;
         }
 
-        public List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext> certSet = null)
+        public List<CertificateAndContext> GetCertsChain(CertificateAndContext certificateAndContext, List<CertificateAndContext>? certSet = null)
         {
             var certSetLocal = certSet ?? new List<CertificateAndContext>();
 
@@ -789,21 +824,24 @@ namespace CAdESLib.Document.Validation
             certSetLocal.Add(certificateAndContext);
             var revocationData = GetRevocationData(certificateAndContext);
 
-            if (revocationData is BasicOcspResp)
+            if (revocationData is BasicOcspResp ocspResp)
             {
-                certSetLocal = certSetLocal.Union(GetCertsChain(revocationData as BasicOcspResp, certSetLocal)).ToList();
+                certSetLocal = certSetLocal.Union(GetCertsChain(ocspResp, certSetLocal)).ToList();
             }
-            else if (revocationData is X509Crl)
+            else if (revocationData is X509Crl crl)
             {
-                certSetLocal = certSetLocal.Union(GetCertsChain(revocationData as X509Crl, certSetLocal)).ToList();
+                certSetLocal = certSetLocal.Union(GetCertsChain(crl, certSetLocal)).ToList();
             }
 
-            certSetLocal = certSetLocal.Union(GetCertsChain(certificateAndContext.IssuerCertificate, certSetLocal)).ToList();
+            if (certificateAndContext.IssuerCertificate != null)
+            {
+                certSetLocal = certSetLocal.Union(GetCertsChain(certificateAndContext.IssuerCertificate, certSetLocal)).ToList();
+            }
 
             return certSetLocal;
         }
 
-        private object GetRevocationData(CertificateAndContext certificateAndContext)
+        private object? GetRevocationData(CertificateAndContext certificateAndContext)
         {
             return RevocationInfo.FirstOrDefault(x => (x.Key as CertificateToken)?.GetCertificateAndContext() == certificateAndContext).Value?.GetRevocationData();
         }

@@ -8,7 +8,7 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Extend the level of the signatures contained in a document.
         /// </summary>
-        (IDocument, ICollection<IValidationContext>) ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters);
+        (IDocument, ICollection<IValidationContext?>?) ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters);
 
         SignatureProfile SignatureProfile { get; }
 

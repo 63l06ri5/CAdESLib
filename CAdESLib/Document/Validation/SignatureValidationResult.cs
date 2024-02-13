@@ -27,9 +27,9 @@ namespace CAdESLib.Document.Validation
 
         private ResultStatus status;
 
-        protected internal string description;
+        protected internal string? description;
 
-        public SignatureValidationResult(ResultStatus status, string description)
+        public SignatureValidationResult(ResultStatus status, string? description)
         {
             this.status = status;
             this.description = description;
@@ -75,7 +75,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// true if valid
         /// </returns>
-        public virtual bool IsValid => (Status == ResultStatus.VALID);
+        public virtual bool IsValid => Status == ResultStatus.VALID;
 
         /// <summary>
         /// returns whether the check was invalid
@@ -83,7 +83,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// true if valid
         /// </returns>
-        public virtual bool IsInvalid => (Status == ResultStatus.INVALID);
+        public virtual bool IsInvalid => Status == ResultStatus.INVALID;
 
         /// <summary>
         /// returns whether the check was undetermined
@@ -91,10 +91,10 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// true if undetermined
         /// </returns>
-        public virtual bool IsUndetermined => (Status == ResultStatus.UNDETERMINED);
+        public virtual bool IsUndetermined => Status == ResultStatus.UNDETERMINED;
 
         /// <param name="status"></param>
-        public virtual void SetStatus(ResultStatus status, string description)
+        public virtual void SetStatus(ResultStatus status, string? description)
         {
             this.status = status;
             this.description = description;
@@ -117,6 +117,6 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the description
         /// </returns>
-        public virtual string Description => description;
+        public virtual string? Description => description;
     }
 }

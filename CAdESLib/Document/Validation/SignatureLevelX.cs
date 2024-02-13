@@ -7,16 +7,18 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class SignatureLevelX : SignatureLevel
     {
-        private readonly TimestampVerificationResult[] signatureAndRefsTimestampsVerification;
+        private readonly TimestampVerificationResult[]? signatureAndRefsTimestampsVerification;
 
-        private readonly TimestampVerificationResult[] referencesTimestampsVerification;
+        private readonly TimestampVerificationResult[]? referencesTimestampsVerification;
 
         public SignatureLevelX(SignatureValidationResult levelReached) : base(levelReached)
         {
         }
 
-        public SignatureLevelX(SignatureValidationResult levelReached, TimestampVerificationResult
-            [] signatureAndRefsTimestampsVerification, TimestampVerificationResult[] referencesTimestampsVerification) : base(levelReached)
+        public SignatureLevelX(
+            SignatureValidationResult levelReached,
+            TimestampVerificationResult[]? signatureAndRefsTimestampsVerification,
+            TimestampVerificationResult[]? referencesTimestampsVerification) : base(levelReached)
         {
             this.signatureAndRefsTimestampsVerification = signatureAndRefsTimestampsVerification;
             this.referencesTimestampsVerification = referencesTimestampsVerification;
@@ -41,11 +43,11 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the signatureAndRefsTimestampsVerification
         /// </returns>
-        public virtual TimestampVerificationResult[] SignatureAndRefsTimestampsVerification => signatureAndRefsTimestampsVerification;
+        public virtual TimestampVerificationResult[]? SignatureAndRefsTimestampsVerification => signatureAndRefsTimestampsVerification;
 
         /// <returns>
         /// the referencesTimestampsVerification
         /// </returns>
-        public virtual TimestampVerificationResult[] ReferencesTimestampsVerification => referencesTimestampsVerification;
+        public virtual TimestampVerificationResult[]? ReferencesTimestampsVerification => referencesTimestampsVerification;
     }
 }

@@ -13,7 +13,7 @@ namespace CAdESLib.Document.Validation
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public BasicOcspResp GetOcspResponse(X509Certificate certificate, X509Certificate
+        public BasicOcspResp? GetOcspResponse(X509Certificate certificate, X509Certificate
              issuerCertificate)
         {
             logger.Trace("find OCSP response");

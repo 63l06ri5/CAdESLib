@@ -12,7 +12,7 @@ namespace CAdESLib.Document.Validation
 
         private IList<CertificateVerification> certificatePathVerification = new List<CertificateVerification>();
 
-        private TrustedListInformation trustedListInformation;
+        private TrustedListInformation? trustedListInformation;
 
         public CertPathRevocationAnalysis(IValidationContext ctx, TrustedListInformation info, IList<CertificateAndContext> neededCertificates)
         {
@@ -68,7 +68,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the trustedListInformation
         /// </returns>
-        public virtual TrustedListInformation TrustedListInformation => trustedListInformation;
+        public virtual TrustedListInformation? TrustedListInformation => trustedListInformation;
 
         /// <param>
         /// the summary to set

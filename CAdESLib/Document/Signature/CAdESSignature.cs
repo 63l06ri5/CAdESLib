@@ -42,7 +42,7 @@ namespace CAdESLib.Document.Signature
             signers.MoveNext();
 
             _cmsSignedData = cms;
-            signerInformation = (SignerInformation) signers.Current;
+            signerInformation = (SignerInformation)signers.Current!;
         }
 
         public CAdESSignature(CmsSignedData cms, SignerInformation signerInformation)
@@ -66,7 +66,7 @@ namespace CAdESLib.Document.Signature
 
         public virtual IOcspSource OCSPSource => new CAdESOCSPSource(_cmsSignedData, signerInformation.SignerID);
 
-        public virtual X509Certificate SigningCertificate
+        public virtual X509Certificate? SigningCertificate
         {
             get
             {
@@ -88,7 +88,7 @@ namespace CAdESLib.Document.Signature
         {
             get
             {
-                var list = ((CAdESCertificateSource) CertificateSource).GetCertificates()?.ToList();
+                var list = ((CAdESCertificateSource)CertificateSource).GetCertificates()?.ToList() ?? Array.Empty<X509Certificate>().ToList();
 
                 foreach (var tst in AllTimestampTokens)
                 {
@@ -99,7 +99,7 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual PolicyValue PolicyId
+        public virtual PolicyValue? PolicyId
         {
             get
             {
@@ -125,7 +125,7 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual DateTimeObject SigningTime
+        public virtual DateTimeObject? SigningTime
         {
             get
             {
@@ -140,9 +140,9 @@ namespace CAdESLib.Document.Signature
                         switch (o)
                         {
                             case DerUtcTime _:
-                                return new DateTimeObject(((DerUtcTime) o).ToDateTime());
+                                return new DateTimeObject(((DerUtcTime)o).ToDateTime());
                             case BcX509.Time _:
-                                return new DateTimeObject(((BcX509.Time) o).ToDateTime());
+                                return new DateTimeObject(((BcX509.Time)o).ToDateTime());
                         }
                         logger.Error("Error when reading signing time. Unrecognized " + o.GetType());
                     }
@@ -156,9 +156,9 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual string Location => null;
+        public virtual string? Location => null;
 
-        public virtual string[] ClaimedSignerRoles
+        public virtual string[]? ClaimedSignerRoles
         {
             get
             {
@@ -176,34 +176,33 @@ namespace CAdESLib.Document.Signature
                 {
                     return null;
                 }
-                string[]
-        ret = new string[signerAttr.ClaimedAttributes.Count];
+                string[] ret = new string[signerAttr.ClaimedAttributes.Count];
                 for (int i = 0; i < signerAttr.ClaimedAttributes.Count; i++)
                 {
                     ret[i] = signerAttr.ClaimedAttributes[i] is DerOctetString @string
-                        ? Encoding.UTF8.GetString(@string.GetOctets())
-                        : signerAttr.ClaimedAttributes[i].ToString();
+                        ? Encoding.UTF8.GetString(@string.GetOctets())!
+                        : signerAttr.ClaimedAttributes[i].ToString()!;
                 }
                 return ret;
             }
         }
 
-        public virtual IList<TimestampToken> SignatureTimestamps => signerInformation.GetSignatureTimestamps();
+        public virtual IList<TimestampToken>? SignatureTimestamps => signerInformation.GetSignatureTimestamps();
 
-        public virtual IList<TimestampToken> TimestampsX1 => signerInformation.GetTimestampsX1();
+        public virtual IList<TimestampToken>? TimestampsX1 => signerInformation.GetTimestampsX1();
 
-        public virtual IList<TimestampToken> TimestampsX2 => signerInformation.GetTimestampsX2();
+        public virtual IList<TimestampToken>? TimestampsX2 => signerInformation.GetTimestampsX2();
 
-        public virtual IList<TimestampToken> ArchiveTimestamps => signerInformation.GetArchiveTimestamps();
+        public virtual IList<TimestampToken>? ArchiveTimestamps => signerInformation.GetArchiveTimestamps();
 
         public virtual string SignatureAlgorithm => signerInformation.EncryptionAlgOid;
 
-        public virtual bool CheckIntegrity(IDocument detachedDocument)
+        public virtual bool CheckIntegrity(IDocument? detachedDocument)
         {
             try
             {
                 bool ret = false;
-                SignerInformation si = null;
+                SignerInformation? si = null;
                 if (detachedDocument != null)
                 {
                     // Recreate a SignerInformation with the content using a CMSSignedDataParser                   
@@ -240,11 +239,9 @@ namespace CAdESLib.Document.Signature
             get
             {
                 IList<IAdvancedSignature> counterSigs = new List<IAdvancedSignature>();
-                foreach (object o in signerInformation.GetCounterSignatures().GetSigners())
+                foreach (var o in signerInformation.GetCounterSignatures().GetSigners().Cast<SignerInformation>())
                 {
-                    SignerInformation i = (SignerInformation) o;
-                    CAdESSignature info = new CAdESSignature
-                        (_cmsSignedData, i.SignerID);
+                    CAdESSignature info = new CAdESSignature(_cmsSignedData, o.SignerID);
                     counterSigs.Add(info);
                 }
                 return counterSigs;
@@ -296,9 +293,9 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual IList<X509Crl> CRLs => ((CAdESCRLSource) CRLSource).GetCRLsFromSignature();
+        public virtual IList<X509Crl> CRLs => ((CAdESCRLSource)CRLSource).GetCRLsFromSignature();
 
-        public virtual IList<BasicOcspResp> OCSPs => ((CAdESOCSPSource) OCSPSource).GetOCSPResponsesFromSignature();
+        public virtual IList<BasicOcspResp> OCSPs => ((CAdESOCSPSource)OCSPSource).GetOCSPResponsesFromSignature();
 
         public virtual byte[] SignatureTimestampData => signerInformation.GetSignature();
 
@@ -328,7 +325,7 @@ namespace CAdESLib.Document.Signature
                 if (signerInformation.UnsignedAttributes != null)
                 {
                     var unsignedAttibutes = signerInformation.UnsignedAttributes.ToDictionary();
-                    
+
                     if (unsignedAttibutes.Contains(PkcsObjectIdentifiers.IdAAEtsCertificateRefs))
                     {
                         var attrCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
@@ -355,14 +352,13 @@ namespace CAdESLib.Document.Signature
 
         public IList<TimestampToken> AllTimestampTokens => signerInformation.GetAllTimestampTokens();
 
-        public virtual byte[] GetArchiveTimestampData(int index, IDocument originalDocument)
+        public virtual byte[] GetArchiveTimestampData(int index, IDocument? originalDocument)
         {
             using var toTimestamp = new MemoryStream();
             BcCms.ContentInfo contentInfo = _cmsSignedData.ContentInfo;
             BcCms.SignedData signedData = BcCms.SignedData.GetInstance(contentInfo.Content);
             // 5.4.1
-            if (signedData.EncapContentInfo == null || signedData.EncapContentInfo.
-                Content == null)
+            if (signedData.EncapContentInfo == null || signedData.EncapContentInfo.Content == null)
             {
                 if (originalDocument != null)
                 {
@@ -376,7 +372,7 @@ namespace CAdESLib.Document.Signature
             else
             {
                 BcCms.ContentInfo content = signedData.EncapContentInfo;
-                DerOctetString octet = (DerOctetString) content.Content;
+                DerOctetString octet = (DerOctetString)content.Content;
                 BcCms.ContentInfo info2 = new BcCms.ContentInfo(new DerObjectIdentifier("1.2.840.113549.1.7.1"), new BerOctetString(octet.GetOctets()));
                 toTimestamp.Write(info2.GetEncoded());
             }
@@ -411,10 +407,23 @@ namespace CAdESLib.Document.Signature
 
         private class AttributeTimeStampComparator : IComparer<BcCms.Attribute>
         {
-            public virtual int Compare(BcCms.Attribute o1, BcCms.Attribute o2)
+            public virtual int Compare(BcCms.Attribute? o1, BcCms.Attribute? o2)
             {
                 try
                 {
+                    if (o1 is null && o2 is null)
+                    {
+                        return 0;
+                    }
+                    if (o1 is null)
+                    {
+                        return 1;
+                    }
+                    else if (o2 is null)
+                    {
+                        return -1;
+                    }
+
                     TimeStampToken t1 = new TimeStampToken(new CmsSignedData(o1.AttrValues
                         [0].ToAsn1Object().GetDerEncoded()));
                     TimeStampToken t2 = new TimeStampToken(new CmsSignedData(o2.AttrValues
@@ -437,7 +446,7 @@ namespace CAdESLib.Document.Signature
                 for (int i = 0; i < v.Count; i++)
                 {
                     Asn1Encodable enc = v[i];
-                    ts.Add((BcCms.Attribute) enc);
+                    ts.Add((BcCms.Attribute)enc);
                 }
                 ts.Sort(new AttributeTimeStampComparator());
                 for (int i_1 = 0; i_1 < archiveTimeStampToKeep; i_1++)

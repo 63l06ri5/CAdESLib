@@ -12,9 +12,9 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the signatureInformation
         /// </returns>
-        public IList<SignatureInformation> SignatureInformationList { get; private set; }
+        public IList<SignatureInformation?> SignatureInformationList { get; private set; }
 
-        public ValidationReport(TimeInformation timeInformation, IList<SignatureInformation> signatureInformationList)
+        public ValidationReport(TimeInformation timeInformation, IList<SignatureInformation?> signatureInformationList)
         {
             TimeInformation = timeInformation;
             SignatureInformationList = signatureInformationList;

@@ -44,22 +44,22 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Get the signing certificate
         /// </summary>
-        X509Certificate SigningCertificate { get; }
+        X509Certificate? SigningCertificate { get; }
 
         /// <summary>
         /// Returns the signing time information
         /// </summary>
-        DateTimeObject SigningTime { get; }
+        DateTimeObject? SigningTime { get; }
 
         /// <summary>
         /// Returns the Signature Policy OID from the signature
         /// </summary>
-        PolicyValue PolicyId { get; }
+        PolicyValue? PolicyId { get; }
 
         /// <summary>
         /// Return information about the place where the signature was generated
         /// </summary>
-        string Location { get; }
+        string? Location { get; }
 
         /// <summary>
         /// Returns the content type of the signed data
@@ -69,12 +69,12 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Returns the claimed role of the signer.
         /// </summary>
-        string[] ClaimedSignerRoles { get; }
+        string[]? ClaimedSignerRoles { get; }
 
         /// <summary>
         /// Returns the signature timestamps
         /// </summary>
-        IList<TimestampToken> SignatureTimestamps { get; }
+        IList<TimestampToken>? SignatureTimestamps { get; }
 
         /// <summary>
         /// Returns the data that is timestamped in the SignatureTimeStamp
@@ -91,20 +91,20 @@ namespace CAdESLib.Document.Signature
         /// <param name="originalData">
         /// For a detached signature, the original data are needed
         /// </param>
-        byte[] GetArchiveTimestampData(int index, IDocument originalData);
+        byte[] GetArchiveTimestampData(int index, IDocument? originalData);
 
         /// <summary>
         /// Returns the timestamp over the certificate/revocation references (and optionally other fields), used in -X
         /// profiles
         /// </summary>
-        IList<TimestampToken> TimestampsX1 { get; }
+        IList<TimestampToken>? TimestampsX1 { get; }
 
-        IList<TimestampToken> TimestampsX2 { get; }
+        IList<TimestampToken>? TimestampsX2 { get; }
 
         /// <summary>
         /// Returns the archive TimeStamps
         /// </summary>
-        IList<TimestampToken> ArchiveTimestamps { get; }
+        IList<TimestampToken>? ArchiveTimestamps { get; }
 
         /// <summary>
         /// All timestamp tokens
@@ -120,7 +120,7 @@ namespace CAdESLib.Document.Signature
         /// <returns>
         /// true if the signature is valid
         /// </returns>
-        bool CheckIntegrity(IDocument detachedDocument);
+        bool CheckIntegrity(IDocument? detachedDocument);
 
         /// <summary>
         /// Returns a list of counter signatures applied to this signature

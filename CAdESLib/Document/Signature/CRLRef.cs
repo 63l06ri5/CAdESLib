@@ -15,10 +15,6 @@ namespace CAdESLib.Document.Signature
 
         private readonly byte[] digestValue;
 
-        public CRLRef()
-        {
-        }
-
         public CRLRef(CrlValidatedID cmsRef)
         {
             algorithm = cmsRef.CrlHash.HashAlgorithm.Algorithm.Id;

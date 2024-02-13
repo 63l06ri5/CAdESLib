@@ -5,7 +5,7 @@ namespace CAdESLib.Document
     /// <summary>In memory representation of a document</summary>
     public class InMemoryDocument : IDocument
     {
-        private readonly string name;
+        private readonly string? name;
 
         private readonly byte[] document;
 
@@ -15,7 +15,7 @@ namespace CAdESLib.Document
         {
         }
 
-        public InMemoryDocument(byte[] document, string name)
+        public InMemoryDocument(byte[] document, string? name)
         {
             this.document = document;
             this.name = name;
@@ -27,7 +27,7 @@ namespace CAdESLib.Document
             return new MemoryStream(document);
         }
 
-        public virtual string GetName()
+        public virtual string? GetName()
         {
             return name;
         }

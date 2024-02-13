@@ -1,15 +1,9 @@
 ﻿using CAdESLib.Document.Validation;
-using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Esf;
-using Org.BouncyCastle.Asn1.Ocsp;
-using Org.BouncyCastle.Asn1.Pkcs;
-using Org.BouncyCastle.Asn1.X509;
+using CAdESLib.Service;
 using Org.BouncyCastle.Cms;
-using Org.BouncyCastle.Tsp;
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using BcCms = Org.BouncyCastle.Asn1.Cms;
 
@@ -24,6 +18,8 @@ namespace CAdESLib.Document.Signature.Extensions
     public class CAdESProfileXL : CAdESProfileX
     {
         public override SignatureProfile SignatureProfile => SignatureProfile.XL;
+
+        public CAdESProfileXL(ITspSource signatureTsa, ICertificateVerifier certificateVerifier) : base(signatureTsa, certificateVerifier) { }
 
         /// <summary>
         /// Sets the type of the CAdES-X signature (Type 1 with id-aa-ets-escTimeStamp or Type 2 with
@@ -68,7 +64,13 @@ namespace CAdESLib.Document.Signature.Extensions
             {
                 signingTime = DateTime.Now;
             }
-            unsignedAttrs = ExtendUnsignedAttributes(unsignedAttrs, signature.SigningCertificate, signingTime.Value, signature.CertificateSource, validationContext);
+            var signingCertificate = signature.SigningCertificate;
+            if (signingCertificate is null)
+            {
+                throw new ArgumentNullException(nameof(signingCertificate));
+            }
+
+            unsignedAttrs = ExtendUnsignedAttributes(unsignedAttrs, signingCertificate, signingTime.Value, signature.CertificateSource, validationContext);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrs));
             return (newsi, validationContext);
         }

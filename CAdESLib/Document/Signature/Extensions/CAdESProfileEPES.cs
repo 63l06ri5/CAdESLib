@@ -1,9 +1,10 @@
 ﻿using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
+using System;
 using System.Collections.Generic;
+using Attribute = Org.BouncyCastle.Asn1.Cms.Attribute;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
@@ -26,9 +27,15 @@ namespace CAdESLib.Document.Signature.Extensions
             {
                 case SignaturePolicy.EXPLICIT:
                     {
+                        var signaturePolicyHashAlgo = parameters.SignaturePolicyHashAlgo;
+                        if (signaturePolicyHashAlgo is null)
+                        {
+                            throw new ArgumentNullException(nameof(signaturePolicyHashAlgo));
+                        }
+
                         sigPolicy = new SignaturePolicyIdentifier(
                             new SignaturePolicyId(new DerObjectIdentifier(parameters.SignaturePolicyID),
-                            new OtherHashAlgAndValue(new AlgorithmIdentifier(new DerObjectIdentifier(DigestAlgorithm.GetByName(parameters.SignaturePolicyHashAlgo).OID)),
+                            new OtherHashAlgAndValue(new AlgorithmIdentifier(new DerObjectIdentifier(DigestAlgorithm.GetByName(signaturePolicyHashAlgo).OID)),
                             new DerOctetString(parameters.SignaturePolicyHashValue))));
                         policy = new Attribute(PkcsObjectIdentifiers.IdAAEtsSigPolicyID, new DerSet(sigPolicy));
                         signedAttrs.Add(PkcsObjectIdentifiers.IdAAEtsSigPolicyID, policy);

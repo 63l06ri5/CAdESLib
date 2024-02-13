@@ -1,4 +1,5 @@
 ﻿using CAdESLib.Document.Validation;
+using CAdESLib.Service;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.Pkcs;
@@ -23,6 +24,8 @@ namespace CAdESLib.Document.Signature.Extensions
         public static readonly DerObjectIdentifier id_aa_ets_archiveTimestamp = PkcsObjectIdentifiers.IdAAEtsArchiveTimestamp;
 
         public override SignatureProfile SignatureProfile => SignatureProfile.A;
+
+        public CAdESProfileA(ITspSource signatureTsa, ICertificateVerifier certificateVerifier) : base(signatureTsa, certificateVerifier) { }
 
         protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData cmsSignedData, SignerInformation si, SignatureParameters parameters, IDocument originalDocument)
         {

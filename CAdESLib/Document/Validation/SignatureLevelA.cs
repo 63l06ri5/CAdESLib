@@ -7,9 +7,9 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class SignatureLevelA : SignatureLevel
     {
-        private readonly IList<TimestampVerificationResult> archiveTimestampsVerification;
+        private readonly IList<TimestampVerificationResult>? archiveTimestampsVerification;
 
-        public SignatureLevelA(SignatureValidationResult levelReached, IList<TimestampVerificationResult> archiveTimestampsVerification) : base(levelReached)
+        public SignatureLevelA(SignatureValidationResult levelReached, IList<TimestampVerificationResult>? archiveTimestampsVerification) : base(levelReached)
         {
             this.archiveTimestampsVerification = archiveTimestampsVerification;
         }
@@ -17,6 +17,6 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the archiveTimestampsVerification
         /// </returns>
-        public virtual IList<TimestampVerificationResult> ArchiveTimestampsVerification => archiveTimestampsVerification;
+        public virtual IList<TimestampVerificationResult>? ArchiveTimestampsVerification => archiveTimestampsVerification;
     }
 }

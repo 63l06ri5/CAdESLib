@@ -21,7 +21,7 @@ namespace CAdESLib.Document.Validation
         public virtual bool IsServiceWasFound => trustService != null;
 
         /// <returns></returns>
-        public virtual string TSPName
+        public virtual string? TSPName
         {
             get
             {
@@ -34,7 +34,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string TSPTradeName
+        public virtual string? TSPTradeName
         {
             get
             {
@@ -47,7 +47,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string TSPPostalAddress
+        public virtual string? TSPPostalAddress
         {
             get
             {
@@ -60,7 +60,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string TSPElectronicAddress
+        public virtual string? TSPElectronicAddress
         {
             get
             {
@@ -73,7 +73,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string ServiceType
+        public virtual string? ServiceType
         {
             get
             {
@@ -86,7 +86,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string ServiceName
+        public virtual string? ServiceName
         {
             get
             {
@@ -99,7 +99,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string CurrentStatus
+        public virtual string? CurrentStatus
         {
             get
             {
@@ -107,9 +107,9 @@ namespace CAdESLib.Document.Validation
                 {
                     return null;
                 }
-                string status = trustService.CurrentStatus;
-                int slashIndex = status.LastIndexOf('/');
-                if (slashIndex > 0 && slashIndex < status.Length - 1)
+                var status = trustService.CurrentStatus;
+                var slashIndex = status?.LastIndexOf('/') ?? 0;
+                if (slashIndex > 0 && slashIndex < status!.Length - 1)
                 {
                     status = status[(slashIndex + 1)..];
                 }
@@ -118,7 +118,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual DateTimeObject CurrentStatusStartingDate
+        public virtual DateTimeObject? CurrentStatusStartingDate
         {
             get
             {
@@ -132,7 +132,7 @@ namespace CAdESLib.Document.Validation
         }
 
         /// <returns></returns>
-        public virtual string StatusAtReferenceTime
+        public virtual string? StatusAtReferenceTime
         {
             get
             {
@@ -140,9 +140,9 @@ namespace CAdESLib.Document.Validation
                 {
                     return null;
                 }
-                string status = trustService.StatusAtReferenceTime;
-                int slashIndex = status.LastIndexOf('/');
-                if (slashIndex > 0 && slashIndex < status.Length - 1)
+                var status = trustService.StatusAtReferenceTime;
+                var slashIndex = status?.LastIndexOf('/') ?? 0;
+                if (slashIndex > 0 && slashIndex < status!.Length - 1)
                 {
                     status = status[(slashIndex + 1)..];
                 }
@@ -150,7 +150,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        public virtual DateTimeObject StatusStartingDateAtReferenceTime
+        public virtual DateTimeObject? StatusStartingDateAtReferenceTime
         {
             get
             {
@@ -183,7 +183,7 @@ namespace CAdESLib.Document.Validation
         /// Return the list of condition associated to this service
         /// </summary>
         /// <returns></returns>
-        public virtual IList<QualificationElement> QualitificationElements
+        public virtual IList<QualificationElement>? QualitificationElements
         {
             get
             {

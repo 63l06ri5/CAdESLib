@@ -19,14 +19,14 @@
         /// <returns>
         /// the signaturePolicyId
         /// </returns>
-        public virtual string SignaturePolicyId { get; private set; }
+        public virtual string? SignaturePolicyId { get; private set; }
 
         /// <returns>
         /// the policy
         /// </returns>
         public virtual SignaturePolicy Policy { get; private set; }
 
-        public override string ToString()
+        public override string? ToString()
         {
             switch (Policy)
             {

@@ -30,6 +30,6 @@ namespace CAdESLib.Document.Validation
         /// A CertificateStatus if the check could be performed. (But still, the certificate can be REVOKED). Null
         /// otherwise.
         /// </returns>
-        CertificateStatus Check(X509Certificate certificate, X509Certificate issuerCertificate, DateTime validationDate);
+        CertificateStatus? Check(X509Certificate certificate, X509Certificate? issuerCertificate, DateTime validationDate);
     }
 }

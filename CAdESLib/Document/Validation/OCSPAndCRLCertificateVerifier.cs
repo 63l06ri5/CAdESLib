@@ -24,7 +24,7 @@ namespace CAdESLib.Document.Validation
             this.crlVerifier = crlVerifier;
         }
 
-        public virtual CertificateStatus Check(X509Certificate cert, X509Certificate potentialIssuer, DateTime validationDate)
+        public virtual CertificateStatus? Check(X509Certificate? cert, X509Certificate? potentialIssuer, DateTime validationDate)
         {
             if (cert is null)
             {
@@ -51,7 +51,7 @@ namespace CAdESLib.Document.Validation
             }
 
             logger.Trace("OCSP request for " + cert.SubjectDN);
-            CertificateStatus result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
+            CertificateStatus? result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
             if (result != null && result.Validity != CertificateValidity.UNKNOWN)
             {
                 logger.Trace(OCSPDoneMessage);

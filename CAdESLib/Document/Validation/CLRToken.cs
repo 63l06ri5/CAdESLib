@@ -12,9 +12,9 @@ namespace CAdESLib.Document.Validation
     {
         private readonly X509Crl x509crl;
 
-        private X509Certificate signer;
+        private X509Certificate? signer;
 
-        public List<object> RootCause { get; } = new List<object>();
+        public List<object?> RootCause { get; } = new List<object?>();
 
         public CRLToken(X509Crl crl, object rootCause)
         {
@@ -52,7 +52,7 @@ namespace CAdESLib.Document.Validation
             }
         }
 
-        public virtual ICertificateSource GetWrappedCertificateSource()
+        public virtual ICertificateSource? GetWrappedCertificateSource()
         {
             return null;
         }
@@ -65,7 +65,7 @@ namespace CAdESLib.Document.Validation
             return result;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (this == obj)
             {
@@ -102,6 +102,6 @@ namespace CAdESLib.Document.Validation
             return "CRL[signedBy=" + GetSignerSubjectName() + "]";
         }
 
-        public X509Certificate GetSigner() => signer;
+        public X509Certificate? GetSigner() => signer;
     }
 }

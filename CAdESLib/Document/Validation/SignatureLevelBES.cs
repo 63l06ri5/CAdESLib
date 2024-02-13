@@ -10,30 +10,30 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class SignatureLevelBES : SignatureLevel
     {
-        private readonly X509Certificate signingCertificate;
+        private readonly X509Certificate? signingCertificate;
 
         private readonly SignatureValidationResult signingCertRefVerification;
 
-        private readonly SignatureVerification[] counterSignaturesVerification;
+        private readonly SignatureVerification[]? counterSignaturesVerification;
 
-        private readonly IList<TimestampVerificationResult> timestampsVerification;
+        private readonly IList<TimestampVerificationResult>? timestampsVerification;
 
-        private readonly IList<X509Certificate> certificates;
+        private readonly IList<X509Certificate>? certificates;
 
         private readonly DateTime signingTime;
 
-        private readonly string location;
+        private readonly string? location;
 
-        private readonly string[] claimedSignerRole;
+        private readonly string[]? claimedSignerRole;
 
-        private readonly string contentType;
+        private readonly string? contentType;
 
         public SignatureLevelBES(
             SignatureValidationResult levelReached,
-            IAdvancedSignature signature,
+            IAdvancedSignature? signature,
             SignatureValidationResult signingCertificateVerification,
-            SignatureVerification[] counterSignatureVerification,
-            IList<TimestampVerificationResult> timestampsVerification) : base(levelReached)
+            SignatureVerification[]? counterSignatureVerification,
+            IList<TimestampVerificationResult>? timestampsVerification) : base(levelReached)
         {
             signingCertRefVerification = signingCertificateVerification;
             counterSignaturesVerification = counterSignatureVerification;
@@ -57,22 +57,22 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the counterSignaturesVerification
         /// </returns>
-        public virtual SignatureVerification[] CounterSignaturesVerification => counterSignaturesVerification;
+        public virtual SignatureVerification[]? CounterSignaturesVerification => counterSignaturesVerification;
 
         /// <returns>
         /// the timestampsVerification
         /// </returns>
-        public virtual IList<TimestampVerificationResult> TimestampsVerification => timestampsVerification;
+        public virtual IList<TimestampVerificationResult>? TimestampsVerification => timestampsVerification;
 
-        public virtual IList<X509Certificate> Certificates => certificates;
+        public virtual IList<X509Certificate>? Certificates => certificates;
 
-        public virtual string Location => location;
+        public virtual string? Location => location;
 
-        public virtual string ContentType => contentType;
+        public virtual string? ContentType => contentType;
 
-        public virtual string[] ClaimedSignerRoles => claimedSignerRole;
+        public virtual string[]? ClaimedSignerRoles => claimedSignerRole;
 
-        public virtual X509Certificate SigningCertificate => signingCertificate;
+        public virtual X509Certificate? SigningCertificate => signingCertificate;
 
         public virtual DateTime SigningTime => signingTime;
     }

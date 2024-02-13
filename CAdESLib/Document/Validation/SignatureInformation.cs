@@ -48,7 +48,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the finalConclusionComment
         /// </returns>
-        public string FinalConclusionComment { get; private set; }
+        public string? FinalConclusionComment { get; private set; }
         public IValidationContext ValidationContext { get; }
         public IEnumerable<CertificateVerification> UsedCertsWithVerification { get; }
 
@@ -64,92 +64,89 @@ namespace CAdESLib.Document.Validation
             QualificationsVerification = qualificationsVerification;
             QcStatementInformation = qcStatementInformation;
             int tlContentCase = -1;
-            if (certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound)
+            var certPathRevocationAnalysisTrustedListInformationIsServiceWasFound = certPathRevocationAnalysis.TrustedListInformation?.IsServiceWasFound ?? false;
+            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound)
             {
                 tlContentCase = 0;
             }
-            if (certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound &&
+            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
                  qualificationsVerification != null && qualificationsVerification.QCWithSSCD.IsValid)
             {
                 tlContentCase = 1;
             }
-            if (certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound &&
+            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
                  qualificationsVerification != null && qualificationsVerification.QCNoSSCD.IsValid)
             {
                 tlContentCase = 2;
             }
-            if (certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound &&
+            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
                  qualificationsVerification != null && qualificationsVerification.QCSSCDStatusAsInCert.IsValid)
             {
                 tlContentCase = 3;
             }
-            if (certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound &&
+            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
                  qualificationsVerification != null && qualificationsVerification.QCForLegalPerson.IsValid)
             {
                 tlContentCase = 4;
             }
-            if (!certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound)
+            if (!certPathRevocationAnalysisTrustedListInformationIsServiceWasFound)
             {
                 // Case 5 and 6 are not discriminable */
                 tlContentCase = 5;
                 FinalConclusionComment = "no.tl.confirmation";
             }
-            if (certPathRevocationAnalysis.TrustedListInformation.IsServiceWasFound &&
-                 !certPathRevocationAnalysis.TrustedListInformation.IsWellSigned)
+            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
+                 !(certPathRevocationAnalysis.TrustedListInformation?.IsWellSigned ?? false))
             {
                 tlContentCase = 7;
                 FinalConclusionComment = "unsigned.tl.confirmation";
             }
             int certContentCase = -1;
-            if (qcStatementInformation != null && !qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && qcStatementInformation
-                .QCPPresent.IsValid && !qcStatementInformation.QcSCCDPresent.IsValid)
+
+            var qcStatementInformationIsValid = qcStatementInformation?.QcCompliancePresent?.IsValid ?? false;
+            var qcStatementInformationQCPPlusPresentIsValid = qcStatementInformation?.QCPPlusPresent?.IsValid ?? false;
+            var qcStatementInformationQCPPresentIsValid = qcStatementInformation?.QCPPresent?.IsValid ?? false;
+            var qcStatementInformationQcSCCDPresentIsValid = qcStatementInformation?.QcSCCDPresent?.IsValid ?? false;
+
+            if (!qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 0;
             }
-            if (qcStatementInformation != null && qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && qcStatementInformation
-                .QCPPresent.IsValid && !qcStatementInformation.QcSCCDPresent.IsValid)
+            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 1;
             }
-            if (qcStatementInformation != null && qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && qcStatementInformation
-                .QCPPresent.IsValid && qcStatementInformation.QcSCCDPresent.IsValid)
+            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQCPPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 2;
             }
-            if (qcStatementInformation != null && !qcStatementInformation.QcCompliancePresent.IsValid && qcStatementInformation.QCPPlusPresent.IsValid && !qcStatementInformation
-                .QCPPresent.IsValid && !qcStatementInformation.QcSCCDPresent.IsValid)
+            if (!qcStatementInformationIsValid && qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 3;
             }
-            if (qcStatementInformation != null && qcStatementInformation.QcCompliancePresent.IsValid && qcStatementInformation.QCPPlusPresent.IsValid && !qcStatementInformation
-                .QCPPresent.IsValid && !qcStatementInformation.QcSCCDPresent.IsValid)
+            if (qcStatementInformationIsValid && qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 4;
             }
-            if (qcStatementInformation != null && qcStatementInformation.QcCompliancePresent.IsValid && qcStatementInformation.QCPPlusPresent.IsValid && qcStatementInformation
-                .QcSCCDPresent.IsValid)
+            if (qcStatementInformationIsValid && qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
             {
                 // QCPPlus stronger than QCP. If QCP is present, then it's ok.
-                // && !qcStatementInformation.QCPPresent.isValid
+                // && !qcStatementInformationQCPPresentIsValid
                 certContentCase = 5;
             }
-            if (qcStatementInformation != null && qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && !qcStatementInformation
-                .QCPPresent.IsValid && !qcStatementInformation.QcSCCDPresent.IsValid)
+            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 6;
             }
-            if (qcStatementInformation != null && !qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && !qcStatementInformation
-                .QCPPresent.IsValid && qcStatementInformation.QcSCCDPresent.IsValid)
+            if (!qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 7;
             }
-            if (qcStatementInformation != null && qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && !qcStatementInformation
-                .QCPPresent.IsValid && qcStatementInformation.QcSCCDPresent.IsValid)
+            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
             {
                 certContentCase = 8;
             }
-            if (qcStatementInformation == null || (!qcStatementInformation.QcCompliancePresent.IsValid && !qcStatementInformation.QCPPlusPresent.IsValid && !qcStatementInformation
-                .QCPPresent.IsValid && !qcStatementInformation.QcSCCDPresent.IsValid))
+            if (qcStatementInformation == null || (!qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid))
             {
                 certContentCase = 9;
             }

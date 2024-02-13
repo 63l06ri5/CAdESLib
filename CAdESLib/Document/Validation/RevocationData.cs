@@ -9,9 +9,9 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class RevocationData
     {
-        private readonly ISignedToken targetToken;
+        private readonly ISignedToken? targetToken;
 
-        private object revocationData;
+        private object? revocationData;
 
         public RevocationData()
         {
@@ -25,7 +25,7 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// The target of this revocation data
         /// </summary>
-        public virtual ISignedToken GetTargetToken()
+        public virtual ISignedToken? GetTargetToken()
         {
             return targetToken;
         }
@@ -33,7 +33,7 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// The value of the revocation data
         /// </summary>
-        public virtual object GetRevocationData()
+        public virtual object? GetRevocationData()
         {
             return revocationData;
         }
@@ -41,14 +41,13 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Set the value of the revocation data
         /// </summary>
-        public virtual void SetRevocationData(object revocationData)
+        public virtual void SetRevocationData(object? revocationData)
         {
-            if (targetToken is CertificateToken)
+            if (targetToken is CertificateToken && !(revocationData is null))
             {
                 if (!(revocationData is CertificateSourceType) && !(revocationData is BasicOcspResp) && !(revocationData is X509Crl))
                 {
-                    throw new ArgumentException("For " + targetToken + " only OCSP, CRL or CertificateSourceType are valid. (Trying to add "
-                         + revocationData.GetType().Name + ").");
+                    throw new ArgumentException("For " + targetToken + " only OCSP, CRL or CertificateSourceType are valid. (Trying to add " + revocationData.GetType().Name + ").");
                 }
             }
             this.revocationData = revocationData;
@@ -57,27 +56,28 @@ namespace CAdESLib.Document.Validation
         public override string ToString()
         {
             string data;
-            if (GetRevocationData() is X509Crl crl)
+            var revocationData = GetRevocationData();
+            if (revocationData is X509Crl crl)
             {
                 data = "CRL[from=" + crl.IssuerDN + "]";
             }
             else
             {
-                if (GetRevocationData() is BasicOcspResp resp)
+                if (revocationData is BasicOcspResp resp)
                 {
                     data = "OCSP[from" + resp.ResponderId.ToAsn1Object().Name + "]";
                 }
                 else
                 {
-                    if (GetRevocationData() is X509Certificate certificate)
+                    if (revocationData is X509Certificate certificate)
                     {
                         data = "Certificate[subjectName=" + certificate.SubjectDN + "]";
                     }
                     else
                     {
-                        if (GetRevocationData() != null)
+                        if (!(revocationData is null))
                         {
-                            data = GetRevocationData().ToString();
+                            data = revocationData.ToString()!;
                         }
                         else
                         {

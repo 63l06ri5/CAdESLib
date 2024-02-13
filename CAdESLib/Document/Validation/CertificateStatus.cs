@@ -8,12 +8,12 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Get or Set the certificate for which the status is relevant
         /// </summary>         
-        public X509Certificate Certificate { get; set; }
+        public X509Certificate? Certificate { get; set; }
 
         /// <summary>
         /// Get or Set the issuer certificate
         /// </summary>        
-        public X509Certificate IssuerCertificate { get; set; }
+        public X509Certificate? IssuerCertificate { get; set; }
 
         /// <summary>
         /// Result of the validity check
@@ -23,7 +23,7 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Data from which the status is coming
         /// </summary>        
-        public object StatusSource { get; set; }
+        public object? StatusSource { get; set; }
 
         /// <summary>
         /// Type of source from which the status is coming

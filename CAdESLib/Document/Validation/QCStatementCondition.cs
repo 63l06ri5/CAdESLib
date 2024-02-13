@@ -10,7 +10,7 @@ namespace CAdESLib.Document.Validation
     [System.Serializable]
     public class QcStatementCondition : ICondition
     {
-        private readonly string qcStatementId = null;
+        private readonly string? qcStatementId = null;
 
         /// <summary>
         /// Mandatory for serializable
@@ -19,7 +19,7 @@ namespace CAdESLib.Document.Validation
         {
         }
 
-        public QcStatementCondition(string qcStatementId)
+        public QcStatementCondition(string? qcStatementId)
         {
             this.qcStatementId = qcStatementId;
         }

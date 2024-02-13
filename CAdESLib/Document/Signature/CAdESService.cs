@@ -49,7 +49,10 @@ namespace CAdESLib.Document.Signature
             logger.Trace($"FileVersion: {fileVersionInfo.FileVersion}, LastWriteTimeUtc: {fInfo.LastWriteTimeUtc}");
         }
 
-        public CAdESService(Func<IRuntimeValidatingParams, ITspSource> tspSourceFunc, Func<IRuntimeValidatingParams, ICertificateVerifier> verifierFunc, Func<IRuntimeValidatingParams, ISignedDocumentValidator> validatorFunc)
+        public CAdESService(
+            Func<IRuntimeValidatingParams, ITspSource> tspSourceFunc,
+            Func<IRuntimeValidatingParams, ICertificateVerifier> verifierFunc,
+            Func<IRuntimeValidatingParams, ISignedDocumentValidator> validatorFunc)
         {
             this.runtimeValidatingParams = new RuntimeValidatingParams();
             this.tspSource = tspSourceFunc(this.runtimeValidatingParams);
@@ -57,7 +60,7 @@ namespace CAdESLib.Document.Signature
             this.validator = validatorFunc(this.runtimeValidatingParams);
         }
 
-        private CAdESSignatureExtension GetExtensionProfile(SignatureParameters parameters)
+        private CAdESSignatureExtension? GetExtensionProfile(SignatureParameters parameters)
         {
             SignatureProfile signFormat = parameters.SignatureProfile;
             if (signFormat == SignatureProfile.BES || signFormat == SignatureProfile.EPES)
@@ -66,49 +69,29 @@ namespace CAdESLib.Document.Signature
             }
             else if (signFormat == SignatureProfile.T)
             {
-                CAdESProfileT extensionT = new CAdESProfileT
-                {
-                    SignatureTsa = tspSource
-                };
+                CAdESProfileT extensionT = new CAdESProfileT(tspSource);
                 return extensionT;
             }
             else if (signFormat == SignatureProfile.C)
             {
-                CAdESProfileC extensionC = new CAdESProfileC
-                {
-                    SignatureTsa = tspSource,
-                    CertificateVerifier = verifier
-                };
+                CAdESProfileC extensionC = new CAdESProfileC(tspSource, verifier);
                 return extensionC;
             }
             else if (signFormat == SignatureProfile.XType1 || signFormat == SignatureProfile.XType2)
             {
-                CAdESProfileX extensionX = new CAdESProfileX
-                {
-                    SignatureTsa = tspSource
-                };
-
+                CAdESProfileX extensionX = new CAdESProfileX(tspSource, verifier);
                 extensionX.SetExtendedValidationType(signFormat == SignatureProfile.XType1 ? 1 : 2);
-                extensionX.CertificateVerifier = verifier;
                 return extensionX;
             }
             else if (signFormat == SignatureProfile.XL || signFormat == SignatureProfile.XLType1 || signFormat == SignatureProfile.XLType2)
             {
-                CAdESProfileXL extensionXL = new CAdESProfileXL
-                {
-                    SignatureTsa = tspSource
-                };
+                CAdESProfileXL extensionXL = new CAdESProfileXL(tspSource, verifier);
                 extensionXL.SetExtendedValidationType(signFormat == SignatureProfile.XL ? 1 : signFormat == SignatureProfile.XLType1 ? 1 : 2);
-                extensionXL.CertificateVerifier = verifier;
                 return extensionXL;
             }
             else if (signFormat == SignatureProfile.A)
             {
-                CAdESProfileA extensionA = new CAdESProfileA
-                {
-                    SignatureTsa = tspSource,
-                    CertificateVerifier = verifier
-                };
+                CAdESProfileA extensionA = new CAdESProfileA(tspSource, verifier);
                 extensionA.SetExtendedValidationType(1);
                 return extensionA;
             }
@@ -117,7 +100,10 @@ namespace CAdESLib.Document.Signature
         }
 
 
-        public virtual (IDocument, ValidationReport) ExtendDocument(IDocument signedDocument, IDocument originalDocument, SignatureParameters parameters)
+        public virtual (IDocument, ValidationReport) ExtendDocument(
+            IDocument signedDocument,
+            IDocument originalDocument,
+            SignatureParameters parameters)
         {
             PrintMetaInfo();
             if (parameters is null)
@@ -125,10 +111,10 @@ namespace CAdESLib.Document.Signature
                 throw new ArgumentNullException(nameof(parameters));
             }
 
-            CAdESSignatureExtension extension = GetExtensionProfile(parameters);
-            ValidationReport validationReport = null;
+            CAdESSignatureExtension? extension = GetExtensionProfile(parameters);
+            ValidationReport? validationReport = null;
             IDocument result = signedDocument;
-            ICollection<IValidationContext> validationContexts;
+            ICollection<IValidationContext?>? validationContexts;
 
             (result, validationContexts) = extension?.ExtendSignatures(signedDocument, originalDocument, parameters) ?? (signedDocument, null);
 
@@ -148,7 +134,7 @@ namespace CAdESLib.Document.Signature
             return (result, validationReport);
         }
 
-        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument externalContent = null, ICollection<IValidationContext> validationContexts = null)
+        public ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument? externalContent = null, ICollection<IValidationContext?>? validationContexts = null)
         {
             PrintMetaInfo();
             return validator.ValidateDocument(document, checkIntegrity, externalContent, validationContexts);
@@ -183,7 +169,7 @@ namespace CAdESLib.Document.Signature
             var e = signed.GetSignerInfos().GetSigners().GetEnumerator();
             e.MoveNext();
             var si = e.Current as SignerInformation;
-            return new MemoryStream(si.GetEncodedSignedAttributes());
+            return new MemoryStream(si!.GetEncodedSignedAttributes());
         }
 
         public (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)
@@ -238,17 +224,22 @@ namespace CAdESLib.Document.Signature
             return new CAdESProfileEPES();
         }
 
-        private CmsSignedDataGenerator CreateCMSSignedDataGenerator(SignatureParameters parameters, CAdESProfileBES cadesProfile, bool includeUnsignedAttributes = true, CmsSignedData originalSignedData = null, byte[] signature = null)
+        private CmsSignedDataGenerator CreateCMSSignedDataGenerator(SignatureParameters parameters, CAdESProfileBES cadesProfile, bool includeUnsignedAttributes = true, CmsSignedData? originalSignedData = null, byte[]? signature = null)
         {
-            CmsSignedDataGenerator generator = new CmsSignedDataGenerator();
-            X509Certificate signerCertificate = parameters.SigningCertificate;
+            var signerCertificate = parameters.SigningCertificate;
+            if (signerCertificate is null)
+            {
+                throw new ArgumentException(nameof(signerCertificate));
+            }
+
+            var generator = new CmsSignedDataGenerator();
 
             CmsAttributeTableGenerator signedAttrGen = new DefaultSignedAttributeTableGenerator(new AttributeTable(cadesProfile.GetSignedAttributes(parameters) as System.Collections.IDictionary));
 
             CmsAttributeTableGenerator unsignedAttrGen = new SimpleAttributeTableGenerator(includeUnsignedAttributes ? new AttributeTable(cadesProfile.GetUnsignedAttributes(parameters) as System.Collections.IDictionary) : null);
 
             var builder = new SignerInfoGeneratorBuilder().WithSignedAttributeGenerator(signedAttrGen).WithUnsignedAttributeGenerator(unsignedAttrGen);
-            generator.AddSignerInfoGenerator(builder.Build(new ReadySignatureFactory(new PreComputedSigner(signature), parameters.DigestWithEncriptionOID), signerCertificate));
+            generator.AddSignerInfoGenerator(builder.Build(new ReadySignatureFactory(new PreComputedSigner(signature ?? Array.Empty<byte>()), parameters.DigestWithEncriptionOID), signerCertificate));
 
             if (originalSignedData != null)
             {
@@ -256,13 +247,13 @@ namespace CAdESLib.Document.Signature
             }
             var certs = new List<X509Certificate>
                 {
-                    parameters.SigningCertificate
+                    signerCertificate
                 };
             if (parameters.CertificateChain != null)
             {
                 foreach (X509Certificate c in parameters.CertificateChain)
                 {
-                    if (!c.SubjectDN.Equals(parameters.SigningCertificate.SubjectDN))
+                    if (!c.SubjectDN.Equals(signerCertificate.SubjectDN))
                     {
                         certs.Add(c);
                     }
@@ -283,14 +274,14 @@ namespace CAdESLib.Document.Signature
 
     public class PreComputedSigner : ISigner
     {
-        private byte[] PreComputedSignature { get; set; }
+        private byte[] preComputedSignature { get; set; }
         private readonly IDigest digest;
-        private byte[] currentSignature;
+        private byte[]? currentSignature;
 
         /// <param name="preComputedSignature">the preComputedSignature to set</param>
         public PreComputedSigner(byte[] preComputedSignature)
         {
-            PreComputedSignature = preComputedSignature;
+            this.preComputedSignature = preComputedSignature;
             digest = new NullDigest();
         }
 
@@ -321,23 +312,21 @@ namespace CAdESLib.Document.Signature
 
         public byte[] GenerateSignature()
         {
-            if (PreComputedSignature?.Length > 0)
+            if (preComputedSignature?.Length > 0)
             {
-                currentSignature = PreComputedSignature;
-                return PreComputedSignature;
+                currentSignature = preComputedSignature;
+                return preComputedSignature;
             }
             else
             {
                 byte[] hash = new byte[digest.GetDigestSize()];
                 digest.DoFinal(hash, 0);
-                //jbonilla
                 currentSignature = hash;
                 return currentSignature;
             }
         }
 
-        //jbonilla
-        public byte[] CurrentSignature()
+        public byte[]? CurrentSignature()
         {
             return currentSignature;
         }
@@ -349,7 +338,6 @@ namespace CAdESLib.Document.Signature
 
         public void Reset()
         {
-            //jbonilla
             currentSignature = null;
             digest.Reset();
         }

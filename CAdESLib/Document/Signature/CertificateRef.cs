@@ -12,12 +12,12 @@ namespace CAdESLib.Document.Signature
             return $"CertificateRef[issuerName={IssuerName},issuerSerial={IssuerSerial},digest={Hex.ToHexString(DigestValue)}]";
         }
 
-        public virtual string DigestAlgorithm { get; set; }
+        public virtual string? DigestAlgorithm { get; set; }
 
-        public virtual byte[] DigestValue { get; set; }
+        public virtual byte[]? DigestValue { get; set; }
 
-        public virtual string IssuerName { get; set; }
+        public virtual string? IssuerName { get; set; }
 
-        public virtual string IssuerSerial { get; set; }
+        public virtual string? IssuerSerial { get; set; }
     }
 }

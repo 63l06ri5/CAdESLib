@@ -10,6 +10,7 @@ using Org.BouncyCastle.Tsp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using BcCms = Org.BouncyCastle.Asn1.Cms;
 
@@ -20,17 +21,14 @@ namespace CAdESLib.Document.Signature.Extensions
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private const string CannotParseCMSDataMessage = "Cannot parse CMS data";
-        private const string EmptyTimestampMessage = "The TimeStampToken returned for the signature time stamp was empty.";
-        private ITspSource signatureTsa;
-
-        /// <returns>
-        /// the TSA used for the signature-time-stamp attribute
-        /// </returns>
-        public virtual ITspSource SignatureTsa { get => signatureTsa; set => signatureTsa = value; }
+        private const string EmptyTimestampMessage = "The TimeStampToken returned for the signature time stamp was empty.";       
 
         public virtual SignatureProfile SignatureProfile => throw new NotImplementedException();
 
-        public virtual (IDocument, ICollection<IValidationContext>) ExtendSignatures(IDocument document, IDocument originalData, SignatureParameters parameters)
+        public virtual (IDocument, ICollection<IValidationContext?>?) ExtendSignatures(
+            IDocument document,
+            IDocument originalData,
+            SignatureParameters parameters)
         {
             if (document is null)
             {
@@ -42,15 +40,15 @@ namespace CAdESLib.Document.Signature.Extensions
                 CmsSignedData signedData = new CmsSignedData(document.OpenStream());
                 SignerInformationStore signerStore = signedData.GetSignerInfos();
                 var siArray = new List<SignerInformation>();
-                var validationContexts = new List<IValidationContext>();
+                var validationContexts = new List<IValidationContext?>();
 
-                foreach (SignerInformation si in signerStore.GetSigners())
+                foreach (var si in signerStore.GetSigners().Cast<SignerInformation>())
                 {
                     try
                     {
-                        // jbonilla - Hack to avoid mistakes when a signature has already been extended.
+                        // Hack to avoid mistakes when a signature has already been extended.
                         // It is assumed that only signatures are extended from BES.
-                        // TODO jbonilla - It should be validated to what extent it was extended (BES, T, C, X, XL).
+                        // TODO It should be validated to what extent it was extended (BES, T, C, X, XL).
                         if (si.UnsignedAttributes == null || si.UnsignedAttributes.Count == 0)
                         {
                             var (signerInformation, validationContext) = ExtendCMSSignature(signedData, si, parameters, originalData);
@@ -80,7 +78,7 @@ namespace CAdESLib.Document.Signature.Extensions
             }
         }
 
-        protected internal abstract (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData);
+        protected internal abstract (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData);
 
         /// <summary>
         /// Computes an attribute containing a time-stamp token of the provided data, from the provided TSA using the
@@ -97,12 +95,19 @@ namespace CAdESLib.Document.Signature.Extensions
                 throw new ArgumentNullException(nameof(tsa));
             }
 
-            IDigest digest;
-            string algorithmOid;
+            IDigest? digest;
+            string? algorithmOid;
             if (tsa is ITSAClient)
             {
                 digest = tsa.GetMessageDigest();
+                if (digest is null) {
+                    throw new ArgumentNullException(nameof(digest));
+                }
+
                 algorithmOid = tsa.TsaDigestAlgorithmOID;
+                if (algorithmOid is null) {
+                    throw new ArgumentNullException(nameof(algorithmOid));
+                }
             }
             else
             {
@@ -111,8 +116,8 @@ namespace CAdESLib.Document.Signature.Extensions
             }
             byte[] toTimeStamp = DigestAlgorithms.Digest(digest, messageImprint);
 
-            TimeStampResponse tsresp = tsa.GetTimeStampResponse(algorithmOid, toTimeStamp);
-            TimeStampToken tstoken = tsresp.TimeStampToken;
+            var tsresp = tsa.GetTimeStampResponse(algorithmOid, toTimeStamp);
+            var tstoken = tsresp.TimeStampToken;
             if (tstoken == null)
             {
                 throw new ArgumentNullException(EmptyTimestampMessage);
@@ -127,7 +132,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 {
                     if (datediff.TotalMilliseconds < 60000)
                     {
-                        Thread.Sleep((int) Math.Ceiling(datediff.TotalMilliseconds));
+                        Thread.Sleep((int)Math.Ceiling(datediff.TotalMilliseconds));
                     }
                     else
                     {

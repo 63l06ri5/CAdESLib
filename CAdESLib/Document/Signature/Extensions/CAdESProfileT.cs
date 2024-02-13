@@ -1,4 +1,5 @@
 ﻿using CAdESLib.Document.Validation;
+using CAdESLib.Service;
 using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
@@ -13,9 +14,19 @@ namespace CAdESLib.Document.Signature.Extensions
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
+        /// <returns>
+        /// the TSA used for the signature-time-stamp attribute
+        /// </returns>
+        public virtual ITspSource SignatureTsa { get; set; }
+
         public override SignatureProfile SignatureProfile => SignatureProfile.T;
 
-        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
+        public CAdESProfileT(ITspSource signatureTsa)
+        {
+            this.SignatureTsa = signatureTsa;
+        }
+
+        protected internal override (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
         {
             if (si is null)
             {

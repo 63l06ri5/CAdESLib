@@ -18,22 +18,22 @@ namespace CAdESLib.Document.Validation
         {
         }
 
-        public CertificateAndContext(X509Certificate cert, ISerializable context)
+        public CertificateAndContext(X509Certificate cert, ISerializable? context)
         {
             Certificate = cert;
             Context = context;
         }
 
-        public List<object> RootCause { get; set; } = new List<object>();
+        public List<object?> RootCause { get; set; } = new List<object?>();
         public virtual X509Certificate Certificate { get; set; }
-        public virtual CertificateAndContext IssuerCertificate { get; set; }
-        public virtual ISerializable Context { get; set; }
+        public virtual CertificateAndContext? IssuerCertificate { get; set; }
+        public virtual ISerializable? Context { get; set; }
         public virtual CertificateSourceType CertificateSource { get; set; }
-        public CertificateStatus CertificateStatus { get; internal set; }
+        public CertificateStatus? CertificateStatus { get; internal set; }
 
         public override string ToString()
         {
-            return $"Certificate[for={Certificate.SubjectDN.ToString()},source={CertificateSource},issuedBy={Certificate.IssuerDN},serial={Certificate.SerialNumber.ToString(16)}]";
+            return $"Certificate[for={Certificate.SubjectDN},source={CertificateSource},issuedBy={Certificate.IssuerDN},serial={Certificate.SerialNumber.ToString(16)}]";
         }
 
         public override int GetHashCode()
@@ -44,7 +44,7 @@ namespace CAdESLib.Document.Validation
             return result;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (this == obj)
             {

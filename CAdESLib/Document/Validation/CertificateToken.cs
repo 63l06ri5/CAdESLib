@@ -17,9 +17,9 @@ namespace CAdESLib.Document.Validation
 
         private readonly CertificateAndContext cert;
 
-        private CertificateStatus status;
+        private CertificateStatus? status;
 
-        public List<object> RootCause
+        public List<object?> RootCause
         {
             get
             {
@@ -70,7 +70,7 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the status
         /// </returns>
-        public virtual CertificateStatus GetStatus()
+        public virtual CertificateStatus? GetStatus()
         {
             return status;
         }
@@ -78,7 +78,7 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// An X509Certificate may contain information about his issuer in the AIA attribute.
         /// </summary>
-        public virtual ICertificateSource GetWrappedCertificateSource()
+        public virtual ICertificateSource? GetWrappedCertificateSource()
         {
             if (sourceFactory != null)
             {
@@ -106,7 +106,7 @@ namespace CAdESLib.Document.Validation
             return result;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (this == obj)
             {

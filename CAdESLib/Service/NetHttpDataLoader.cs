@@ -25,8 +25,8 @@ namespace CAdESLib.Service
 
         private const string LdapScheme = "ldap";
 
-        public string ContentType { get; set; }
-        public string Accept { get; set; }
+        public string? ContentType { get; set; }
+        public string? Accept { get; set; }
         public int TimeOut { get; set; }
 
         private IRuntimeValidatingParams runtimeValidatingParams;
@@ -39,7 +39,7 @@ namespace CAdESLib.Service
             this.runtimeValidatingParams = runtimeValidatingParams;
         }
 
-        public Stream Get(string URL)
+        public Stream? Get(string URL)
         {
             if (runtimeValidatingParams.OfflineValidating)
             {
@@ -108,7 +108,7 @@ namespace CAdESLib.Service
             }
         }
 
-        public Stream Post(string URL, Stream content)
+        public Stream? Post(string URL, Stream content)
         {
             if (runtimeValidatingParams.OfflineValidating)
             {

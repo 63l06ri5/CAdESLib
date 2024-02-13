@@ -3,7 +3,6 @@ using CAdESLib.Helpers;
 using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
@@ -29,9 +28,6 @@ namespace CAdESLib.Service
         /// Set the HTTPDataLoader to use for query the CRL server
         /// </summary>
         public IHTTPDataLoader UrlDataLoader { get; set; }
-
-        //jbonilla
-        public string IntermediateAcUrl { get; set; }
 
         public OnlineCrlSource(ICAdESServiceSettings settings, Func<IHTTPDataLoader> dataLoaderFunc)
         {
@@ -87,7 +83,7 @@ namespace CAdESLib.Service
             }
         }
 
-        private X509Crl GetCrl(string downloadUrl)
+        private X509Crl? GetCrl(string downloadUrl)
         {
             if (downloadUrl != null)
             {
@@ -225,7 +221,7 @@ namespace CAdESLib.Service
                         str = derStr.GetString();
                     }
                     if (str != null && (str.StartsWith("http://") || str.StartsWith("https://"))
-                        && str.ToUpperInvariant().Contains("CRL")) //jbonilla - El URL del CRL para el BCE está en la tercera posición y solo se puede acceder desde HTTP.
+                        && str.ToUpperInvariant().Contains("CRL"))
                     {
                         uris.Add(str);
                     }
