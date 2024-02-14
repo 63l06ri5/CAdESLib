@@ -70,7 +70,6 @@ namespace CAdESLib.Service
                 catch { }
 
                 OcspReqGenerator ocspReqGenerator = new OcspReqGenerator();
-                // TODO: should use from settings?
                 CertificateID certId = new CertificateID(digestOid, issuerCertificate, certificate.SerialNumber);
                 var certCertId = certId.ToAsn1Object();
                 certId = new CertificateID(new CertID(new AlgorithmIdentifier(certCertId.HashAlgorithm.Algorithm), certCertId.IssuerNameHash, certCertId.IssuerKeyHash, certCertId.SerialNumber));

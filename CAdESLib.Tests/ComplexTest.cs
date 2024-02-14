@@ -137,7 +137,7 @@ namespace CAdESLib.Tests
             var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
             var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
             signers.MoveNext();
-            var signerInformation = (SignerInformation) signers.Current;
+            var signerInformation = (SignerInformation)signers.Current;
 
             Action<string, X509Certificate, Org.BouncyCastle.Asn1.Cms.AttributeTable> refsValsChecker = (label, cert, unsignedAttributes) =>
             {
@@ -252,9 +252,157 @@ namespace CAdESLib.Tests
             var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
             var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
             signers.MoveNext();
-            var signerInformation = (SignerInformation) signers.Current;
+            var signerInformation = (SignerInformation)signers.Current;
 
             Assert.IsNull(signerInformation.UnsignedAttributes);
+        }
+
+        [Test]
+        public void T_Validation()
+        {
+            var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
+            // to be signed
+            var inputData = Encoding.UTF8.GetBytes("anydataanydataanydataanydataanydataanydataanydataanydata");
+            var inputDocument = new InMemoryDocument(inputData);
+            var signingTime = DateTime.Now;
+            var signatureProfile = SignatureProfile.T;
+            var parameters = new SignatureParameters
+            {
+                SigningCertificate = signerCert,
+                CertificateChain = new X509Certificate[] { signerCert },
+                SignaturePackaging = SignaturePackaging.DETACHED,
+                SignatureProfile = signatureProfile,
+                SigningDate = signingTime,
+                DigestAlgorithmOID = DigestAlgorithm.SHA256.OID,
+                EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id
+            };
+            var toBeSignedStream = cadesService.ToBeSigned(inputDocument, parameters);
+            // sign
+            ISigner signer = SignerUtilities.InitSigner(parameters.DigestWithEncriptionOID, true, signerKeyPair.Private, null);
+            toBeSignedStream.Position = 0;
+            toBeSignedStream.Seek(0, SeekOrigin.Begin);
+            var b = Streams.ReadAll(toBeSignedStream);
+            signer.BlockUpdate(b, 0, b.Length);
+            var signatureValue = signer.GenerateSignature();
+
+            // make pkcs7
+            var (signedDocument, _) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+
+
+            // TODO: some network problems
+
+            container.RegisterFactory<Func<IRuntimeValidatingParams, IHTTPDataLoader>>(
+                    c => new Func<IRuntimeValidatingParams, IHTTPDataLoader>(
+                        (runtimeValidatingParams) =>
+                        {
+                            fakeHttpDataLoader.Setup(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>())).Returns<string, Stream>((url, stream) =>
+                            {
+                                return null;
+                            });
+                            fakeHttpDataLoader.Setup(x => x.Get(It.IsAny<string>())).Returns<string>((url) =>
+                            {
+                                return null;
+                            });
+                            return fakeHttpDataLoader.Object;
+                        }));
+
+            var validationReport = cadesService.ValidateDocument(signedDocument, false, inputDocument);
+            var signatureInformation = validationReport.SignatureInformationList.First();
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
+            Assert.AreEqual(SignatureProfile.T, levelReached);
+
+            container.RegisterFactory<Func<IRuntimeValidatingParams, IHTTPDataLoader>>(
+                    c => new Func<IRuntimeValidatingParams, IHTTPDataLoader>(
+                        (runtimeValidatingParams) =>
+                        {
+                            fakeHttpDataLoader.Setup(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>())).Returns<string, Stream>((url, stream) =>
+                            {
+                                if (url == tspUrl)
+                                {
+                                    var bytes = Streams.ReadAll(stream);
+                                    var request = new TimeStampRequest(bytes);
+
+                                    TimeStampTokenGenerator tsTokenGen = new TimeStampTokenGenerator(tspKeyPair.Private, tspCert, TspAlgorithms.Sha256, "1.2");
+                                    var certs = new ArrayList { tspCert };
+                                    var certStore = X509StoreFactory.Create("Certificate/Collection", new X509CollectionStoreParameters(certs));
+                                    tsTokenGen.SetCertificates(certStore);
+
+                                    TimeStampResponseGenerator tsRespGen = new TimeStampResponseGenerator(tsTokenGen, TspAlgorithms.Allowed);
+
+                                    TimeStampResponse tsResp = tsRespGen.Generate(request, BigInteger.ValueOf(23), DateTime.UtcNow);
+
+                                    return new MemoryStream(tsResp.GetEncoded());
+                                }
+                                else if (url == ocspUrl)
+                                {
+                                    var bytes = Streams.ReadAll(stream);
+                                    var request = new OcspReq(bytes);
+
+                                    BasicOcspRespGenerator generator = new BasicOcspRespGenerator(new RespID(ocspCert.SubjectDN));
+
+                                    var certIDList = request.GetRequestList().Select(x => x.GetCertID());
+                                    var status = Org.BouncyCastle.Ocsp.CertificateStatus.Good;
+                                    if (certIDList.Any(x => x.SerialNumber.Equals(signerCert.SerialNumber)))
+                                    {
+                                        status = new RevokedStatus(new RevokedInfo(new DerGeneralizedTime(DateTime.UtcNow.AddDays(-1).ToZuluString()), new CrlReason(CrlReason.KeyCompromise)));
+                                    }
+
+                                    var noncevalue = request.GetExtensionValue(OcspObjectIdentifiers.PkixOcspNonce) as DerOctetString;
+                                    if (noncevalue != null)
+                                    {
+                                        var oids = new List<DerObjectIdentifier> { OcspObjectIdentifiers.PkixOcspNonce };
+                                        var values = new List<X509Extension> { new X509Extension(DerBoolean.False, noncevalue) };
+                                        generator.SetResponseExtensions(new Org.BouncyCastle.Asn1.X509.X509Extensions(oids, values));
+                                    }
+
+                                    foreach (var req in certIDList)
+                                    {
+                                        generator.AddResponse(req, status);
+                                    }
+
+                                    BasicOcspResp basicOcspResp = generator.Generate(ocspCert.SigAlgOid, ocspKeyPair.Private, new X509Certificate[] { ocspCert, intermediateCert, caCert }, DateTime.UtcNow, null);
+                                    var ocspResponseGenerator = new OCSPRespGenerator();
+                                    var ocspResponse = ocspResponseGenerator.Generate(OCSPRespGenerator.Successful, basicOcspResp);
+
+                                    return new MemoryStream(ocspResponse.GetEncoded());
+                                }
+
+                                return null;
+                            });
+                            fakeHttpDataLoader.Setup(x => x.Get(It.IsAny<string>())).Returns<string>((url) =>
+                            {
+                                if (runtimeValidatingParams.OfflineValidating)
+                                {
+                                    return null;
+                                }
+                                if (url == intermediateUrl)
+                                {
+                                    return new MemoryStream(intermediateCert.GetEncoded());
+                                }
+                                else if (url == caUrl)
+                                {
+                                    return new MemoryStream(caCert.GetEncoded());
+                                }
+                                else if (url == crlUrl)
+                                {
+                                    return new MemoryStream(crl.GetEncoded());
+                                }
+
+                                return null;
+                            });
+                            return fakeHttpDataLoader.Object;
+                        }));
+
+            validationReport = cadesService.ValidateDocument(signedDocument, false, inputDocument);
+            signatureInformation = validationReport.SignatureInformationList.First();
+            state = GetSignatureState(signatureInformation, signatureProfile);
+            levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
+            Assert.AreEqual(SignatureProfile.T, levelReached);
         }
 
         [OneTimeSetUp]
@@ -501,5 +649,230 @@ namespace CAdESLib.Tests
                             return fakeHttpDataLoader.Object;
                         }));
         }
+
+
+
+        private static FileSignatureState GetSignatureState(SignatureInformation info, SignatureProfile targetSignatureProfile)
+        {
+            if (info.CertPathRevocationAnalysis.Summary.IsInvalid)
+            {
+                return FileSignatureState.Failed;
+            }
+
+            switch (targetSignatureProfile)
+            {
+                case SignatureProfile.T:
+                    if (!info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid)
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.C:
+                    if (!info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid)
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.XType1:
+                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
+                        || !(info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Any() ?? false))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.XType2:
+                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
+                        || !(info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Any() ?? false))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.XL:
+                    if (!info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid)
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.XLType1:
+                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
+                        || !(info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Any() ?? false))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.XLType2:
+                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                        || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
+                        || !(info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Any() ?? false))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+
+                case SignatureProfile.A:
+                    if (!info.SignatureLevelAnalysis.LevelA.LevelReached.IsValid)
+                    {
+                        return FileSignatureState.Failed;
+                    }
+
+                    if (info.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
+                    break;
+            }
+
+            return info.CertPathRevocationAnalysis.Summary.IsValid
+                ? FileSignatureState.Checked
+                : FileSignatureState.CheckedWithWarning;
+        }
+
+
+        private static SignatureProfile GetLevelReached(SignatureInformation info)
+        {
+            if (info is null)
+            {
+                return SignatureProfile.None;
+            }
+
+            if (info.SignatureLevelAnalysis.LevelA.LevelReached.IsValid)
+            {
+                return SignatureProfile.A;
+            }
+
+            if (info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid)
+            {
+                if (info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Any() ?? false)
+                {
+                    return SignatureProfile.XLType1;
+                }
+
+                if (info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Any() ?? false)
+                {
+                    return SignatureProfile.XLType2;
+                }
+
+                return SignatureProfile.XL;
+            }
+
+            if (info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid)
+            {
+                if (info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Any() ?? false)
+                {
+                    return SignatureProfile.XType1;
+                }
+
+                if (info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Any() ?? false)
+                {
+                    return SignatureProfile.XType2;
+                }
+            }
+            else if (info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid)
+            {
+                return SignatureProfile.C;
+            }
+            else if (info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid)
+            {
+                return SignatureProfile.T;
+            }
+            else if (info.SignatureLevelAnalysis.LevelEPES.LevelReached.IsValid)
+            {
+                return SignatureProfile.EPES;
+            }
+            else if (info.SignatureLevelAnalysis.LevelBES.LevelReached.IsValid)
+            {
+                return SignatureProfile.BES;
+            }
+
+            return SignatureProfile.None;
+        }
     }
+    /// <summary>
+    /// Состояние подписи для версии файла.
+    /// </summary>
+    public enum FileSignatureState
+    {
+        /// <summary>
+        /// Подпись не была проверена.
+        /// </summary>
+        NotChecked = 0,
+
+        /// <summary>
+        /// Подпись была успешно проверена.
+        /// </summary>
+        Checked = 1,
+
+        /// <summary>
+        /// Подпись была неудачно проверена.
+        /// </summary>
+        Failed = 2,
+
+        /// <summary>
+        /// Целостность подписи проверена, но есть "один нюанс"
+        /// </summary>
+        CheckedWithWarning = 3
+    }
+
+
 }

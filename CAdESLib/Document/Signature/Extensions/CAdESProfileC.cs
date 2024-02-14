@@ -89,7 +89,13 @@ namespace CAdESLib.Document.Signature.Extensions
             return ocsprespid;
         }
 
-        private (IDictionary, IValidationContext) ExtendUnsignedAttributes(IDictionary unsignedAttrs, X509Certificate signingCertificate, SignatureParameters parameters, DateTime signingTime, ICertificateSource optionalCertificateSource, IValidationContext? validationContext)
+        private (IDictionary, IValidationContext) ExtendUnsignedAttributes(
+            IDictionary unsignedAttrs,
+            X509Certificate signingCertificate,
+            SignatureParameters parameters,
+            DateTime signingTime,
+            ICertificateSource optionalCertificateSource,
+            IValidationContext? validationContext)
         {
             var usedCerts = new List<CertificateAndContext>();
             validationContext = validationContext ?? CertificateVerifier.GetValidationContext(signingCertificate, signingTime);
@@ -108,11 +114,12 @@ namespace CAdESLib.Document.Signature.Extensions
 
                 var unAttr = timeStampToken.UnsignedAttributes?.ToDictionary() ?? new Dictionary<object, object>();
                 logger.Trace("Refs for timestamp");
+                var signerChain = validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signer)));
                 SetRefs(
                     parameters.DigestAlgorithmOID,
                     unAttr,
                     signer,
-                    validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signer))),
+                    signerChain,
                     validationContext);
 
                 if (new[] { SignatureProfile.XL, SignatureProfile.A }.Contains(SignatureProfile))
@@ -120,7 +127,7 @@ namespace CAdESLib.Document.Signature.Extensions
                     SetValues(
                        unAttr,
                        signer,
-                       validationContext.GetCertsChain(validationContext.NeededCertificates.First(x => x.Certificate.Equals(signer))),
+                       signerChain,
                        validationContext
                        );
                 }
@@ -135,6 +142,10 @@ namespace CAdESLib.Document.Signature.Extensions
                 CmsSignedData newTstSignedData = CmsSignedData.ReplaceSigners(tstSignedData, new SignerInformationStore(new[] { newsi }));
 
                 unsignedAttrs[PkcsObjectIdentifiers.IdAASignatureTimeStampToken] = new BcCms.Attribute(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER"))));
+            }
+            else
+            {
+                throw new ArgumentNullException("There is no timestamp");
             }
 
             validationContext.ValidateCertificate(
