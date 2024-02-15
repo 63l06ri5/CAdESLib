@@ -1,4 +1,7 @@
-﻿using CAdESLib.Document;
+﻿//TODO:
+#nullable disable
+
+using CAdESLib.Document;
 using CAdESLib.Document.Signature;
 using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
@@ -23,20 +26,18 @@ namespace CAdESLib.Tests
     public class Tests
     {
         private UnityContainer unityContainer;
-
         private AsymmetricCipherKeyPair ocspCAKeyPair;
         private X509Certificate ocspCACert;
         private AsymmetricCipherKeyPair ocspKeyPair;
         private X509Certificate ocspCert;
-
         private AsymmetricCipherKeyPair crlCAKeyPair;
         private AsymmetricCipherKeyPair crlKeyPair;
         private X509Certificate crlCert;
-
         private AsymmetricCipherKeyPair tspCAKeyPair;
         private X509Certificate tspCACert;
         private AsymmetricCipherKeyPair tspKeyPair;
         private X509Certificate tspCert;
+
 
         [TestCaseSource("BESTestCaseSource")]
         public void TestSigProfiles(SignatureParams sigParams, SignatureVerificationResults sigResult)
