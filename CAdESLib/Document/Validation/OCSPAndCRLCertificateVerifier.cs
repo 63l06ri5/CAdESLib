@@ -36,22 +36,19 @@ namespace CAdESLib.Document.Validation
                 return null;
             }
 
+            CertificateStatus? result = null;
             var ocspNoCheck = cert.GetExtensionValue(X509Consts.OCSPNoCheck);
             if (ocspNoCheck != null && cert.GetExtendedKeyUsage().Contains(Org.BouncyCastle.Asn1.X509.KeyPurposeID.IdKPOcspSigning.Id))
             {
                 logger.Trace("OCSPNoCheck");
-                return new CertificateStatus
-                {
-                    Certificate = cert,
-                    ValidationDate = validationDate,
-                    IssuerCertificate = potentialIssuer,
-                    Validity = CertificateValidity.VALID,
-                    StatusSource = CertificateSourceType.TRUST_STORE
-                };
+            }
+            else
+            {
+                logger.Trace("OCSP request for " + cert.SubjectDN);
+                result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
             }
 
-            logger.Trace("OCSP request for " + cert.SubjectDN);
-            CertificateStatus? result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
+
             if (result != null && result.Validity != CertificateValidity.UNKNOWN)
             {
                 logger.Trace(OCSPDoneMessage);

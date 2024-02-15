@@ -694,7 +694,7 @@ namespace CAdESLib.Tests
             var state = GetSignatureState(signatureInformation, signatureProfile);
             var levelReached = GetLevelReached(signatureInformation);
 
-            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
             Assert.AreEqual(signatureProfile, levelReached);
         }
 
