@@ -54,7 +54,7 @@ namespace CAdESLib.Service
         }
 
 
-        public virtual TimeStampResponse GetTimeStampResponse(string digestAlgorithmOID, byte[] digest)
+        public virtual TimeStampResponse? GetTimeStampResponse(string digestAlgorithmOID, byte[] digest)
         {
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
@@ -67,7 +67,7 @@ namespace CAdESLib.Service
             var respBytes = GetTSAResponse(requestBytes);
 
             // Handle the TSA response
-            return new TimeStampResponse(respBytes);
+            return respBytes is null || respBytes.Length == 0 ? null : new TimeStampResponse(respBytes);
 
         }
     }

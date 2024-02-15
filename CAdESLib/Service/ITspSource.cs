@@ -12,7 +12,7 @@ namespace CAdESLib.Service
         /// <summary>
         /// Gets a TimeStampResponse relevant to the provided digest
         /// </summary>
-        TimeStampResponse GetTimeStampResponse(string digestAlgorithmOID, byte[] digest);
+        TimeStampResponse? GetTimeStampResponse(string digestAlgorithmOID, byte[] digest);
     }
 
     /**

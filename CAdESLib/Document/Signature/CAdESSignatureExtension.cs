@@ -21,7 +21,7 @@ namespace CAdESLib.Document.Signature.Extensions
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private const string CannotParseCMSDataMessage = "Cannot parse CMS data";
-        private const string EmptyTimestampMessage = "The TimeStampToken returned for the signature time stamp was empty.";       
+        private const string EmptyTimestampMessage = "The TimeStampToken returned for the signature time stamp was empty.";
 
         public virtual SignatureProfile SignatureProfile => throw new NotImplementedException();
 
@@ -61,7 +61,7 @@ namespace CAdESLib.Document.Signature.Extensions
                             siArray.Add(si);
                         }
                     }
-                    catch (IOException)
+                    catch
                     {
                         //parameters.ValidationResult.Add(ValidationKey.Unknown, ValidationResultType.Warning, ExtendingSignatureExceptionMessage);
                         siArray.Add(si);
@@ -100,12 +100,14 @@ namespace CAdESLib.Document.Signature.Extensions
             if (tsa is ITSAClient)
             {
                 digest = tsa.GetMessageDigest();
-                if (digest is null) {
+                if (digest is null)
+                {
                     throw new ArgumentNullException(nameof(digest));
                 }
 
                 algorithmOid = tsa.TsaDigestAlgorithmOID;
-                if (algorithmOid is null) {
+                if (algorithmOid is null)
+                {
                     throw new ArgumentNullException(nameof(algorithmOid));
                 }
             }
@@ -117,7 +119,7 @@ namespace CAdESLib.Document.Signature.Extensions
             byte[] toTimeStamp = DigestAlgorithms.Digest(digest, messageImprint);
 
             var tsresp = tsa.GetTimeStampResponse(algorithmOid, toTimeStamp);
-            var tstoken = tsresp.TimeStampToken;
+            var tstoken = tsresp?.TimeStampToken;
             if (tstoken == null)
             {
                 throw new ArgumentNullException(EmptyTimestampMessage);

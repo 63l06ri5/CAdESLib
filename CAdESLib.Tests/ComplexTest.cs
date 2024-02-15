@@ -263,8 +263,13 @@ namespace CAdESLib.Tests
             Assert.IsNull(signerInformation.UnsignedAttributes);
         }
 
-        private (IDocument signedDocument, IDocument inputDocument, IDocumentSignatureService cadesService) SomeSetupSigning(
-            SignatureProfile signatureProfile,            
+        private (
+                IDocument signedDocument,
+                IDocument inputDocument,
+                IDocumentSignatureService cadesService,
+                ValidationReport validationReport)
+            SomeSetupSigning(
+                SignatureProfile signatureProfile,
 
             bool noNetworkBeforeSigning = false,
             bool noNetworkAfterSigning = false,
@@ -272,8 +277,23 @@ namespace CAdESLib.Tests
             bool signerRevokedBeforeSigning = false,
             bool signerRevokedAfterSigning = false,
 
+            bool ocspRevokedBeforeSigning = false,
+            bool ocspRevokedAfterSigning = false,
+
             bool intermediateRevokedBeforeSigning = false,
-            bool intermediateRevokedAfterSigning = false
+            bool intermediateRevokedAfterSigning = false,
+
+            bool tspRevokedBeforeSigning = false,
+            bool tspRevokedAfterSigning = false,
+
+            bool noNetworkForTspBeforeSigning = false,
+            bool noNetworkForTspAfterSigning = false,
+
+            bool noNetworkForInterBeforeSigning = false,
+            bool noNetworkForInterAfterSigning = false,
+
+            bool noNetworkForOcspBeforeSigning = false,
+            bool noNetworkForOcspAfterSigning = false
 
             )
         {
@@ -305,23 +325,38 @@ namespace CAdESLib.Tests
             SetupFakeHttpDataLoader(
                 noNetwork: noNetworkBeforeSigning,
                 signerRevoked: signerRevokedBeforeSigning,
-                intermediateRevoked: intermediateRevokedBeforeSigning);
+                ocspRevoked: ocspRevokedBeforeSigning,
+                intermediateRevoked: intermediateRevokedBeforeSigning,
+                tspRevoked: tspRevokedBeforeSigning,
+                noNetworkForTsp: noNetworkForTspBeforeSigning,
+                noNetworkForInter: noNetworkForInterBeforeSigning,
+                noNetworkForOcsp: noNetworkForOcspBeforeSigning);
 
             // make pkcs7
-            var (signedDocument, _) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+            var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
 
             SetupFakeHttpDataLoader(
                 noNetwork: noNetworkAfterSigning,
                 signerRevoked: signerRevokedAfterSigning,
-                intermediateRevoked: intermediateRevokedAfterSigning);
+                ocspRevoked: ocspRevokedAfterSigning,
+                intermediateRevoked: intermediateRevokedAfterSigning,
+                tspRevoked: tspRevokedAfterSigning,
+                noNetworkForTsp: noNetworkForTspAfterSigning,
+                noNetworkForInter: noNetworkForInterAfterSigning,
+                noNetworkForOcsp: noNetworkForOcspAfterSigning);
 
-            return (signedDocument, inputDocument, cadesService);
+            return (signedDocument, inputDocument, cadesService, validationReport);
         }
 
         private void SetupFakeHttpDataLoader(
             bool noNetwork = false,
             bool signerRevoked = false,
-            bool intermediateRevoked = false)
+            bool ocspRevoked = false,
+            bool intermediateRevoked = false,
+            bool tspRevoked = false,
+            bool noNetworkForTsp = false,
+            bool noNetworkForInter = false,
+            bool noNetworkForOcsp = false)
         {
 
             container.RegisterFactory<Func<IRuntimeValidatingParams, IHTTPDataLoader>>(
@@ -337,6 +372,11 @@ namespace CAdESLib.Tests
 
                                 if (url == tspUrl)
                                 {
+                                    if (noNetworkForTsp)
+                                    {
+                                        return null;
+                                    }
+
                                     var bytes = Streams.ReadAll(stream);
                                     var request = new TimeStampRequest(bytes);
 
@@ -353,13 +393,24 @@ namespace CAdESLib.Tests
                                 }
                                 else if (url == ocspUrl)
                                 {
+                                    if (noNetworkForOcsp)
+                                    {
+                                        return null;
+                                    }
+
                                     var bytes = Streams.ReadAll(stream);
                                     var request = new OcspReq(bytes);
 
                                     BasicOcspRespGenerator generator = new BasicOcspRespGenerator(new RespID(ocspCert.SubjectDN));
 
                                     var certIDList = request.GetRequestList().Select(x => x.GetCertID());
-                                    var status = GetRevokedStatus(certIDList, signerRevoked ? signerCert : intermediateRevoked ? intermediateCert : null);
+                                    var status = GetRevokedStatus(
+                                        certIDList, 
+                                        signerRevoked ?
+                                            signerCert : 
+                                            intermediateRevoked ?
+                                                 intermediateCert : tspRevoked ?
+                                                    tspCert : null);
 
                                     var noncevalue = request.GetExtensionValue(OcspObjectIdentifiers.PkixOcspNonce) as DerOctetString;
                                     if (noncevalue != null)
@@ -396,6 +447,11 @@ namespace CAdESLib.Tests
                                 }
                                 if (url == intermediateUrl)
                                 {
+                                    if (noNetworkForInter)
+                                    {
+                                        return null;
+                                    }
+
                                     return new MemoryStream(intermediateCert.GetEncoded());
                                 }
                                 else if (url == caUrl)
@@ -413,6 +469,16 @@ namespace CAdESLib.Tests
                                     if (intermediateRevoked)
                                     {
                                         revokedSerialNumbers.Add(intermediateCert.SerialNumber);
+                                    }
+
+                                    if (ocspRevoked)
+                                    {
+                                        revokedSerialNumbers.Add(ocspCert.SerialNumber);
+                                    }
+
+                                    if (tspRevoked)
+                                    {
+                                        revokedSerialNumbers.Add(tspCert.SerialNumber);
                                     }
 
                                     return new MemoryStream(GetX509Crl(revokedSerialNumbers.ToArray()).GetEncoded());
@@ -469,7 +535,7 @@ namespace CAdESLib.Tests
         public void T_check_no_net()
         {
             var signatureProfile = SignatureProfile.T;
-            var (signedDocument, inputDocument, cadesService) = SomeSetupSigning(
+            var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
                 signatureProfile,
                 noNetworkAfterSigning: true);
 
@@ -479,14 +545,14 @@ namespace CAdESLib.Tests
             var levelReached = GetLevelReached(signatureInformation);
 
             Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
-            Assert.AreEqual(SignatureProfile.T, levelReached);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
         public void T_check_signer_revoked()
         {
             var signatureProfile = SignatureProfile.T;
-            var (signedDocument, inputDocument, cadesService) = SomeSetupSigning(
+            var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
                 signatureProfile,
                 signerRevokedAfterSigning: true);
 
@@ -496,14 +562,14 @@ namespace CAdESLib.Tests
             var levelReached = GetLevelReached(signatureInformation);
 
             Assert.AreEqual(FileSignatureState.Failed, state);
-            Assert.AreEqual(SignatureProfile.T, levelReached);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
         public void T_check_intermediate_revoked()
         {
             var signatureProfile = SignatureProfile.T;
-            var (signedDocument, inputDocument, cadesService) = SomeSetupSigning(
+            var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
                 signatureProfile,
                 intermediateRevokedAfterSigning: true);
 
@@ -513,7 +579,7 @@ namespace CAdESLib.Tests
             var levelReached = GetLevelReached(signatureInformation);
 
             Assert.AreEqual(FileSignatureState.Failed, state);
-            Assert.AreEqual(SignatureProfile.T, levelReached);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
@@ -522,7 +588,7 @@ namespace CAdESLib.Tests
             SetupSignerCert(overdue: true);
 
             var signatureProfile = SignatureProfile.T;
-            var (signedDocument, inputDocument, cadesService) = SomeSetupSigning(
+            var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
                 signatureProfile);
 
             var validationReport = cadesService.ValidateDocument(signedDocument, false, inputDocument);
@@ -531,62 +597,138 @@ namespace CAdESLib.Tests
             var levelReached = GetLevelReached(signatureInformation);
 
             Assert.AreEqual(FileSignatureState.Failed, state);
-            Assert.AreEqual(SignatureProfile.T, levelReached);
+            Assert.AreEqual(signatureProfile, levelReached);
 
         }
 
         [Test]
         public void T_sign_no_net()
         {
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                noNetworkBeforeSigning: true);
 
-        }
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
 
-        [Test]
-        public void T_sign_signer_after_NotAfter()
-        {
-
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(SignatureProfile.BES, levelReached);
         }
 
         [Test]
         public void T_sign_no_net_for_tsp()
         {
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                noNetworkForTspBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(SignatureProfile.BES, levelReached);
         }
 
         [Test]
         public void T_sign_no_net_for_inter()
         {
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                noNetworkForInterBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
         public void T_sign_no_net_for_ocsp()
         {
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                noNetworkForOcspBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
         public void T_sign_signer_revoked()
         {
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                signerRevokedBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
-        public void T_sign_ocsp_revocked()
+        public void T_sign_ocsp_revoked()
         {
+            // TODO: failed
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                ocspRevokedBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
         public void T_sign_inter_revoked()
         {
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                intermediateRevokedBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
         [Test]
         public void T_sign_tsp_revoked()
         {
+            // TODO: failed
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                tspRevokedBeforeSigning: true);
 
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(signatureProfile, levelReached);
         }
 
 
