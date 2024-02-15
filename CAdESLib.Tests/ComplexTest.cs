@@ -44,6 +44,9 @@ namespace CAdESLib.Tests
         private string crlUrl;
         private string caUrl;
         private X509Certificate intermediateCert;
+        private X509Name intermediateCertName = new X509Name("CN=intermediate_cert");
+        private AsymmetricCipherKeyPair intermediateKeyPair;
+        private X509Name tspCertName = new X509Name("CN=tsp_cert");
         private string ocspUrl;
         private string intermediateUrl;
         private AsymmetricCipherKeyPair signerKeyPair;
@@ -71,7 +74,7 @@ namespace CAdESLib.Tests
             // check that refs and values of TSP is present in a timestamp section
             // check that refs and values are matched
 
-            // TODO additional test cases: a settings crl should only be used, when crl records are present; same with ocsp; flag noocsp should be respected
+            // TODO additional test cases: a settings crl should only be used, when crl records are present; same with ocsp; flag noocsp should be respected            
 
             if (!crlOnline)
             {
@@ -261,7 +264,8 @@ namespace CAdESLib.Tests
         }
 
         private (IDocument signedDocument, IDocument inputDocument, IDocumentSignatureService cadesService) SomeSetupSigning(
-            SignatureProfile signatureProfile,
+            SignatureProfile signatureProfile,            
+
             bool noNetworkBeforeSigning = false,
             bool noNetworkAfterSigning = false,
 
@@ -445,6 +449,22 @@ namespace CAdESLib.Tests
             return crlGen.Generate(new Asn1SignatureFactory(caCert.SigAlgOid, caKeyPair.Private, null));
         }
 
+        private void SetupSignerCert(bool overdue = false)
+        {
+            var signerCertName = new X509Name("CN=signer_cert");
+            signerKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
+            signerCert = CryptoHelpers.GenerateCertificate(
+                intermediateCertName,
+                signerCertName,
+                intermediateKeyPair.Private,
+                signerKeyPair.Public,
+                notBefore: DateTime.Now.AddDays(-30),
+                notAfter: DateTime.Now.AddDays(overdue ? -1 : 30),
+                issuerUrls: new string[] { intermediateUrl },
+                crlUrls: new string[] { crlUrl },
+                ocspUrls: new string[] { ocspUrl });
+        }
+
         [Test]
         public void T_check_no_net()
         {
@@ -499,6 +519,19 @@ namespace CAdESLib.Tests
         [Test]
         public void T_check_signer_after_NotAfter()
         {
+            SetupSignerCert(overdue: true);
+
+            var signatureProfile = SignatureProfile.T;
+            var (signedDocument, inputDocument, cadesService) = SomeSetupSigning(
+                signatureProfile);
+
+            var validationReport = cadesService.ValidateDocument(signedDocument, false, inputDocument);
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(SignatureProfile.T, levelReached);
 
         }
 
@@ -584,16 +617,12 @@ namespace CAdESLib.Tests
             // Intermediate
             crlUrl = "http://crl";
             caUrl = "http://ca";
-            var intermediateCertName = new X509Name("CN=intermediate_cert");
-            var intermediateKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
+            intermediateKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
             intermediateCert = CryptoHelpers.GenerateCertificate(ca, intermediateCertName, caKeyPair.Private, intermediateKeyPair.Public, issuerUrls: new string[] { caUrl }, crlUrls: new string[] { crlUrl });
 
             // Signer
             ocspUrl = "http://ocsp";
             intermediateUrl = "http://intermediate";
-            var signerCertName = new X509Name("CN=signer_cert");
-            signerKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            signerCert = CryptoHelpers.GenerateCertificate(intermediateCertName, signerCertName, intermediateKeyPair.Private, signerKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlUrl }, ocspUrls: new string[] { ocspUrl });
 
             // OCSP
             var ocspCertName = new X509Name("CN=ocsp_cert");
@@ -602,7 +631,6 @@ namespace CAdESLib.Tests
 
             // TSP
             tspUrl = "http://tsp";
-            var tspCertName = new X509Name("CN=tsp_cert");
             tspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
             tspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, tspCertName, intermediateKeyPair.Private, tspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlUrl }, ocspUrls: new string[] { ocspUrl }, tsp: true);
 
@@ -708,6 +736,7 @@ namespace CAdESLib.Tests
         public void Setup()
         {
             fakeHttpDataLoader = new Mock<IHTTPDataLoader>();
+            SetupSignerCert();
             SetupFakeHttpDataLoader();
         }
 
