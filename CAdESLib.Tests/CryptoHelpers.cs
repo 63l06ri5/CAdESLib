@@ -45,9 +45,9 @@ namespace CAdESLib.Tests
             DateTime? notAfter = null,
             bool ocsp = false,
             bool tsp = false,
-            string[] issuerUrls = null,
-            string[] ocspUrls = null,
-            string[] crlUrls = null)
+            string[]? issuerUrls = null,
+            string[]? ocspUrls = null,
+            string[]? crlUrls = null)
         {
             ISignatureFactory signatureFactory = new Asn1SignatureFactory(
                     PkcsObjectIdentifiers.Sha256WithRsaEncryption.ToString(),
@@ -64,7 +64,7 @@ namespace CAdESLib.Tests
             // Authority Information Access
             var aiaAsn = new Asn1EncodableVector();
 
-            Action<string[], DerObjectIdentifier> aiaFunc = (string[] urls, DerObjectIdentifier identifier) =>
+            Action<string[]?, DerObjectIdentifier> aiaFunc = (string[]? urls, DerObjectIdentifier identifier) =>
             {
                 if (urls != null && urls.Length > 0)
                 {
@@ -153,7 +153,7 @@ namespace CAdESLib.Tests
 
         public string TsaPassword => throw new NotImplementedException();
 
-        public string TsaDigestAlgorithmOID => DigestAlgorithms.GetAllowedDigests(DEFAULTHASHALGORITHM);
+        public string TsaDigestAlgorithmOID => DigestAlgorithms.GetAllowedDigests(DEFAULTHASHALGORITHM)!;
 
         public const string DEFAULTHASHALGORITHM = "SHA-256";
 
