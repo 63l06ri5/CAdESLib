@@ -355,22 +355,7 @@ namespace CAdESLib.Tests
                                     BasicOcspRespGenerator generator = new BasicOcspRespGenerator(new RespID(ocspCert.SubjectDN));
 
                                     var certIDList = request.GetRequestList().Select(x => x.GetCertID());
-                                    var status = Org.BouncyCastle.Ocsp.CertificateStatus.Good;
-                                    if (signerRevoked)
-                                    {
-                                        if (certIDList.Any(x => x.SerialNumber.Equals(signerCert.SerialNumber)))
-                                        {
-                                            status = GetRevokedStatus();
-                                        }
-                                    }
-
-                                    if (intermediateRevoked)
-                                    {
-                                        if (certIDList.Any(x => x.SerialNumber.Equals(intermediateCert.SerialNumber)))
-                                        {
-                                            status = GetRevokedStatus();
-                                        }
-                                    }
+                                    var status = GetRevokedStatus(certIDList, signerRevoked ? signerCert : intermediateRevoked ? intermediateCert : null);
 
                                     var noncevalue = request.GetExtensionValue(OcspObjectIdentifiers.PkixOcspNonce) as DerOctetString;
                                     if (noncevalue != null)
@@ -435,22 +420,23 @@ namespace CAdESLib.Tests
                         }));
         }
 
-        private RevokedStatus GetRevokedStatus() => new RevokedStatus(new RevokedInfo(new DerGeneralizedTime(DateTime.UtcNow.AddDays(-1).ToZuluString()), new CrlReason(CrlReason.KeyCompromise)));
+        private Org.BouncyCastle.Ocsp.CertificateStatus GetRevokedStatus(
+            IEnumerable<CertificateID> certIDList,
+            X509Certificate? cert) => cert != null && certIDList.Any(x => x.SerialNumber.Equals(cert.SerialNumber)) ?
+                                         new RevokedStatus(new RevokedInfo(new DerGeneralizedTime(DateTime.UtcNow.AddDays(-1).ToZuluString()), new CrlReason(CrlReason.KeyCompromise)))
+                                         : Org.BouncyCastle.Ocsp.CertificateStatus.Good;
 
         private X509Crl GetX509Crl(params BigInteger[] revokedSerialNumbers)
         {
-            // CRL
             var lastCRLNumber = BigInteger.One;
             var crlGen = new X509V2CrlGenerator();
             crlGen.SetIssuerDN(caCert.SubjectDN);
             DateTime skewedNow = DateTime.UtcNow.AddHours(-1);
             crlGen.SetThisUpdate(skewedNow);
             crlGen.SetNextUpdate(skewedNow.AddHours(12));
-            //crlGen.SetSignatureAlgorithm(SignatureAlgorithm.SHA256withRSA.jcaString());
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(caCert));
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlNumber, false, new CrlNumber(lastCRLNumber));
             //crlGen.addCRL(previousCRL);
-            //crlGen.addCRLEntry(revokedCertificate.getSerialNumber(), skewedNow.toDate(), reason.reason());
             foreach (var sn in revokedSerialNumbers)
             {
                 crlGen.AddCrlEntry(sn, DateTime.Now.AddDays(-1), CrlReason.KeyCompromise);
