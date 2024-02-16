@@ -41,14 +41,16 @@ namespace CAdESLib.Tests
         private CAdESServiceSettings cadesSettings;
         private AsymmetricCipherKeyPair caKeyPair;
         private X509Certificate caCert;
-        private string crlUrl;
-        private string caUrl;
+        private string crlCaUrl = "http://crlca";
+        private string crlInterUrl = "http://crlinter";
+        private string caUrl = "http://ca";
         private X509Certificate intermediateCert;
         private X509Name intermediateCertName = new X509Name("CN=intermediate_cert");
         private AsymmetricCipherKeyPair intermediateKeyPair;
         private X509Name tspCertName = new X509Name("CN=tsp_cert");
-        private string ocspUrl;
-        private string intermediateUrl;
+        private string ocspUrl = "http://ocsp";
+        private string intermediateUrl = "http://intermediate";
+
         private AsymmetricCipherKeyPair signerKeyPair;
         private X509Certificate signerCert;
         private AsymmetricCipherKeyPair ocspKeyPair;
@@ -83,7 +85,8 @@ namespace CAdESLib.Tests
                     cadesSettings.Crls = new List<X509Crl>();
                 }
 
-                cadesSettings.Crls.Add(GetX509Crl());
+                cadesSettings.Crls.Add(GetX509Crl(intermediateCert, intermediateKeyPair));
+                cadesSettings.Crls.Add(GetX509Crl(caCert, caKeyPair));
             }
 
             var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
@@ -121,8 +124,8 @@ namespace CAdESLib.Tests
             {
                 // sign: ocsp -1  extend: tsp - 2, ocsp - 2
                 fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(1 + 4));
-                // sign: intermediate - 1, crl - 1 if crlOnline else 0, extend: intermediate - 1, crl - 1 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
-                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(crlOnline ? 4 : 2));
+                // sign: intermediate - 1, crl - 2 (1 - inter, 1 - ocsp) if crlOnline else 0, extend: intermediate - 1, crl - 2 (1 - inter, 1 - ocsp) if crlOnline else 0, ca - 0 (it is present because of a trusted list)
+                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(crlOnline ? 6 : 2));
             };
 
             callsChecker();
@@ -207,8 +210,8 @@ namespace CAdESLib.Tests
             {
                 // tsp - 1, ocsp - 2(on validation)
                 fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(3));
-                // intermediate - 1, crl - 1 if crlOnline else 0, ca - 0 (it is present because of a trusted list)
-                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(2));
+                // intermediate - 1, crl - 2 
+                fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(3));
             };
 
             callsChecker();
@@ -293,7 +296,11 @@ namespace CAdESLib.Tests
             bool noNetworkForInterAfterSigning = false,
 
             bool noNetworkForOcspBeforeSigning = false,
-            bool noNetworkForOcspAfterSigning = false
+            bool noNetworkForOcspAfterSigning = false,
+
+            bool noNetworkForCrlBeforeSigning = false,
+            bool noNetworkForCrlAfterSigning = false
+
 
             )
         {
@@ -330,7 +337,8 @@ namespace CAdESLib.Tests
                 tspRevoked: tspRevokedBeforeSigning,
                 noNetworkForTsp: noNetworkForTspBeforeSigning,
                 noNetworkForInter: noNetworkForInterBeforeSigning,
-                noNetworkForOcsp: noNetworkForOcspBeforeSigning);
+                noNetworkForOcsp: noNetworkForOcspBeforeSigning,
+                noNetworkForCrl: noNetworkForCrlBeforeSigning);
 
             // make pkcs7
             var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
@@ -343,7 +351,8 @@ namespace CAdESLib.Tests
                 tspRevoked: tspRevokedAfterSigning,
                 noNetworkForTsp: noNetworkForTspAfterSigning,
                 noNetworkForInter: noNetworkForInterAfterSigning,
-                noNetworkForOcsp: noNetworkForOcspAfterSigning);
+                noNetworkForOcsp: noNetworkForOcspAfterSigning,
+                noNetworkForCrl: noNetworkForCrlAfterSigning);
 
             return (signedDocument, inputDocument, cadesService, validationReport);
         }
@@ -356,7 +365,8 @@ namespace CAdESLib.Tests
             bool tspRevoked = false,
             bool noNetworkForTsp = false,
             bool noNetworkForInter = false,
-            bool noNetworkForOcsp = false)
+            bool noNetworkForOcsp = false,
+            bool noNetworkForCrl = false)
         {
 
             container.RegisterFactory<Func<IRuntimeValidatingParams, IHTTPDataLoader>>(
@@ -405,9 +415,9 @@ namespace CAdESLib.Tests
 
                                     var certIDList = request.GetRequestList().Select(x => x.GetCertID());
                                     var status = GetRevokedStatus(
-                                        certIDList, 
+                                        certIDList,
                                         signerRevoked ?
-                                            signerCert : 
+                                            signerCert :
                                             intermediateRevoked ?
                                                  intermediateCert : tspRevoked ?
                                                     tspCert : null);
@@ -458,8 +468,13 @@ namespace CAdESLib.Tests
                                 {
                                     return new MemoryStream(caCert.GetEncoded());
                                 }
-                                else if (url == crlUrl)
+                                else if (url == crlCaUrl || url == crlInterUrl)
                                 {
+                                    if (noNetworkForCrl)
+                                    {
+                                        return null;
+                                    }
+
                                     var revokedSerialNumbers = new List<BigInteger>();
                                     if (signerRevoked)
                                     {
@@ -481,7 +496,14 @@ namespace CAdESLib.Tests
                                         revokedSerialNumbers.Add(tspCert.SerialNumber);
                                     }
 
-                                    return new MemoryStream(GetX509Crl(revokedSerialNumbers.ToArray()).GetEncoded());
+                                    if (url == crlCaUrl)
+                                    {
+                                        return new MemoryStream(GetX509Crl(caCert, caKeyPair, revokedSerialNumbers.ToArray()).GetEncoded());
+                                    }
+                                    else if (url == crlInterUrl)
+                                    {
+                                        return new MemoryStream(GetX509Crl(intermediateCert, intermediateKeyPair, revokedSerialNumbers.ToArray()).GetEncoded());
+                                    }
                                 }
 
                                 return null;
@@ -496,15 +518,15 @@ namespace CAdESLib.Tests
                                          new RevokedStatus(new RevokedInfo(new DerGeneralizedTime(DateTime.UtcNow.AddDays(-1).ToZuluString()), new CrlReason(CrlReason.KeyCompromise)))
                                          : Org.BouncyCastle.Ocsp.CertificateStatus.Good;
 
-        private X509Crl GetX509Crl(params BigInteger[] revokedSerialNumbers)
+        private X509Crl GetX509Crl(X509Certificate issuer, AsymmetricCipherKeyPair keyPair, params BigInteger[] revokedSerialNumbers)
         {
             var lastCRLNumber = BigInteger.One;
             var crlGen = new X509V2CrlGenerator();
-            crlGen.SetIssuerDN(caCert.SubjectDN);
+            crlGen.SetIssuerDN(issuer.SubjectDN);
             DateTime skewedNow = DateTime.UtcNow.AddHours(-1);
             crlGen.SetThisUpdate(skewedNow);
             crlGen.SetNextUpdate(skewedNow.AddHours(12));
-            crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(caCert));
+            crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(issuer));
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlNumber, false, new CrlNumber(lastCRLNumber));
             //crlGen.addCRL(previousCRL);
             foreach (var sn in revokedSerialNumbers)
@@ -512,7 +534,7 @@ namespace CAdESLib.Tests
                 crlGen.AddCrlEntry(sn, DateTime.Now.AddDays(-1), CrlReason.KeyCompromise);
             }
 
-            return crlGen.Generate(new Asn1SignatureFactory(caCert.SigAlgOid, caKeyPair.Private, null));
+            return crlGen.Generate(new Asn1SignatureFactory(caCert.SigAlgOid, keyPair.Private, null));
         }
 
         private void SetupSignerCert(bool overdue = false)
@@ -527,7 +549,7 @@ namespace CAdESLib.Tests
                 notBefore: DateTime.Now.AddDays(-30),
                 notAfter: DateTime.Now.AddDays(overdue ? -1 : 30),
                 issuerUrls: new string[] { intermediateUrl },
-                crlUrls: new string[] { crlUrl },
+                crlUrls: new string[] { crlInterUrl },
                 ocspUrls: new string[] { ocspUrl });
         }
 
@@ -602,6 +624,24 @@ namespace CAdESLib.Tests
         }
 
         [Test]
+        public void T_signer_signer_after_NotAfter()
+        {
+            SetupSignerCert(overdue: true);
+
+            var signatureProfile = SignatureProfile.T;
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile);
+
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(FileSignatureState.Failed, state);
+            Assert.AreEqual(signatureProfile, levelReached);
+
+        }
+
+        [Test]
         public void T_sign_no_net()
         {
             var signatureProfile = SignatureProfile.T;
@@ -650,12 +690,13 @@ namespace CAdESLib.Tests
         }
 
         [Test]
-        public void T_sign_no_net_for_ocsp()
+        public void T_sign_no_net_for_revocation()
         {
             var signatureProfile = SignatureProfile.T;
             var (_, _, _, validationReport) = SomeSetupSigning(
                 signatureProfile,
-                noNetworkForOcspBeforeSigning: true);
+                noNetworkForOcspBeforeSigning: true,
+                noNetworkForCrlBeforeSigning: true);
 
             var signatureInformation = validationReport.SignatureInformationList.First()!;
             var state = GetSignatureState(signatureInformation, signatureProfile);
@@ -684,7 +725,6 @@ namespace CAdESLib.Tests
         [Test]
         public void T_sign_ocsp_revoked()
         {
-            // TODO: failed
             var signatureProfile = SignatureProfile.T;
             var (_, _, _, validationReport) = SomeSetupSigning(
                 signatureProfile,
@@ -694,7 +734,7 @@ namespace CAdESLib.Tests
             var state = GetSignatureState(signatureInformation, signatureProfile);
             var levelReached = GetLevelReached(signatureInformation);
 
-            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state);
+            Assert.AreEqual(FileSignatureState.Failed, state);
             Assert.AreEqual(signatureProfile, levelReached);
         }
 
@@ -757,26 +797,19 @@ namespace CAdESLib.Tests
             caCert = CryptoHelpers.GenerateCertificate(ca, ca, caKeyPair.Private, caKeyPair.Public);
 
             // Intermediate
-            crlUrl = "http://crl";
-            caUrl = "http://ca";
-            intermediateKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            intermediateCert = CryptoHelpers.GenerateCertificate(ca, intermediateCertName, caKeyPair.Private, intermediateKeyPair.Public, issuerUrls: new string[] { caUrl }, crlUrls: new string[] { crlUrl });
 
-            // Signer
-            ocspUrl = "http://ocsp";
-            intermediateUrl = "http://intermediate";
+            intermediateKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
+            intermediateCert = CryptoHelpers.GenerateCertificate(ca, intermediateCertName, caKeyPair.Private, intermediateKeyPair.Public, issuerUrls: new string[] { caUrl }, crlUrls: new string[] { crlCaUrl });
 
             // OCSP
             var ocspCertName = new X509Name("CN=ocsp_cert");
             ocspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            ocspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, ocspCertName, intermediateKeyPair.Private, ocspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlUrl }, ocsp: true);
+            ocspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, ocspCertName, intermediateKeyPair.Private, ocspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlInterUrl }, ocsp: true);
 
             // TSP
             tspUrl = "http://tsp";
             tspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            tspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, tspCertName, intermediateKeyPair.Private, tspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlUrl }, ocspUrls: new string[] { ocspUrl }, tsp: true);
-
-
+            tspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, tspCertName, intermediateKeyPair.Private, tspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlInterUrl }, ocspUrls: new string[] { ocspUrl }, tsp: true);
 
             #endregion
 
@@ -889,6 +922,8 @@ namespace CAdESLib.Tests
                 return FileSignatureState.Failed;
             }
 
+            var signatureTimestampsVerification = info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification;
+
             switch (targetSignatureProfile)
             {
                 case SignatureProfile.T:
@@ -897,7 +932,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -911,7 +950,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -927,7 +970,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -943,7 +990,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -958,7 +1009,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -975,7 +1030,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -992,7 +1051,11 @@ namespace CAdESLib.Tests
                         return FileSignatureState.Failed;
                     }
 
-                    if (info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }
@@ -1004,8 +1067,13 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
+                    var archiveTimestampsVerification = info.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification;
 
-                    if (info.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
+                    if (archiveTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                    {
+                        return FileSignatureState.Failed;
+                    }
+                    else if (archiveTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
                     {
                         return FileSignatureState.CheckedWithWarning;
                     }

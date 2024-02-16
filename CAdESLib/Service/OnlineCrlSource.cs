@@ -90,6 +90,10 @@ namespace CAdESLib.Service
                 try
                 {
                     var input = UrlDataLoader.Get(downloadUrl);
+                    if (input is null)
+                    {
+                        return null;
+                    }
 
                     X509CrlParser parser = new X509CrlParser();
                     X509Crl crl = parser.ReadCrl(input);
@@ -184,8 +188,8 @@ namespace CAdESLib.Service
                 DerOctetString oct;
                 //oct = (DEROctetString)(new ASN1InputStream(new ByteArrayInputStream(crlDistributionPointsValue
                 //    )).ReadObject());
-                oct = (DerOctetString) crlDistributionPointsValue;
-                seq = (Asn1Sequence) new Asn1InputStream(oct.GetOctets()).ReadObject();
+                oct = (DerOctetString)crlDistributionPointsValue;
+                seq = (Asn1Sequence)new Asn1InputStream(oct.GetOctets()).ReadObject();
             }
             catch (IOException e)
             {
@@ -200,7 +204,7 @@ namespace CAdESLib.Service
                 {
                     continue;
                 }
-                GeneralNames generalNames = (GeneralNames) distributionPointName.Name;
+                GeneralNames generalNames = (GeneralNames)distributionPointName.Name;
                 GeneralName[] names = generalNames.GetNames();
                 foreach (GeneralName name in names)
                 {
