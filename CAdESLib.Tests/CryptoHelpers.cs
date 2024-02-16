@@ -260,14 +260,13 @@ namespace CAdESLib.Tests
 
     class FakeOnlineCrlSource : ICrlSource
     {
-        private readonly AsymmetricCipherKeyPair keyPair;
-        private readonly X509Certificate caCert;
         private readonly List<(X509Certificate, X509Certificate, AsymmetricCipherKeyPair)> revoked = new List<(X509Certificate, X509Certificate, AsymmetricCipherKeyPair)>();
+        private readonly Dictionary<X509Certificate, (X509Certificate, AsymmetricCipherKeyPair)> certIssuerPairs;
 
-        public FakeOnlineCrlSource(X509Certificate cert, AsymmetricCipherKeyPair keyPair)
+
+        public FakeOnlineCrlSource(Dictionary<X509Certificate, (X509Certificate, AsymmetricCipherKeyPair)> certIssuerPairs)
         {
-            this.keyPair = keyPair;
-            this.caCert = cert;
+            this.certIssuerPairs = certIssuerPairs;
         }
         public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
         {
@@ -275,9 +274,9 @@ namespace CAdESLib.Tests
             DateTime now = DateTime.UtcNow.AddDays(-1);
             //			BigInteger			revokedSerialNumber = BigInteger.Two;
 
-
-            var cert = caCert;
-            var privateKey = keyPair.Private;
+            var pair = certIssuerPairs.ContainsKey(certificate) ? certIssuerPairs[certificate] : (null, null);
+            var cert = pair.Item1;
+            var privateKey = pair.Item2?.Private;
             var revokedCertObjs = revoked.Where(x => x.Item2.SerialNumber.ToString() == issuerCertificate.SerialNumber.ToString());
             if (revokedCertObjs.Any())
             {
@@ -294,7 +293,7 @@ namespace CAdESLib.Tests
             crlGen.SetIssuerDN(PrincipalUtilities.GetSubjectX509Principal(cert));
 
             crlGen.SetThisUpdate(now);
-            crlGen.SetNextUpdate(now.AddDays(1));
+            crlGen.SetNextUpdate(now.AddDays(30));
             crlGen.SetSignatureAlgorithm("SHA256WithRSAEncryption");
 
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(cert));
@@ -305,6 +304,11 @@ namespace CAdESLib.Tests
         public void AddRevokedCert(X509Certificate certificate, X509Certificate issuerCertificate, AsymmetricCipherKeyPair keyPair)
         {
             revoked.Add((certificate, issuerCertificate, keyPair));
+        }
+
+        public void AddCertIssuer(X509Certificate certificate, X509Certificate issuerCertificate, AsymmetricCipherKeyPair keyPair)
+        {
+            certIssuerPairs[certificate] = (issuerCertificate, keyPair);
         }
     }
 

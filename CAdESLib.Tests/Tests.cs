@@ -30,9 +30,9 @@ namespace CAdESLib.Tests
         private X509Certificate ocspCACert;
         private AsymmetricCipherKeyPair ocspKeyPair;
         private X509Certificate ocspCert;
-        private AsymmetricCipherKeyPair crlCAKeyPair;
-        private AsymmetricCipherKeyPair crlKeyPair;
-        private X509Certificate crlCert;
+        // private AsymmetricCipherKeyPair crlCAKeyPair;
+        // private AsymmetricCipherKeyPair crlKeyPair;
+        // private X509Certificate crlCert;
         private AsymmetricCipherKeyPair tspCAKeyPair;
         private X509Certificate tspCACert;
         private AsymmetricCipherKeyPair tspKeyPair;
@@ -47,7 +47,7 @@ namespace CAdESLib.Tests
             var caCert = CryptoHelpers.GenerateCertificate(ca, ca, caKeyPair.Private, caKeyPair.Public);
 
             var notBefore = DateTime.Now.AddDays(-1);
-            var notAfter = DateTime.Now.AddDays(1);
+            var notAfter = DateTime.Now.AddDays(30);
             if (!(sigParams.SignatureCertTimeValid ?? false))
             {
                 notBefore = DateTime.Now.AddDays(-2);
@@ -71,10 +71,15 @@ namespace CAdESLib.Tests
             {
                 cadesSettings.TrustedCerts.Add(ocspCACert);
             }
+            var fakeCrl = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(null, null) as FakeOnlineCrlSource;
             if (!(sigParams.SignatureCertCRL ?? false))
             {
-                var fakeCrl = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(null, null) as FakeOnlineCrlSource;
                 fakeCrl.AddRevokedCert(!(sigParams.SignatureCertCRL ?? false) ? signingCert : null, caCert, caKeyPair);
+            }
+            else
+            {
+                fakeCrl.AddCertIssuer(signingCert, caCert, caKeyPair);
+
             }
             if (sigParams.TSSignatureCertTrusted ?? false)
             {
@@ -196,15 +201,15 @@ namespace CAdESLib.Tests
                 ocspCert = CryptoHelpers.GenerateCertificate(ocspCA, ocsp, ocspCAKeyPair.Private, ocspKeyPair.Public, ocsp: true);
             }
 
-            {
-                var crlCA = new X509Name("CN=crlCA");
-                crlCAKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-                //crlCACert = CryptoHelpers.GenerateCertificate(crlCA, crlCA, crlCAKeyPair.Private, crlCAKeyPair.Public);
+            // {
+            //     var crlCA = new X509Name("CN=crlCA");
+            //     crlCAKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
+            //     //crlCACert = CryptoHelpers.GenerateCertificate(crlCA, crlCA, crlCAKeyPair.Private, crlCAKeyPair.Public);
 
-                var crl = new X509Name("CN=crl");
-                crlKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-                crlCert = CryptoHelpers.GenerateCertificate(crlCA, crl, crlCAKeyPair.Private, crlKeyPair.Public);
-            }
+            //     var crl = new X509Name("CN=crl");
+            //     crlKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
+            //     crlCert = CryptoHelpers.GenerateCertificate(crlCA, crl, crlCAKeyPair.Private, crlKeyPair.Public);
+            // }
 
             {
                 var tspCA = new X509Name("CN=tspCA");
@@ -217,7 +222,10 @@ namespace CAdESLib.Tests
             }
 
             var fakeOnlineOCSPSource = new FakeOnlineOcspSource(ocspCert, ocspKeyPair);
-            var fakeOnlineCrlSource = new FakeOnlineCrlSource(crlCert, crlKeyPair);
+            var fakeOnlineCrlSource = new FakeOnlineCrlSource(new Dictionary<X509Certificate, (X509Certificate, AsymmetricCipherKeyPair)>{
+                {ocspCert, (ocspCACert, ocspCAKeyPair)},
+                {tspCert, (tspCACert, tspCAKeyPair)}
+            });
             var fakeOnlineTspSource = new FakeOnlineTspSource(tspCert, tspKeyPair);
 
             unityContainer = new UnityContainer();
@@ -397,7 +405,7 @@ namespace CAdESLib.Tests
 
         private static bool? GetBoolValue(string str)
         {
-            return str == "yes" ? true : str == "no" ? false : (bool?) null;
+            return str == "yes" ? true : str == "no" ? false : (bool?)null;
         }
 
         public class SignatureParams
