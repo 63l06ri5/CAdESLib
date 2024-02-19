@@ -267,6 +267,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.CheckedWithWarning, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.CheckedWithWarning, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.CheckedWithWarning, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.CheckedWithWarning, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
         public void check_no_net(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
@@ -283,6 +288,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
         public void check_signer_revoked(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
@@ -299,6 +309,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
         public void check_intermediate_revoked(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
@@ -315,6 +330,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.XLType2)]
         public void check_signer_after_NotAfter(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             SetupSignerCert(overdue: true);
@@ -333,6 +353,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.XLType2)]
         public void signer_signer_after_NotAfter(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             SetupSignerCert(overdue: true);
@@ -350,6 +375,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.BES)]
         public void sign_no_net(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -365,6 +395,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.BES)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.BES)]
         public void sign_no_net_for_tsp(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -380,6 +415,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.CheckedWithWarning, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.T)]
         public void sign_no_net_for_inter(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -395,6 +435,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.CheckedWithWarning, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.T)]
         public void sign_no_net_for_revocation(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -411,6 +456,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.XLType2)]
         public void sign_signer_revoked(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -426,6 +476,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.XLType2)]
         public void sign_ocsp_revoked(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -441,6 +496,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.XLType2)]
         public void sign_inter_revoked(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
@@ -456,6 +516,11 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Failed, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Failed, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Failed, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Failed, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Failed, SignatureProfile.XLType2)]
         public void sign_tsp_revoked(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (_, _, _, validationReport) = SomeSetupSigning(
