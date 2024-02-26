@@ -686,8 +686,6 @@ namespace CAdESLib.Tests
                 return FileSignatureState.Failed;
             }
 
-            var signatureTimestampsVerification = info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification;
-
             switch (targetSignatureProfile)
             {
                 case SignatureProfile.T:
@@ -695,16 +693,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.C:
@@ -713,16 +701,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.XType1:
@@ -733,16 +711,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.XType2:
@@ -753,16 +721,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.XL:
@@ -772,16 +730,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.XLType1:
@@ -793,16 +741,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.XLType2:
@@ -814,16 +752,6 @@ namespace CAdESLib.Tests
                     {
                         return FileSignatureState.Failed;
                     }
-
-                    if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
-                    {
-                        return FileSignatureState.Failed;
-                    }
-                    else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
-                    {
-                        return FileSignatureState.CheckedWithWarning;
-                    }
-
                     break;
 
                 case SignatureProfile.A:
@@ -845,11 +773,23 @@ namespace CAdESLib.Tests
                     break;
             }
 
+            if (targetSignatureProfile != SignatureProfile.A)
+            {
+                var signatureTimestampsVerification = info.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification;
+                if (signatureTimestampsVerification.Any(x => x.CertPathVerification.IsInvalid))
+                {
+                    return FileSignatureState.Failed;
+                }
+                else if (signatureTimestampsVerification.Any(x => !x.CertPathVerification.IsValid))
+                {
+                    return FileSignatureState.CheckedWithWarning;
+                }
+            }
+
             return info.CertPathRevocationAnalysis.Summary.IsValid
                 ? FileSignatureState.Checked
                 : FileSignatureState.CheckedWithWarning;
         }
-
 
         private static SignatureProfile GetLevelReached(SignatureInformation info)
         {
