@@ -8,6 +8,7 @@
         CRL,
         OCSP,
         TRUSTED_LIST,
-        SELF_SIGNED
+        SELF_SIGNED,
+        OCSP_NO_CHECK
     }
 }

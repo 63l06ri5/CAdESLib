@@ -35,19 +35,23 @@ namespace CAdESLib.Document.Validation
                 throw new ArgumentNullException(nameof(issuerCertificate));
             }
 
-            var ocspNoCheck = certificate.GetExtensionValue(X509Consts.OCSPNoCheck);
-            if (ocspNoCheck != null)
-            {
-                logger.Trace("OCSPNoCheck");
-                return null;
-            }
-
-            CertificateStatus status = new CertificateStatus
+            var status = new CertificateStatus
             {
                 Certificate = certificate,
                 ValidationDate = validationDate,
                 IssuerCertificate = issuerCertificate
             };
+
+            var ocspNoCheck = certificate.GetExtensionValue(X509Consts.OCSPNoCheck);
+            if (ocspNoCheck != null && certificate.GetExtendedKeyUsage().Contains(Org.BouncyCastle.Asn1.X509.KeyPurposeID.IdKPOcspSigning.Id))
+            {
+                logger.Trace("OCSPNoCheck");
+                status.StatusSourceType = ValidatorSourceType.OCSP_NO_CHECK;
+                status.Validity = CertificateValidity.VALID;
+                return status;
+            }
+
+
             if (ocspSource == null)
             {
                 logger.Warn("OCSPSource null");

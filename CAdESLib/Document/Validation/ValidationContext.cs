@@ -491,7 +491,10 @@ namespace CAdESLib.Document.Validation
                 logger?.Info(VerifyWithOfflineServiceMessage);
                 var verifier = certificateVerifierFactory(optionalOCSPSource, optionalCRLSource);
                 var status = verifier.Check(cert.Certificate, potentialIssuer?.Certificate, validationDate);
-                if (status != null)
+                if (
+                    status != null &&
+                    // need to check if is there online crl
+                    status.StatusSourceType != ValidatorSourceType.OCSP_NO_CHECK)
                 {
                     return status;
                 }

@@ -36,35 +36,29 @@ namespace CAdESLib.Document.Validation
                 return null;
             }
 
-            CertificateStatus? result = null;
-            var ocspNoCheck = cert.GetExtensionValue(X509Consts.OCSPNoCheck);
-            if (ocspNoCheck != null && cert.GetExtendedKeyUsage().Contains(Org.BouncyCastle.Asn1.X509.KeyPurposeID.IdKPOcspSigning.Id))
-            {
-                logger.Trace("OCSPNoCheck");
-            }
-            else
-            {
-                logger.Trace("OCSP request for " + cert.SubjectDN);
-                result = ocspVerifier.Check(cert, potentialIssuer, validationDate);
-            }
+            logger.Trace("OCSP request for " + cert.SubjectDN);
+            var ocspResult = ocspVerifier.Check(cert, potentialIssuer, validationDate);
 
-
-            if (result != null && result.Validity != CertificateValidity.UNKNOWN)
+            if (ocspResult != null && ocspResult.Validity != CertificateValidity.UNKNOWN && ocspResult.StatusSourceType != ValidatorSourceType.OCSP_NO_CHECK)
             {
                 logger.Trace(OCSPDoneMessage);
-                return result;
+                return ocspResult;
             }
             else
             {
                 logger.Info($"No OCSP check performed, looking for a CRL for {cert.SubjectDN},serial={cert.SerialNumber.ToString(16)}");
-                result = crlVerifier.Check(cert, potentialIssuer, validationDate);
-                if (result != null && result.Validity != CertificateValidity.UNKNOWN)
+                var crlResult = crlVerifier.Check(cert, potentialIssuer, validationDate);
+                if (crlResult != null && crlResult.Validity != CertificateValidity.UNKNOWN)
                 {
                     logger.Trace(CLRDoneMessage);
-                    return result;
+                    return crlResult;
                 }
                 else
                 {
+                    if (ocspResult?.StatusSourceType == ValidatorSourceType.OCSP_NO_CHECK)
+                    {
+                        return ocspResult;
+                    }
                     logger.Trace(NoResponceMessage);
                     return null;
                 }

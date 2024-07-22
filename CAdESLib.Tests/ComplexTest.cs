@@ -54,7 +54,8 @@ namespace CAdESLib.Tests
         private AsymmetricCipherKeyPair signerKeyPair;
         private X509Certificate signerCert;
         private AsymmetricCipherKeyPair ocspKeyPair;
-        private X509Certificate ocspCert;
+        private X509Certificate ocspCertWithCrl;
+        private X509Certificate ocspCertWithoutCrl;
         private string tspUrl;
         private AsymmetricCipherKeyPair tspKeyPair;
         private X509Certificate tspCert;
@@ -535,6 +536,26 @@ namespace CAdESLib.Tests
             Assert.AreEqual(expectedLevel, levelReached);
         }
 
+        [TestCase(SignatureProfile.T, FileSignatureState.Checked, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Checked, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Checked, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Checked, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
+        public void sign_ocsp_without_crl(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
+        {
+            var (_, _, _, validationReport) = SomeSetupSigning(
+                signatureProfile,
+                ocspWithoutCrl: true);
+
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(expectedState, state);
+            Assert.AreEqual(expectedLevel, levelReached);
+        }
+
 
         [OneTimeSetUp]
         public void SetupFixture()
@@ -568,7 +589,22 @@ namespace CAdESLib.Tests
             // OCSP
             var ocspCertName = new X509Name("CN=ocsp_cert");
             ocspKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            ocspCert = CryptoHelpers.GenerateCertificate(intermediateCertName, ocspCertName, intermediateKeyPair.Private, ocspKeyPair.Public, issuerUrls: new string[] { intermediateUrl }, crlUrls: new string[] { crlInterUrl }, ocsp: true);
+            ocspCertWithCrl = CryptoHelpers.GenerateCertificate(
+                intermediateCertName,
+                ocspCertName,
+                intermediateKeyPair.Private,
+                ocspKeyPair.Public,
+                issuerUrls: new string[] { intermediateUrl },
+                crlUrls: new string[] { crlInterUrl },
+                ocsp: true);
+            var ocspCertWithoutCrlName = new X509Name("CN=ocsp_cert_wo_crl");
+            ocspCertWithoutCrl = CryptoHelpers.GenerateCertificate(
+                intermediateCertName,
+                ocspCertWithoutCrlName,
+                intermediateKeyPair.Private,
+                ocspKeyPair.Public,
+                issuerUrls: new string[] { intermediateUrl },
+                ocsp: true);
 
             // TSP
             tspUrl = "http://tsp";
@@ -883,9 +919,9 @@ namespace CAdESLib.Tests
             bool noNetworkForOcspAfterSigning = false,
 
             bool noNetworkForCrlBeforeSigning = false,
-            bool noNetworkForCrlAfterSigning = false
+            bool noNetworkForCrlAfterSigning = false,
 
-
+            bool ocspWithoutCrl = false
             )
         {
             var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
@@ -922,7 +958,8 @@ namespace CAdESLib.Tests
                 noNetworkForTsp: noNetworkForTspBeforeSigning,
                 noNetworkForInter: noNetworkForInterBeforeSigning,
                 noNetworkForOcsp: noNetworkForOcspBeforeSigning,
-                noNetworkForCrl: noNetworkForCrlBeforeSigning);
+                noNetworkForCrl: noNetworkForCrlBeforeSigning,
+                ocspWithoutCrl: ocspWithoutCrl);
 
             // make pkcs7
             var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
@@ -936,7 +973,8 @@ namespace CAdESLib.Tests
                 noNetworkForTsp: noNetworkForTspAfterSigning,
                 noNetworkForInter: noNetworkForInterAfterSigning,
                 noNetworkForOcsp: noNetworkForOcspAfterSigning,
-                noNetworkForCrl: noNetworkForCrlAfterSigning);
+                noNetworkForCrl: noNetworkForCrlAfterSigning,
+                ocspWithoutCrl: ocspWithoutCrl);
 
             return (signedDocument, inputDocument, cadesService, validationReport);
         }
@@ -950,8 +988,10 @@ namespace CAdESLib.Tests
             bool noNetworkForTsp = false,
             bool noNetworkForInter = false,
             bool noNetworkForOcsp = false,
-            bool noNetworkForCrl = false)
+            bool noNetworkForCrl = false,
+            bool ocspWithoutCrl = false)
         {
+            var ocspCert = ocspWithoutCrl ? ocspCertWithoutCrl : ocspCertWithCrl;
 
             container.RegisterFactory<Func<IRuntimeValidatingParams, IHTTPDataLoader>>(
                     c => new Func<IRuntimeValidatingParams, IHTTPDataLoader>(
