@@ -57,7 +57,9 @@ namespace CAdESLib.Service
                 if (crlURL != null)
                 {
                     List<X509Crl> crls = new List<X509Crl>();
-                    if (crlURL.StartsWith("http://") || crlURL.StartsWith("https://"))
+                    if (
+                        crlURL.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                        crlURL.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                     {
                         var c = GetCrl(crlURL);
                         if (c != null)
@@ -116,36 +118,28 @@ namespace CAdESLib.Service
             var resultCrls = new List<X509Crl>();
             if (path != null)
             {
-                try
-                {
-                    FileAttributes attributes = File.GetAttributes(path);
+                FileAttributes attributes = File.GetAttributes(path);
 
-                    switch (attributes)
+                if (attributes.HasFlag(FileAttributes.Directory))
+                {
+                    foreach (var f in Directory.EnumerateFiles(path, "*.crl", new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive }))
                     {
-                        case FileAttributes.Directory:
-                            foreach (var f in Directory.EnumerateFiles(path, "*.crl"))
-                            {
-                                var crl = ReadCrl(f);
-                                if (crl != null)
-                                {
-                                    resultCrls.Add(crl);
-                                }
-                            }
-                            break;
-                        default:
-                            {
-                                var crl = ReadCrl(path);
-                                if (crl != null)
-                                {
-                                    resultCrls.Add(crl);
-                                }
-                                break;
-                            }
+                        var crl = ReadCrl(f);
+                        if (crl != null)
+                        {
+                            resultCrls.Add(crl);
+                        }
                     }
                 }
-                catch
+                else
                 {
+                    var crl = ReadCrl(path);
+                    if (crl != null)
+                    {
+                        resultCrls.Add(crl);
+                    }
                 }
+
             }
 
             return resultCrls;
@@ -158,12 +152,13 @@ namespace CAdESLib.Service
                 var input = File.OpenRead(path);
                 X509CrlParser parser = new X509CrlParser();
                 var crl = parser.ReadCrl(input);
-                logger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
+                logger.Trace($"File: {path}, CRL size: {crl.GetEncoded().Length} bytes");
 
                 return crl;
             }
-            catch
+            catch (Exception ex)
             {
+                logger.Error($"Exception when reading clr file: {path}\n{ex.Message}\n{ex.StackTrace}");
                 return null;
             }
         }
@@ -224,8 +219,12 @@ namespace CAdESLib.Service
                         DerIA5String derStr = DerIA5String.GetInstance(name.ToAsn1Object());
                         str = derStr.GetString();
                     }
-                    if (str != null && (str.StartsWith("http://") || str.StartsWith("https://"))
-                        && str.ToUpperInvariant().Contains("CRL"))
+                    if (
+                        str != null &&
+                        (
+                            str.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                            str.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    )
                     {
                         uris.Add(str);
                     }
