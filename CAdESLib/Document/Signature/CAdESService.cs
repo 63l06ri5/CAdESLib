@@ -166,10 +166,12 @@ namespace CAdESLib.Document.Signature
             }
             CmsSignedData signed = CreateCMSSignedDataGenerator(parameters, GetSigningProfile(parameters), false, null).Generate(content, includeContent);
 
-            var e = signed.GetSignerInfos().GetSigners().GetEnumerator();
-            e.MoveNext();
-            var si = e.Current as SignerInformation;
-            return new MemoryStream(si!.GetEncodedSignedAttributes());
+            var si = signed.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+            if (si is null) {
+                throw new ArgumentException("Failed signing");
+            }
+
+            return new MemoryStream(si.GetEncodedSignedAttributes());
         }
 
         public (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)

@@ -2,6 +2,7 @@
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CAdESLib.Document.Validation
 {
@@ -28,15 +29,13 @@ namespace CAdESLib.Document.Validation
         {
             if (token != null && token.GetTimeStamp() != null)
             {
-                var signers = token.GetTimeStamp().ToCmsSignedData().GetSignerInfos().GetSigners().GetEnumerator();
-                signers.MoveNext();
-                var signer = signers.Current as SignerInformation;
-                if (signer is null)
+                var signerInformation = token.GetTimeStamp().ToCmsSignedData().GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+                if (signerInformation is null)
                 {
-                    throw new ArgumentNullException(nameof(signer));
+                    throw new ArgumentNullException(nameof(signerInformation));
                 }
 
-                signatureAlgorithm = signer.EncryptionAlgOid;
+                signatureAlgorithm = signerInformation.EncryptionAlgOid;
                 serialNumber = token.GetTimeStamp().TimeStampInfo.SerialNumber.ToString();
                 creationTime = token.GetTimeStamp().TimeStampInfo.GenTime;
                 issuerName = token.GetSignerSubjectName()?.ToString();

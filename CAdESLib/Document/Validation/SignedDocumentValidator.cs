@@ -816,11 +816,14 @@ namespace CAdESLib.Document.Validation
             var signatureInformationList = new List<SignatureInformation?>();
             var context = new SignatureValidationContext();
 
-            var vcEnumerator = validationContexts?.GetEnumerator();
+            using var vcEnumerator = validationContexts?.GetEnumerator();
             foreach (IAdvancedSignature signature in GetSignatures(cmsSignedData))
             {
-                vcEnumerator?.MoveNext();
-                var existedValidationContext = vcEnumerator?.Current;
+                IValidationContext? existedValidationContext = null;
+                if (vcEnumerator?.MoveNext() ?? false)
+                {
+                    existedValidationContext = vcEnumerator?.Current;
+                }
                 var logger = loggerFactory();
                 var validationInfo = ValidateSignature(signature, existedValidationContext, logger, context, checkIntegrity, externalContent);
                 if (!(validationInfo is null))

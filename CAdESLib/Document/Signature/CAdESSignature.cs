@@ -38,11 +38,12 @@ namespace CAdESLib.Document.Signature
 
         public CAdESSignature(CmsSignedData cms)
         {
-            var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
-            signers.MoveNext();
-
+            signerInformation = cms.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+            if (signerInformation is null)
+            {
+                throw new ArgumentNullException(nameof(signerInformation));
+            }
             _cmsSignedData = cms;
-            signerInformation = (SignerInformation)signers.Current!;
         }
 
         public CAdESSignature(CmsSignedData cms, SignerInformation signerInformation)

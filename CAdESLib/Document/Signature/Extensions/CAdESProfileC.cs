@@ -134,10 +134,12 @@ namespace CAdESLib.Document.Signature.Extensions
 
                 var tstSignedData = timeStampToken.ToCmsSignedData();
 
-                var e = tstSignedData.GetSignerInfos().GetSigners().GetEnumerator();
-                e.MoveNext();
-                var si = e.Current as SignerInformation;
-                var newsi = SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unAttr));
+                var signerInformation = tstSignedData.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+                if (signerInformation is null)
+                {
+                    throw new ArgumentNullException(nameof(signerInformation));
+                }
+                var newsi = SignerInformation.ReplaceUnsignedAttributes(signerInformation, new BcCms.AttributeTable(unAttr));
 
                 CmsSignedData newTstSignedData = CmsSignedData.ReplaceSigners(tstSignedData, new SignerInformationStore(new[] { newsi }));
 

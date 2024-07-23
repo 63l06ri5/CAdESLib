@@ -145,9 +145,9 @@ namespace CAdESLib.Tests
             Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.All(x => x.CertPathVerification.IsValid), "XType1 cert paths are not valid");
 
             var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
-            var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
-            signers.MoveNext();
-            var signerInformation = (signers.Current as SignerInformation)!;
+            var signerInformation = cms.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+            Assert.IsNotNull(signerInformation);
+
 
             Action<string, X509Certificate, Org.BouncyCastle.Asn1.Cms.AttributeTable> refsValsChecker = (label, cert, unsignedAttributes) =>
             {
@@ -260,10 +260,8 @@ namespace CAdESLib.Tests
             Assert.IsTrue(sigInfo.SignatureLevelAnalysis.LevelBES.LevelReached.IsValid);
 
             var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
-            var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
-            signers.MoveNext();
-            var signerInformation = (signers.Current as SignerInformation)!;
-
+            var signerInformation = cms.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+            Assert.IsNotNull(signerInformation);
             Assert.IsNull(signerInformation.UnsignedAttributes);
         }
 

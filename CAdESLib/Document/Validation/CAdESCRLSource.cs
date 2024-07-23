@@ -25,16 +25,14 @@ namespace CAdESLib.Document.Validation
 
         public CAdESCRLSource(CmsSignedData cms)
         {
-            var signers = cms.GetSignerInfos().GetSigners().GetEnumerator();
-            signers.MoveNext();
-            var signer = signers.Current as SignerInformation;
-            if (signer is null)
+            var signerInformation = cms.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
+            if (signerInformation is null)
             {
-                throw new ArgumentNullException(nameof(signer));
+                throw new ArgumentNullException(nameof(signerInformation));
             }
 
             cmsSignedData = cms;
-            signerId = signer.SignerID;
+            signerId = signerInformation.SignerID;
         }
 
         public CAdESCRLSource(CmsSignedData cms, SignerID id)
