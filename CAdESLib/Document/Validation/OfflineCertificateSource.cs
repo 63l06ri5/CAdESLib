@@ -23,12 +23,12 @@ namespace CAdESLib.Document.Validation
             this.sourceType = sourceType;
         }
 
-        public IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName)
+        public IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name? subjectName)
         {
             IList<CertificateAndContext> list = new List<CertificateAndContext>();
             foreach (X509Certificate cert in GetCertificates())
             {
-                if (subjectName.Equals(cert.SubjectDN))
+                if (subjectName == null || subjectName.Equals(cert.SubjectDN))
                 {
                     CertificateAndContext cc = new CertificateAndContext(cert)
                     {

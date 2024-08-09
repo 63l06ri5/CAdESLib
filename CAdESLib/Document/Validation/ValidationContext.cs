@@ -126,7 +126,7 @@ namespace CAdESLib.Document.Validation
         internal virtual CertificateAndContext? GetIssuerCertificate(ISignedToken signedToken, ICertificateSource optionalSource, DateTime validationDate)
         {
             var issuerSubjectName = signedToken?.GetSignerSubjectName();
-            if (signedToken is null || issuerSubjectName == null || NotFoundIssuers.Contains(issuerSubjectName))
+            if (signedToken is null || issuerSubjectName != null && NotFoundIssuers.Contains(issuerSubjectName))
             {
                 return null;
             }
@@ -182,7 +182,10 @@ namespace CAdESLib.Document.Validation
             }
 
             logger?.Warn("Don't found any issuer for token " + signedToken);
-            NotFoundIssuers.Add(issuerSubjectName);
+            if (issuerSubjectName != null)
+            {
+                NotFoundIssuers.Add(issuerSubjectName);
+            }
 
             return null;
         }

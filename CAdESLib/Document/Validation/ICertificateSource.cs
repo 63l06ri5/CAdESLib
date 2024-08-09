@@ -24,6 +24,6 @@ namespace CAdESLib.Document.Validation
         /// A list of certificates (and their respective context) corresponding to the subjectName. Never return
         /// null.
         /// </returns>
-        IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name subjectName);
+        IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name? subjectName);
     }
 }

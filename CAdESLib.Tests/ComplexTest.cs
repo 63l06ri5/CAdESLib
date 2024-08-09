@@ -554,6 +554,30 @@ namespace CAdESLib.Tests
             Assert.AreEqual(expectedLevel, levelReached);
         }
 
+        [TestCase(SignatureProfile.T, FileSignatureState.Checked, SignatureProfile.T)]
+        [TestCase(SignatureProfile.C, FileSignatureState.Checked, SignatureProfile.C)]
+        [TestCase(SignatureProfile.XType1, FileSignatureState.Checked, SignatureProfile.XType1)]
+        [TestCase(SignatureProfile.XType2, FileSignatureState.Checked, SignatureProfile.XType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
+        public void sign_ocsp_resp_publickey(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
+        {
+            var (signedDocument, inputDocument, cadesService, validationReportInSigning) = SomeSetupSigning(
+                signatureProfile,
+                ocspRespIDPublicKey: true);
+
+            var validationReport = cadesService.ValidateDocument(signedDocument, false, inputDocument);
+            var signatureInformation = validationReport.SignatureInformationList.First()!;
+            var state = GetSignatureState(signatureInformation, signatureProfile);
+            var levelReached = GetLevelReached(signatureInformation);
+
+            Assert.AreEqual(expectedState, state);
+            Assert.AreEqual(expectedLevel, levelReached);
+            Assert.AreEqual(
+                validationReportInSigning.SignatureInformationList[0]!.UsedCertsWithVerification.Count(),
+                validationReport.SignatureInformationList[0]!.UsedCertsWithVerification.Count());
+        }
+
 
         [OneTimeSetUp]
         public void SetupFixture()
@@ -919,7 +943,9 @@ namespace CAdESLib.Tests
             bool noNetworkForCrlBeforeSigning = false,
             bool noNetworkForCrlAfterSigning = false,
 
-            bool ocspWithoutCrl = false
+            bool ocspWithoutCrl = false,
+
+            bool ocspRespIDPublicKey = false
             )
         {
             var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
@@ -957,7 +983,8 @@ namespace CAdESLib.Tests
                 noNetworkForInter: noNetworkForInterBeforeSigning,
                 noNetworkForOcsp: noNetworkForOcspBeforeSigning,
                 noNetworkForCrl: noNetworkForCrlBeforeSigning,
-                ocspWithoutCrl: ocspWithoutCrl);
+                ocspWithoutCrl: ocspWithoutCrl,
+                ocspRespIDPublicKey: ocspRespIDPublicKey);
 
             // make pkcs7
             var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
@@ -972,7 +999,8 @@ namespace CAdESLib.Tests
                 noNetworkForInter: noNetworkForInterAfterSigning,
                 noNetworkForOcsp: noNetworkForOcspAfterSigning,
                 noNetworkForCrl: noNetworkForCrlAfterSigning,
-                ocspWithoutCrl: ocspWithoutCrl);
+                ocspWithoutCrl: ocspWithoutCrl,
+                ocspRespIDPublicKey: ocspRespIDPublicKey);
 
             return (signedDocument, inputDocument, cadesService, validationReport);
         }
@@ -987,7 +1015,9 @@ namespace CAdESLib.Tests
             bool noNetworkForInter = false,
             bool noNetworkForOcsp = false,
             bool noNetworkForCrl = false,
-            bool ocspWithoutCrl = false)
+            bool ocspWithoutCrl = false,
+            // use ocsp public key for reference issuer
+            bool ocspRespIDPublicKey = false)
         {
             var ocspCert = ocspWithoutCrl ? ocspCertWithoutCrl : ocspCertWithCrl;
 
@@ -1033,7 +1063,8 @@ namespace CAdESLib.Tests
                                     var bytes = Streams.ReadAll(stream);
                                     var request = new OcspReq(bytes);
 
-                                    BasicOcspRespGenerator generator = new BasicOcspRespGenerator(new RespID(ocspCert.SubjectDN));
+                                    BasicOcspRespGenerator generator = new BasicOcspRespGenerator(
+                                        ocspRespIDPublicKey ? new RespID(ocspCert.GetPublicKey()) : new RespID(ocspCert.SubjectDN));
 
                                     var certIDList = request.GetRequestList().Select(x => x.GetCertID());
                                     var status = GetRevokedStatus(
