@@ -62,7 +62,7 @@ namespace CAdESLib.Document.Signature.Extensions
             }
             if (signingTime == null)
             {
-                signingTime = DateTime.Now;
+                signingTime = DateTime.Now.ToUniversalTime();
             }
             var signingCertificate = signature.SigningCertificate;
             if (signingCertificate is null)
@@ -70,7 +70,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 throw new ArgumentNullException(nameof(signingCertificate));
             }
 
-            unsignedAttrs = ExtendUnsignedAttributes(unsignedAttrs, signingCertificate, signingTime.Value, signature.CertificateSource, validationContext);
+            unsignedAttrs = ExtendUnsignedAttributes(unsignedAttrs, signingCertificate, signingTime.Value.ToUniversalTime(), signature.CertificateSource, validationContext);
             SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttrs));
             return (newsi, validationContext);
         }

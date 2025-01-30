@@ -48,7 +48,7 @@ namespace CAdESLib.Document.Signature.Extensions
 
         private Attribute MakeSigningTimeAttribute(SignatureParameters parameters)
         {
-            return new Attribute(PkcsObjectIdentifiers.Pkcs9AtSigningTime, new DerSet(new Org.BouncyCastle.Asn1.X509.Time(parameters.SigningDate)));
+            return new Attribute(PkcsObjectIdentifiers.Pkcs9AtSigningTime, new DerSet(new Org.BouncyCastle.Asn1.X509.Time(parameters.SigningDate.ToUniversalTime())));
         }
 
         public virtual IDictionary<DerObjectIdentifier, Asn1Encodable> GetSignedAttributes(SignatureParameters parameters)

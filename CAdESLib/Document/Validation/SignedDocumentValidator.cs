@@ -742,7 +742,7 @@ namespace CAdESLib.Document.Validation
             }
 
             var signatureVerification = new SignatureVerification(new SignatureValidationResult(!checkIntegrity || signature.CheckIntegrity(externalContent)), signature.SignatureAlgorithm);
-            IValidationContext ctx = existedContext ?? signatureValidationContext.GetExisted(signature.SigningCertificate, signature.SigningTime?.Value ?? DateTime.Now);
+            IValidationContext ctx = existedContext ?? signatureValidationContext.GetExisted(signature.SigningCertificate, (signature.SigningTime?.Value ?? DateTime.Now).ToUniversalTime());
             IList<CertificateAndContext> usedCerts = new List<CertificateAndContext>();
             SignatureLevelT levelT;
             Func<IValidationContext, SignatureLevelT> getLevelT = (IValidationContext ctx) =>
