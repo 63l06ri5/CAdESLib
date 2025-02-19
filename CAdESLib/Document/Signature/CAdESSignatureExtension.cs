@@ -6,7 +6,6 @@ using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Tsp;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -27,7 +26,7 @@ namespace CAdESLib.Document.Signature.Extensions
 
         public virtual (IDocument, ICollection<IValidationContext?>?) ExtendSignatures(
             IDocument document,
-            IDocument originalData,
+            IDocument? originalData,
             SignatureParameters parameters)
         {
             if (document is null)
@@ -78,7 +77,7 @@ namespace CAdESLib.Document.Signature.Extensions
             }
         }
 
-        protected internal abstract (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData);
+        protected internal abstract (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument? originalData);
 
         /// <summary>
         /// Computes an attribute containing a time-stamp token of the provided data, from the provided TSA using the

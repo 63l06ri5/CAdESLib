@@ -64,12 +64,19 @@ namespace CAdESLib.Document.Signature
         public virtual string DigestAlgorithmOID { get; set; }
         public virtual string EncriptionAlgorithmOID { get; set; }
 
+        public string SignatureName
+        {
+            get
+            {
+                return CmsSignedHelper.Instance.GetDigestAlgName(DigestAlgorithmOID) + "with" + CmsSignedHelper.Instance.GetEncryptionAlgName(EncriptionAlgorithmOID);
+            }
+        }
+
         public string DigestWithEncriptionOID
         {
             get
             {
-                var name = CmsSignedHelper.Instance.GetDigestAlgName(DigestAlgorithmOID) + "with" + CmsSignedHelper.Instance.GetEncryptionAlgName(EncriptionAlgorithmOID);
-                return new DefaultSignatureAlgorithmIdentifierFinder().Find(name).Algorithm.Id;
+                return new DefaultSignatureAlgorithmIdentifierFinder().Find(this.SignatureName).Algorithm.Id;
             }
         }
 

@@ -51,9 +51,9 @@ namespace CAdESLib.Document.Signature.Extensions
             return new Attribute(PkcsObjectIdentifiers.Pkcs9AtSigningTime, new DerSet(new Org.BouncyCastle.Asn1.X509.Time(parameters.SigningDate.ToUniversalTime())));
         }
 
-        public virtual IDictionary<DerObjectIdentifier, Asn1Encodable> GetSignedAttributes(SignatureParameters parameters)
+        public virtual IDictionary<object, object> GetSignedAttributes(SignatureParameters parameters)
         {
-            var signedAttrs = new Dictionary<DerObjectIdentifier, Asn1Encodable>();
+            var signedAttrs = new Dictionary<object, object>();
             Attribute signingCertificateReference = MakeSigningCertificateAttribute(parameters);
             signedAttrs.Add(signingCertificateReference.AttrType, signingCertificateReference);
             signedAttrs.Add(PkcsObjectIdentifiers.Pkcs9AtSigningTime, MakeSigningTimeAttribute(parameters));

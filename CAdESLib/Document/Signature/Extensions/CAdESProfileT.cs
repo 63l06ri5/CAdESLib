@@ -26,7 +26,7 @@ namespace CAdESLib.Document.Signature.Extensions
             this.SignatureTsa = signatureTsa;
         }
 
-        protected internal override (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
+        protected internal override (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument? originalData)
         {
             if (si is null)
             {

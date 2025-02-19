@@ -12,9 +12,16 @@ namespace CAdESLib.Document.Signature
         /// <param name="originalDocument">
         /// Нужен для создания подписи уровня A
         /// </param>
-        (IDocument, ValidationReport) ExtendDocument(IDocument document, IDocument originalDocument, SignatureParameters parameters);
+        (IDocument, ValidationReport) ExtendDocument(
+                IDocument signedDocument,
+                IDocument? originalDocument,
+                SignatureParameters parameters);
 
-        ValidationReport ValidateDocument(IDocument document, bool checkIntegrity, IDocument? externalContent = null, ICollection<IValidationContext?>? validationContexts = null);
+        ValidationReport ValidateDocument(
+                IDocument document,
+                bool checkIntegrity,
+                IDocument? externalContent = null,
+                ICollection<IValidationContext?>? validationContexts = null);
 
         /// <summary>
         /// Prerate data for singing
@@ -25,12 +32,35 @@ namespace CAdESLib.Document.Signature
         Stream ToBeSigned(IDocument document, SignatureParameters parameters);
 
         /// <summary>
+        /// Prerate data for singing with hash
+        /// </summary>
+        /// <param name="hash">Hash of content</param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        Stream ToBeSignedWithHash(IDocument hash, SignatureParameters parameters);
+
+        /// <summary>
         /// Build PKCS#7-format signature file
         /// </summary>
         /// <param name="document">file</param>
         /// <param name="parameters"></param>
         /// <param name="signatureValue">generated signature</param>
         /// <returns></returns>
-        (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue);
+        (IDocument, ValidationReport) GetSignedDocument(
+                IDocument document,
+                SignatureParameters parameters,
+                byte[] signatureValue);
+
+        /// <summary>
+        /// Build PKCS#7-format signature file
+        /// </summary>
+        /// <param name="signedAttributes">signature attributes der set</param>
+        /// <param name="parameters"></param>
+        /// <param name="signatureValue">generated signature</param>
+        /// <returns></returns>
+        (IDocument, ValidationReport) GetSignedDocumentWithSignedAttributes(
+            IDocument signedAttributes,
+            SignatureParameters parameters,
+            byte[] signatureValue);
     }
 }

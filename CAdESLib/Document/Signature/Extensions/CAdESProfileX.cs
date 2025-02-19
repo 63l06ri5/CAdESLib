@@ -50,7 +50,7 @@ namespace CAdESLib.Document.Signature.Extensions
             this.extendedValidationType = extendedValidationType;
         }
 
-        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
+        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument? originalData)
         {
             var (newSi, validationContext) = base.ExtendCMSSignature(signedData, si, parameters, originalData);
             si = newSi;

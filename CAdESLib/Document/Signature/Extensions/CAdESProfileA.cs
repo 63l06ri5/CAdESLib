@@ -27,7 +27,7 @@ namespace CAdESLib.Document.Signature.Extensions
 
         public CAdESProfileA(ITspSource signatureTsa, ICertificateVerifier certificateVerifier) : base(signatureTsa, certificateVerifier) { }
 
-        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData cmsSignedData, SignerInformation si, SignatureParameters parameters, IDocument originalDocument)
+        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData cmsSignedData, SignerInformation si, SignatureParameters parameters, IDocument? originalDocument)
         {
             var (newSi, validationContext) = base.ExtendCMSSignature(cmsSignedData, si, parameters, originalDocument);
             si = newSi;

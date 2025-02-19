@@ -44,7 +44,7 @@ namespace CAdESLib.Document.Signature.Extensions
             return unsignedAttrs;
         }
 
-        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument originalData)
+        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument? originalData)
         {
             if (parameters is null)
             {

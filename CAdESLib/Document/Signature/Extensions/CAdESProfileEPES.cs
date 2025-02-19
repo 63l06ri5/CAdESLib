@@ -18,7 +18,7 @@ namespace CAdESLib.Document.Signature.Extensions
         {
         }
 
-        public override IDictionary<DerObjectIdentifier, Asn1Encodable> GetSignedAttributes(SignatureParameters parameters)
+        public override IDictionary<object, object> GetSignedAttributes(SignatureParameters parameters)
         {
             var signedAttrs = base.GetSignedAttributes(parameters);
             Attribute policy;

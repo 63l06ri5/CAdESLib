@@ -3,7 +3,10 @@ using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
 using CAdESLib.Service;
 using NLog;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
+using Org.BouncyCastle.Asn1.Pkcs;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
@@ -18,6 +21,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using AttributeTable = Org.BouncyCastle.Asn1.Cms.AttributeTable;
+using ContentInfo = Org.BouncyCastle.Asn1.Cms.ContentInfo;
+using IssuerAndSerialNumber = Org.BouncyCastle.Asn1.Cms.IssuerAndSerialNumber;
+using SignedData = Org.BouncyCastle.Asn1.Cms.SignedData;
+using SignerInfo = Org.BouncyCastle.Asn1.Cms.SignerInfo;
 
 namespace CAdESLib.Document.Signature
 {
@@ -28,17 +36,6 @@ namespace CAdESLib.Document.Signature
         private readonly ITspSource tspSource;
         private readonly ICertificateVerifier verifier;
         private readonly ISignedDocumentValidator validator;
-
-        ///// <param>
-        ///// the tspSource to set
-        ///// </param>
-        //public ITspSource TspSource { get; set; }
-
-        ///// <param>
-        ///// the verifier to set
-        ///// </param>
-        //public ICertificateVerifier Verifier { get; set; }
-        //public ISignedDocumentValidator Validator { get; }
 
         private void PrintMetaInfo()
         {
@@ -102,7 +99,7 @@ namespace CAdESLib.Document.Signature
 
         public virtual (IDocument, ValidationReport) ExtendDocument(
             IDocument signedDocument,
-            IDocument originalDocument,
+            IDocument? originalDocument,
             SignatureParameters parameters)
         {
             PrintMetaInfo();
@@ -167,11 +164,40 @@ namespace CAdESLib.Document.Signature
             CmsSignedData signed = CreateCMSSignedDataGenerator(parameters, GetSigningProfile(parameters), false, null).Generate(content, includeContent);
 
             var si = signed.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
-            if (si is null) {
+            if (si is null)
+            {
                 throw new ArgumentException("Failed signing");
             }
 
             return new MemoryStream(si.GetEncodedSignedAttributes());
+        }
+
+        public Stream ToBeSignedWithHash(IDocument hash, SignatureParameters parameters)
+        {
+            PrintMetaInfo();
+            if (hash is null)
+            {
+                throw new ArgumentNullException(nameof(hash));
+            }
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
+            if (parameters.SignaturePackaging != SignaturePackaging.ENVELOPING && parameters.SignaturePackaging != SignaturePackaging.DETACHED)
+            {
+                throw new ArgumentException("Unsupported signature packaging " + parameters.SignaturePackaging);
+            }
+
+            byte[] digest = Streams.ReadAll(hash.OpenStream());
+            var cadesProfile = GetSigningProfile(parameters);
+            CmsAttributeTableGenerator signedAttrGen = new DefaultSignedAttributeTableGenerator(
+                    new AttributeTable(cadesProfile.GetSignedAttributes(parameters) as System.Collections.IDictionary));
+            var dict = (cadesProfile.GetSignedAttributes(parameters) as System.Collections.IDictionary)!;
+            dict[CmsAttributeTableParameter.ContentType] = PkcsObjectIdentifiers.Data;
+            dict[CmsAttributeTableParameter.Digest] = digest;
+
+            return new MemoryStream(new Org.BouncyCastle.Asn1.DerSet(signedAttrGen.GetAttributes(dict).ToAsn1EncodableVector()).GetDerEncoded());
         }
 
         public (IDocument, ValidationReport) GetSignedDocument(IDocument document, SignatureParameters parameters, byte[] signatureValue)
@@ -191,7 +217,12 @@ namespace CAdESLib.Document.Signature
             {
                 throw new ArgumentException("Unsupported signature packaging " + parameters.SignaturePackaging);
             }
-            CmsSignedDataGenerator generator = CreateCMSSignedDataGenerator(parameters, GetSigningProfile(parameters), parameters.SignatureProfile != SignatureProfile.BES, null, signatureValue);
+            CmsSignedDataGenerator generator = CreateCMSSignedDataGenerator(
+                    parameters,
+                    GetSigningProfile(parameters),
+                    parameters.SignatureProfile != SignatureProfile.BES,
+                    null,
+                    signatureValue);
             byte[] toBeSigned = Streams.ReadAll(document.OpenStream());
             CmsProcessableByteArray content = new CmsProcessableByteArray(toBeSigned);
             bool includeContent = true;
@@ -202,7 +233,99 @@ namespace CAdESLib.Document.Signature
             CmsSignedData data = generator.Generate(content, includeContent);
             IDocument signedDocument = new CMSSignedDocument(data);
 
+
             var (result, validationReport) = this.ExtendDocument(signedDocument, document, parameters);
+
+            return (result, validationReport);
+        }
+
+        public (IDocument, ValidationReport) GetSignedDocumentWithSignedAttributes(
+                IDocument signedAttributes,
+                SignatureParameters parameters,
+                byte[] signatureValue)
+        {
+            PrintMetaInfo();
+            if (signedAttributes is null)
+            {
+                throw new ArgumentNullException(nameof(signedAttributes));
+            }
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
+            if (parameters.SignaturePackaging
+                != SignaturePackaging.ENVELOPING && parameters.SignaturePackaging != SignaturePackaging.DETACHED)
+            {
+                throw new ArgumentException("Unsupported signature packaging " + parameters.SignaturePackaging);
+            }
+
+            var contentTypeOid = new DerObjectIdentifier(CmsObjectIdentifiers.Data.Id);
+            Asn1OctetString? octs = null;
+            Asn1Set? certrevlist = null;
+            Asn1Set? unsignedAttr = null;
+            ContentInfo encInfo = new ContentInfo(contentTypeOid, octs);
+            Asn1EncodableVector digestAlgs = new Asn1EncodableVector();
+            var digestAlgorithmId = new AlgorithmIdentifier(new DerObjectIdentifier(parameters.DigestAlgorithmOID), DerNull.Instance);
+            digestAlgs.Add(digestAlgorithmId);
+            Asn1Set? certificates = null;
+            var signingCertificate = parameters.SigningCertificate!;
+
+            var certs = new List<X509Certificate> { signingCertificate };
+            if (parameters.CertificateChain != null)
+            {
+                foreach (X509Certificate c in parameters.CertificateChain)
+                {
+                    if (!c.SubjectDN.Equals(signingCertificate.SubjectDN))
+                    {
+                        certs.Add(c);
+                    }
+                }
+            }
+
+            if (certs.Count != 0)
+            {
+                Asn1EncodableVector v = new Asn1EncodableVector();
+                foreach (X509Certificate c in certs)
+                {
+                    v.Add(X509CertificateStructure.GetInstance(
+                        Asn1Object.FromByteArray(c.GetEncoded())));
+                }
+                certificates = new DerSet(v);
+            }
+
+            Asn1EncodableVector signerInfos = new Asn1EncodableVector();
+            SignerIdentifier signerIdentifier = new SignerIdentifier(
+                    new IssuerAndSerialNumber(signingCertificate.IssuerDN, new DerInteger(signingCertificate.SerialNumber)));
+            var signatureName = parameters.SignatureName;
+            var encAlgId = new DefaultSignatureAlgorithmIdentifierFinder().Find(signatureName).Algorithm;
+
+            Asn1Set signedAttr = Asn1Set.GetInstance(Streams.ReadAll(signedAttributes.OpenStream()));
+
+            signerInfos.Add(new SignerInfo(
+                        signerIdentifier,
+                        new AlgorithmIdentifier(new DerObjectIdentifier(parameters.DigestAlgorithmOID), DerNull.Instance),
+                         signedAttr,
+                         new AlgorithmIdentifier(encAlgId, DerNull.Instance),
+                         new DerOctetString(signatureValue),
+                         unsignedAttr
+                        ));
+
+            SignedData sd = new SignedData(
+                 new DerSet(digestAlgs),
+                 encInfo,
+                 certificates,
+                 certrevlist,
+                 new DerSet(signerInfos));
+
+            ContentInfo contentInfo = new ContentInfo(CmsObjectIdentifiers.SignedData, sd);
+
+            CmsProcessable? content = null;
+            var data = new CmsSignedData(content, contentInfo);
+
+            IDocument signedDocument = new CMSSignedDocument(data);
+
+            var (result, validationReport) = this.ExtendDocument(signedDocument, null, parameters);
 
             return (result, validationReport);
         }
@@ -226,7 +349,12 @@ namespace CAdESLib.Document.Signature
             return new CAdESProfileEPES();
         }
 
-        private CmsSignedDataGenerator CreateCMSSignedDataGenerator(SignatureParameters parameters, CAdESProfileBES cadesProfile, bool includeUnsignedAttributes = true, CmsSignedData? originalSignedData = null, byte[]? signature = null)
+        private CmsSignedDataGenerator CreateCMSSignedDataGenerator(
+                SignatureParameters parameters,
+                CAdESProfileBES cadesProfile,
+                bool includeUnsignedAttributes = true,
+                CmsSignedData? originalSignedData = null,
+                byte[]? signature = null)
         {
             var signerCertificate = parameters.SigningCertificate;
             if (signerCertificate is null)
@@ -236,12 +364,18 @@ namespace CAdESLib.Document.Signature
 
             var generator = new CmsSignedDataGenerator();
 
-            CmsAttributeTableGenerator signedAttrGen = new DefaultSignedAttributeTableGenerator(new AttributeTable(cadesProfile.GetSignedAttributes(parameters) as System.Collections.IDictionary));
-
-            CmsAttributeTableGenerator unsignedAttrGen = new SimpleAttributeTableGenerator(includeUnsignedAttributes ? new AttributeTable(cadesProfile.GetUnsignedAttributes(parameters) as System.Collections.IDictionary) : null);
+            var signedAttrGen = new DefaultSignedAttributeTableGenerator(
+                    new AttributeTable(cadesProfile.GetSignedAttributes(parameters) as System.Collections.IDictionary));
+            var unsignedAttrGen = new SimpleAttributeTableGenerator(
+                    includeUnsignedAttributes ? new AttributeTable(cadesProfile.GetUnsignedAttributes(parameters) as System.Collections.IDictionary) : null);
 
             var builder = new SignerInfoGeneratorBuilder().WithSignedAttributeGenerator(signedAttrGen).WithUnsignedAttributeGenerator(unsignedAttrGen);
-            generator.AddSignerInfoGenerator(builder.Build(new ReadySignatureFactory(new PreComputedSigner(signature ?? Array.Empty<byte>()), parameters.DigestWithEncriptionOID), signerCertificate));
+            generator.AddSignerInfoGenerator(
+                    builder.Build(
+                        new ReadySignatureFactory(
+                            new PreComputedSigner(signature ?? Array.Empty<byte>()),
+                            parameters.DigestWithEncriptionOID),
+                        signerCertificate));
 
             if (originalSignedData != null)
             {
@@ -358,9 +492,7 @@ namespace CAdESLib.Document.Signature
         public ReadySignatureFactory(ISigner signer, string digestOID)
         {
             this.signer = signer;
-#pragma warning disable CS0618 // Type or member is obsolete
-            this.algID = new Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier(digestOID);
-#pragma warning restore CS0618 // Type or member is obsolete
+            this.algID = new AlgorithmIdentifier(new DerObjectIdentifier(digestOID), DerNull.Instance);
         }
 
         public IStreamCalculator CreateCalculator()
