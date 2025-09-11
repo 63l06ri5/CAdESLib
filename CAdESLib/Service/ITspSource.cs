@@ -1,5 +1,4 @@
-﻿using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Tsp;
+﻿using Org.BouncyCastle.Tsp;
 
 namespace CAdESLib.Service
 {
@@ -33,11 +32,13 @@ namespace CAdESLib.Service
         */
         int GetTokenSizeEstimate();
 
-        /**
-         * Gets the MessageDigest to digest the data imprint
-         * @return the digest algorithm name
-         */
-        IDigest? GetMessageDigest();
+        // /**
+        //  * Gets the MessageDigest to digest the data imprint
+        //  * @return the digest algorithm name
+        //  */
+        // IDigest? GetMessageDigest();
+
+        string? GetDigestAlgorithm();
 
         /**
          * Get RFC 3161 timeStampToken.

@@ -1,7 +1,4 @@
 ﻿using CAdESLib.Helpers;
-using Org.BouncyCastle.Asn1.Esf;
-using Org.BouncyCastle.Asn1.Pkcs;
-using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
 using System;
@@ -41,7 +38,7 @@ namespace CAdESLib.Document.Validation
             signerId = id;
         }
 
-        public override IList<X509Crl> GetCRLsFromSignature()
+        public override IList<X509Crl> GetCRLsFromSignature(bool timestampIncluded)
         {
             var list = new List<X509Crl>();
 
@@ -50,26 +47,33 @@ namespace CAdESLib.Document.Validation
 
             if (si != null)
             {
-                foreach (var crl in cmsSignedData.GetCrls("Collection").GetMatches(null).Cast<X509Crl>())
+                foreach (var crl in cmsSignedData.GetCrls("Collection")
+                                        .GetMatches(null)
+                                        .Cast<object>()
+                                        .Where(x => x is X509Crl)
+                                        .Cast<X509Crl>())
                 {
                     list.Add(crl);
                 }
 
                 list.AddRange(si?.UnsignedAttributes.GetCrls()?.ToList() ?? new List<X509Crl>());
 
-                foreach (var tst in si!.GetAllTimestampTokens())
+                if (timestampIncluded)
                 {
-                    var t = tst.GetTimeStamp();
-                    foreach (var crl in t.GetCrls("Collection").GetMatches(null).Cast<X509Crl>())
+                    foreach (var tst in si!.GetAllTimestampTokens())
                     {
-                        list.Add(crl);
-                    }
+                        var t = tst.GetTimeStamp();
+                        foreach (var crl in t.GetCrls("Collection").GetMatches(null).Cast<X509Crl>())
+                        {
+                            list.Add(crl);
+                        }
 
-                    list.AddRange(t.UnsignedAttributes?.GetCrls() ?? new List<X509Crl>());
+                        list.AddRange(t.UnsignedAttributes?.GetCrls() ?? new List<X509Crl>());
+                    }
                 }
             }
 
-            return list;
+            return list.Distinct().ToList();
         }
     }
 }

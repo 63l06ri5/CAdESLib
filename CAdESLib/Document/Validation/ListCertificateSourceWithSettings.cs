@@ -10,7 +10,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class ListCertificateSourceWithSetttings : OfflineCertificateSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly ICAdESServiceSettings settings;
 
@@ -20,7 +20,7 @@ namespace CAdESLib.Document.Validation
             this.SetSourceType(CertificateSourceType.TRUSTED_LIST);
         }
 
-        public override IList<X509Certificate> GetCertificates()
+        public override IList<X509Certificate> GetCertificates(bool timestampIncluded)
         {
             return settings.TrustedCerts ?? new List<X509Certificate>();
         }

@@ -9,7 +9,7 @@ namespace CAdESLib.Helpers
     {
         SignaturePackaging SignaturePackaging { get; }
         SignatureProfile SignatureProfile { get; }
-        SignatureType SignatureType { get; }        
+        SignatureType SignatureType { get; }
     }
 
     public interface ITSPServiceSettings
@@ -35,5 +35,30 @@ namespace CAdESLib.Helpers
     public interface ICertificateSourceSettings
     {
         IList<X509Certificate> TrustedCerts { get; }
+    }
+
+    public class CAdESServiceSettings : ICAdESServiceSettings
+    {
+        public SignaturePackaging SignaturePackaging { get; set; }
+
+        public SignatureProfile SignatureProfile { get; set; }
+
+        public SignatureType SignatureType { get; set; }
+
+        public string TspSource { get; set; } = string.Empty;
+
+        public string TspUsername { get; set; } = string.Empty;
+
+        public string TspPassword { get; set; } = string.Empty;
+
+        public string TspDigestAlgorithmOID { get; set; } = string.Empty;
+
+        public string OcspSource { get; set; } = string.Empty;
+
+        public string CrlSource { get; set; } = string.Empty;
+
+        public IList<X509Certificate> TrustedCerts { get; set; } = new List<X509Certificate>();
+
+        public IList<X509Crl> Crls { get; set; } = new List<X509Crl>();
     }
 }

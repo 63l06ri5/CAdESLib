@@ -1,10 +1,13 @@
-﻿using NLog;
+﻿using CAdESLib.Helpers;
+using NLog;
 using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.X509;
 using System;
 using System.IO;
+using X509Extensions = Org.BouncyCastle.Asn1.X509.X509Extensions;
+using System.Linq;
+using Org.BouncyCastle.Ocsp;
 
 namespace CAdESLib.Document.Validation
 {
@@ -13,9 +16,9 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class CRLCertificateVerifier : ICertificateStatusVerifier
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
-        private readonly ICrlSource crlSource;
+        private readonly ICrlSource? crlSource;
 
         /// <summary>
         /// Main constructor.
@@ -23,108 +26,82 @@ namespace CAdESLib.Document.Validation
         /// <param>
         /// the CRL repository used by this CRL trust linker.
         /// </param>
-        public CRLCertificateVerifier(ICrlSource crlSource)
+        public CRLCertificateVerifier(ICrlSource? crlSource)
         {
             this.crlSource = crlSource;
         }
 
-        public virtual CertificateStatus? Check(X509Certificate childCertificate, X509Certificate? certificate, DateTime validationDate)
+        public virtual CertificateStatus? Check(X509Certificate childCertificate, X509Certificate? certificate, DateTime startDate, DateTime endDate)
         {
             try
             {
-                if (certificate is null) {
-                    logger.Warn("Issuer certificate is null");
+                if (certificate is null)
+                {
+                    nloglogger.Warn("Issuer certificate is null");
                     return null;
                 }
 
                 CertificateStatus report = new CertificateStatus
                 {
                     Certificate = childCertificate,
-                    ValidationDate = validationDate,
+                    StartDate = startDate,
+                    EndDate = endDate,
                     IssuerCertificate = certificate
                 };
                 if (crlSource == null)
                 {
-                    logger.Warn("CRLSource null");
+                    nloglogger.Warn("CRLSource null");
                     return null;
                 }
-                var x509crl = GetX509Crl(childCertificate, certificate, validationDate);
+                var x509crl = GetX509Crl(childCertificate, certificate, startDate, endDate);
 
-                if (x509crl is null)
-                {
-                    logger.Info($"No CRL found for certificate {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
-                    return null;
-                }
+                return VerifyValue(report, x509crl, childCertificate, certificate, startDate, endDate);
 
-                report.StatusSource = x509crl;
-                report.Validity = CertificateValidity.UNKNOWN;
-                report.Certificate = childCertificate;
-                report.StatusSourceType = ValidatorSourceType.CRL;
-                report.ValidationDate = validationDate;
-                X509CrlEntry crlEntry = x509crl.GetRevokedCertificate(childCertificate.SerialNumber);
-                if (null == crlEntry)
-                {
-                    logger.Trace($"CRL OK for:  {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
-                    report.Validity = CertificateValidity.VALID;
-                }
-                else
-                {
-                    if (crlEntry.RevocationDate.CompareTo(validationDate) > 0)
-                    {
-                        logger.Trace($"CRL OK for: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} at {validationDate}");
-                        report.Validity = CertificateValidity.VALID;
-                        report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
-                    }
-                    else
-                    {
-                        logger.Trace($"CRL reports certificate: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} as revoked since {crlEntry.RevocationDate}");
-                        report.Validity = CertificateValidity.REVOKED;
-                        report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
-                        report.RevocationDate = crlEntry.RevocationDate;
-                    }
-                }
-                return report;
             }
             catch (IOException e)
             {
-                logger.Error($"IOException when accessing CRL for {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}  {e.Message}");
+                nloglogger.Error($"IOException when accessing CRL for {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}  {e.Message}");
                 return null;
             }
         }
 
-        private X509Crl? GetX509Crl(X509Certificate childCertificate, X509Certificate certificate, DateTime validationDate)
+        private X509Crl? GetX509Crl(X509Certificate childCertificate, X509Certificate certificate, DateTime startDate, DateTime endDate)
         {
-            var crls = crlSource.FindCrls(childCertificate, certificate);
-
-            foreach (var crl in crls)
+            if (crlSource != null)
             {
-                if (crl == null)
+                var crls = crlSource.FindCrls(childCertificate, certificate, startDate, endDate);
+
+                foreach (var crl in crls)
                 {
-                    continue;
+                    if (crl == null)
+                    {
+                        continue;
+                    }
+                    if (IsCRLValid(crl, certificate, startDate, endDate))
+                    {
+                        return crl;
+                    }
                 }
-                if (IsCRLValid(crl, certificate, validationDate))
-                {
-                    return crl;
-                }
+                return crls.FirstOrDefault();
             }
 
             return null;
         }
 
-        private bool IsCRLValid(X509Crl x509crl, X509Certificate issuerCertificate, DateTime validationDate)
+        private bool IsCRLValid(X509Crl x509crl, X509Certificate issuerCertificate, DateTime startDate, DateTime endDate)
         {
-            if (!IsCRLOK(x509crl, issuerCertificate, validationDate))
+            if (!IsCRLOK(x509crl, issuerCertificate, startDate, endDate))
             {
                 return false;
             }
             else
             {
-                logger.Trace("CRL number: " + GetCrlNumber(x509crl));
+                nloglogger.Trace("CRL number: " + GetCrlNumber(x509crl));
                 return true;
             }
         }
 
-        private bool IsCRLOK(X509Crl x509crl, X509Certificate issuerCertificate, DateTime validationDate)
+        private bool IsCRLOK(X509Crl x509crl, X509Certificate issuerCertificate, DateTime startDate, DateTime endDate)
         {
             if (issuerCertificate == null)
             {
@@ -132,7 +109,7 @@ namespace CAdESLib.Document.Validation
             }
             if (!x509crl.IssuerDN.Equals(issuerCertificate.SubjectDN))
             {
-                logger.Warn($"The CRL must be signed by the issuer ({issuerCertificate.SubjectDN},serial={issuerCertificate.SerialNumber.ToString(16)}) but instead is signed by {x509crl.IssuerDN}");
+                nloglogger.Warn($"The CRL must be signed by the issuer ({issuerCertificate.SubjectDN},serial={issuerCertificate.SerialNumber.ToString(16)}) but instead is signed by {x509crl.IssuerDN}");
                 return false;
             }
             try
@@ -141,31 +118,28 @@ namespace CAdESLib.Document.Validation
             }
             catch (Exception e)
             {
-                logger.Warn("The signature verification for CRL cannot be performed : " + e.Message);
+                nloglogger.Warn("The signature verification for CRL cannot be performed : " + e.Message);
                 return false;
             }
             DateTime thisUpdate = x509crl.ThisUpdate;
-            logger.Trace("validation date: " + validationDate);
-            logger.Trace("CRL this update: " + thisUpdate);
-            //        if (thisUpdate.after(validationDate)) {
-            //            logger.warning("CRL too young");
-            //            return false;
-            //        }
-            logger.Trace("CRL next update: " + x509crl.NextUpdate);
-            if (x509crl.NextUpdate != null && validationDate.CompareTo(x509crl.NextUpdate.Value) > 0)
+            nloglogger.Trace($"startDate={startDate}, endDate={endDate}");
+            nloglogger.Trace("CRL this update: " + thisUpdate);
+            nloglogger.Trace("CRL next update: " + x509crl.NextUpdate);
+            if (!x509crl.IsValid(startDate, endDate))
             {
-                logger.Trace("CRL too old");
+                nloglogger.Trace("CRL not valid");
                 return false;
             }
+
             // assert cRLSign KeyUsage bit
             if (null == issuerCertificate.GetKeyUsage())
             {
-                logger.Warn("No KeyUsage extension for CRL issuing certificate");
+                nloglogger.Warn("No KeyUsage extension for CRL issuing certificate");
                 return false;
             }
             if (false == issuerCertificate.GetKeyUsage()[6])
             {
-                logger.Warn("cRLSign bit not set for CRL issuing certificate");
+                nloglogger.Warn("cRLSign bit not set for CRL issuing certificate");
                 return false;
             }
             return true;
@@ -183,6 +157,66 @@ namespace CAdESLib.Document.Validation
             DerInteger integer = (DerInteger)new Asn1InputStream(octets).ReadObject();
             BigInteger crlNumber = integer.PositiveValue;
             return crlNumber;
+        }
+        public CertificateStatus? VerifyValue(
+                CertificateStatus status,
+                BasicOcspResp? ocspResp,
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
+        {
+            throw new NotImplementedException();
+        }
+
+        public CertificateStatus? VerifyValue(
+                CertificateStatus report,
+                X509Crl? x509crl,
+                X509Certificate childCertificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
+        {
+            if (x509crl is null)
+            {
+                nloglogger.Info($"No CRL found for certificate {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
+                return null;
+            }
+
+            report.StatusSource = new StatusSource(x509crl);
+            report.Validity = CertificateValidity.UNKNOWN;
+            report.StatusSourceType = ValidatorSourceType.CRL;
+            if (!x509crl.IsValid(startDate, endDate))
+            {
+                nloglogger.Error($"not valid: validationPeriod={startDate}-{endDate}, thisUpdate={x509crl.ThisUpdate}, nextUpdate={x509crl.NextUpdate}");
+                report.Validity = CertificateValidity.UNKNOWN;
+            }
+            else
+            {
+                X509CrlEntry crlEntry = x509crl.GetRevokedCertificate(childCertificate.SerialNumber);
+                if (null == crlEntry)
+                {
+                    nloglogger.Trace($"CRL OK for:  {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)}");
+                    report.Validity = CertificateValidity.VALID;
+                }
+                else
+                {
+                    if (crlEntry.RevocationDate.CompareTo(startDate) > 0)
+                    {
+                        nloglogger.Trace($"CRL OK for: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} at startDate={startDate}");
+                        report.Validity = CertificateValidity.VALID;
+                        report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
+                    }
+                    else
+                    {
+                        nloglogger.Trace($"CRL reports certificate: {childCertificate.SubjectDN},serial={childCertificate.SerialNumber.ToString(16)} as revoked since {crlEntry.RevocationDate}");
+                        report.Validity = CertificateValidity.REVOKED;
+                        report.RevocationObjectIssuingTime = x509crl.ThisUpdate;
+                        report.RevocationDate = crlEntry.RevocationDate;
+                    }
+                }
+            }
+            return report;
         }
     }
 }

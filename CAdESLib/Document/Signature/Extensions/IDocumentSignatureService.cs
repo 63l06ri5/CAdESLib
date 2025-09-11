@@ -9,19 +9,27 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Extend signature to specified level
         /// </summary>
+        /// <param name="signedDocument"></param>
         /// <param name="originalDocument">
-        /// Нужен для создания подписи уровня A
+        /// For an A profile signing
         /// </param>
+        /// <param name="parameters"></param>
         (IDocument, ValidationReport) ExtendDocument(
                 IDocument signedDocument,
                 IDocument? originalDocument,
                 SignatureParameters parameters);
 
+        /// <summary>
+        /// Validate document
+        /// </summary>
+        /// <param name="strictValidation">only matter for XL types, cause it enables check with an available data in a signature</param>
+        ///
         ValidationReport ValidateDocument(
                 IDocument document,
                 bool checkIntegrity,
                 IDocument? externalContent = null,
-                ICollection<IValidationContext?>? validationContexts = null);
+                ICollection<IValidationContext?>? validationContexts = null,
+                bool strictValidation = false);
 
         /// <summary>
         /// Prerate data for singing

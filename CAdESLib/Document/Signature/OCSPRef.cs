@@ -1,9 +1,8 @@
 ﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
 using NLog;
 using Org.BouncyCastle.Asn1.Esf;
-using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Ocsp;
-using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities.Encoders;
 using System.Linq;
 
@@ -14,40 +13,43 @@ namespace CAdESLib.Document.Signature
     /// </summary>
     public class OCSPRef
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly string algorithm;
 
         private readonly byte[] digestValue;
-
+        
         private readonly bool matchOnlyBasicOCSPResponse;
 
-        public OCSPRef(OcspResponsesID ocsp, bool matchOnlyBasicOCSPResponse) : this(ocsp.OcspRepHash.HashAlgorithm.Algorithm.Id, ocsp.OcspRepHash.GetHashValue(), matchOnlyBasicOCSPResponse)
+        public OCSPRef(OcspResponsesID ocsp,  bool matchOnlyBasicOCSPResponse)
+            : this(
+                    ocsp.OcspRepHash.HashAlgorithm.Algorithm.Id,
+                    ocsp.OcspRepHash.GetHashValue(),
+                    matchOnlyBasicOCSPResponse)
         {
         }
 
-        public OCSPRef(string algorithm, byte[] digestValue, bool matchOnlyBasicOCSPResponse)
+        public OCSPRef(string algorithm, byte[] digestValue,  bool matchOnlyBasicOCSPResponse)
         {
             this.algorithm = algorithm;
             this.digestValue = digestValue;
             this.matchOnlyBasicOCSPResponse = matchOnlyBasicOCSPResponse;
         }
 
-        public virtual bool Match(BasicOcspResp ocspResp)
+        public virtual bool Match(ICryptographicProvider cryptographicProvider, BasicOcspResp ocspResp)
         {
-            IDigest digest = DigestUtilities.GetDigest(algorithm);
-            byte[] oscpBytes;
+            byte[] ocspBytes;
             if (matchOnlyBasicOCSPResponse)
             {
-                oscpBytes = ocspResp.GetEncoded();
+                ocspBytes = ocspResp.GetEncoded();
             }
             else
             {
-                oscpBytes = OCSPUtils.FromBasicToResp(ocspResp).GetEncoded();
+                ocspBytes = OCSPUtils.FromBasicToResp(ocspResp).GetEncoded();
             }
-            digest.BlockUpdate(oscpBytes, 0, oscpBytes.Length);
-            byte[] computedValue = DigestUtilities.DoFinal(digest);
-            logger.Trace("Compare " + Hex.ToHexString(digestValue) + " to computed value " +
+
+            byte[] computedValue = cryptographicProvider.CalculateDigest(algorithm, ocspBytes);
+            nloglogger.Trace("Compare " + Hex.ToHexString(digestValue) + " to computed value " +
                 Hex.ToHexString(computedValue) + " of BasicOcspResp produced at " + ocspResp
                 .ProducedAt);
             return digestValue.SequenceEqual(computedValue);

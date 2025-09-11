@@ -33,11 +33,11 @@ namespace CAdESLib.Document.Validation
         {
             get
             {
-                if (certificateStatus == null)
+                if (certificateStatus?.Validity is null)
                 {
                     return CertificateValidity.UNKNOWN;
                 }
-                return certificateStatus.Validity;
+                return certificateStatus.Validity.Value;
             }
         }
 

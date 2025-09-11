@@ -1,8 +1,9 @@
 ﻿using CAdESLib.Helpers;
 using NLog;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
+using static CAdESLib.Document.Validation.SignatureValidationResult;
 
 namespace CAdESLib.Document.Validation
 {
@@ -11,7 +12,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class SignatureInformation
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         public IEnumerable<ICAdESLoggerEntry> ValidationLog { get; set; } = new List<ICAdESLoggerEntry>();
 
@@ -31,16 +32,6 @@ namespace CAdESLib.Document.Validation
         public SignatureLevelAnalysis SignatureLevelAnalysis { get; private set; }
 
         /// <returns>
-        /// the qualificationsVerification
-        /// </returns>
-        public QualificationsVerification QualificationsVerification { get; private set; }
-
-        /// <returns>
-        /// the qcStatementInformation
-        /// </returns>
-        public QCStatementInformation QcStatementInformation { get; private set; }
-
-        /// <returns>
         /// the finalConclusion
         /// </returns>
         public FinalConclusions FinalConclusion { get; private set; }
@@ -50,125 +41,197 @@ namespace CAdESLib.Document.Validation
         /// </returns>
         public string? FinalConclusionComment { get; private set; }
         public IValidationContext ValidationContext { get; }
-        public IEnumerable<CertificateVerification> UsedCertsWithVerification { get; }
 
-        public SignatureInformation(SignatureVerification signatureVerification, CertPathRevocationAnalysis
-             certPathRevocationAnalysis, SignatureLevelAnalysis signatureLevelAnalysis, QualificationsVerification
-             qualificationsVerification, QCStatementInformation qcStatementInformation, IEnumerable<CertificateVerification> usedCerts, IValidationContext ctx)
+        public bool LevelAReached => SignatureLevelAnalysis.LevelA.LevelReached.IsValid;
+
+        public bool LevelXLType1Reached =>
+            LevelXLReached &&
+            (SignatureLevelAnalysis.LevelX.
+                 SignatureAndRefsTimestampsVerification?.All(
+                     x => x.SameDigest?.IsValid ?? false && x.CertPathVerification.IsValid) ?? false);
+
+        public bool LevelXLReached => SignatureLevelAnalysis.LevelXL.LevelReached.IsValid;
+
+        public bool LevelXLType2Reached =>
+            LevelXLReached &&
+            (SignatureLevelAnalysis.LevelX.
+                ReferencesTimestampsVerification?
+                        .All(x => x.SameDigest?.IsValid ?? false && x.CertPathVerification.IsValid) ?? false);
+
+        public bool LevelXReached => SignatureLevelAnalysis.LevelX.LevelReached.IsValid;
+
+        public bool LevelXType1Reached =>
+            LevelXReached &&
+            (SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Any() ?? false);
+
+        public bool LevelXType2Reached =>
+            LevelXReached &&
+            (SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Any() ?? false);
+
+        public bool LevelCReached =>
+            SignatureLevelAnalysis.LevelC.LevelReached.IsValid ||
+            SignatureLevelAnalysis.LevelC.LevelReached.IsUndetermined;
+
+        public bool LevelTReached =>
+            SignatureLevelAnalysis.LevelT.LevelReached.IsValid ||
+            SignatureLevelAnalysis.LevelT.LevelReached.IsUndetermined;
+
+        public bool LevelEPESReached => SignatureLevelAnalysis.LevelEPES.LevelReached.IsValid;
+
+        public bool LevelBESReached => SignatureLevelAnalysis.LevelBES.LevelReached.IsValid;
+
+        public SignatureInformation(
+                SignatureVerification signatureVerification,
+                CertPathRevocationAnalysis certPathRevocationAnalysis,
+                SignatureLevelAnalysis signatureLevelAnalysis,
+                IValidationContext ctx)
         {
             ValidationContext = ctx;
-            UsedCertsWithVerification = usedCerts;
             SignatureVerification = signatureVerification;
             CertPathRevocationAnalysis = certPathRevocationAnalysis;
             SignatureLevelAnalysis = signatureLevelAnalysis;
-            QualificationsVerification = qualificationsVerification;
-            QcStatementInformation = qcStatementInformation;
-            int tlContentCase = -1;
-            var certPathRevocationAnalysisTrustedListInformationIsServiceWasFound = certPathRevocationAnalysis.TrustedListInformation?.IsServiceWasFound ?? false;
-            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound)
-            {
-                tlContentCase = 0;
-            }
-            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
-                 qualificationsVerification != null && qualificationsVerification.QCWithSSCD.IsValid)
-            {
-                tlContentCase = 1;
-            }
-            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
-                 qualificationsVerification != null && qualificationsVerification.QCNoSSCD.IsValid)
-            {
-                tlContentCase = 2;
-            }
-            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
-                 qualificationsVerification != null && qualificationsVerification.QCSSCDStatusAsInCert.IsValid)
-            {
-                tlContentCase = 3;
-            }
-            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
-                 qualificationsVerification != null && qualificationsVerification.QCForLegalPerson.IsValid)
-            {
-                tlContentCase = 4;
-            }
-            if (!certPathRevocationAnalysisTrustedListInformationIsServiceWasFound)
-            {
-                // Case 5 and 6 are not discriminable */
-                tlContentCase = 5;
-                FinalConclusionComment = "no.tl.confirmation";
-            }
-            if (certPathRevocationAnalysisTrustedListInformationIsServiceWasFound &&
-                 !(certPathRevocationAnalysis.TrustedListInformation?.IsWellSigned ?? false))
-            {
-                tlContentCase = 7;
-                FinalConclusionComment = "unsigned.tl.confirmation";
-            }
-            int certContentCase = -1;
-
-            var qcStatementInformationIsValid = qcStatementInformation?.QcCompliancePresent?.IsValid ?? false;
-            var qcStatementInformationQCPPlusPresentIsValid = qcStatementInformation?.QCPPlusPresent?.IsValid ?? false;
-            var qcStatementInformationQCPPresentIsValid = qcStatementInformation?.QCPPresent?.IsValid ?? false;
-            var qcStatementInformationQcSCCDPresentIsValid = qcStatementInformation?.QcSCCDPresent?.IsValid ?? false;
-
-            if (!qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 0;
-            }
-            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 1;
-            }
-            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQCPPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 2;
-            }
-            if (!qcStatementInformationIsValid && qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 3;
-            }
-            if (qcStatementInformationIsValid && qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 4;
-            }
-            if (qcStatementInformationIsValid && qcStatementInformationQCPPlusPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
-            {
-                // QCPPlus stronger than QCP. If QCP is present, then it's ok.
-                // && !qcStatementInformationQCPPresentIsValid
-                certContentCase = 5;
-            }
-            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 6;
-            }
-            if (!qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 7;
-            }
-            if (qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && qcStatementInformationQcSCCDPresentIsValid)
-            {
-                certContentCase = 8;
-            }
-            if (qcStatementInformation == null || (!qcStatementInformationIsValid && !qcStatementInformationQCPPlusPresentIsValid && !qcStatementInformationQCPPresentIsValid && !qcStatementInformationQcSCCDPresentIsValid))
-            {
-                certContentCase = 9;
-            }
-            logger.Trace("TLCase : " + (tlContentCase + 1) + " - CertCase : " + (certContentCase + 1));
-            try
-            {
-                FinalConclusions[][] matrix = new FinalConclusions[][] {
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.AdES_QC, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES },
-                        new FinalConclusions[] { FinalConclusions.AdES_QC, FinalConclusions.AdES_QC, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.QES, FinalConclusions.AdES_QC, FinalConclusions.AdES, FinalConclusions.QES, FinalConclusions.AdES } };
-                FinalConclusion = matrix[tlContentCase][certContentCase];
-            }
-            catch (IndexOutOfRangeException)
-            {
-                FinalConclusion = FinalConclusions.UNDETERMINED;
-            }
         }
+        public List<string[]> GetLevelDescriptionForTarget(
+            SignatureProfile targetSignatureProfile)
+        {
+            var result = new List<string[]>();
+
+            if (new[]
+                {
+                    SignatureProfile.T,
+                    SignatureProfile.C,
+                    SignatureProfile.XL,
+                    SignatureProfile.XLType1,
+                    SignatureProfile.XLType2,
+                    SignatureProfile.XType1,
+                    SignatureProfile.XType2,
+                    SignatureProfile.A
+                }.Any(x => x == targetSignatureProfile) || this.SignatureLevelAnalysis.LevelT.LevelReached.IsValid)
+            {
+                result.Add(
+                new string[]{
+                    SignatureProfile.T.GetDescription() ?? string.Empty,
+                        this.SignatureLevelAnalysis.LevelT.LevelReached.Status.GetDescription() ?? string.Empty,
+                        string.Join(". ", new[]
+                        {
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelT.LevelReached.Description),
+                            GetTimestampLocalizationString(this.SignatureLevelAnalysis.LevelT.SignatureTimestampVerification),
+                        }.Where(x => !string.IsNullOrEmpty(x)))
+                });
+            }
+
+            if (new[]
+                {
+                    SignatureProfile.C,
+                    SignatureProfile.XL,
+                    SignatureProfile.XLType1,
+                    SignatureProfile.XLType2,
+                    SignatureProfile.XType1,
+                    SignatureProfile.XType2,
+                    SignatureProfile.A
+
+                }.Any(x => x == targetSignatureProfile) || this.SignatureLevelAnalysis.LevelC.LevelReached.IsValid)
+            {
+                result.Add(new string[]{
+                        SignatureProfile.C.GetDescription() ?? string.Empty,
+                        this.SignatureLevelAnalysis.LevelC.LevelReached.Status.GetDescription() ?? string.Empty,
+                        string.Join(". ", new[]
+                        {
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelC.LevelReached.Description),
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelC.CertificateRefsVerification?.Description),
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelC.RevocationRefsVerification?.Description),
+                        }.Where(x => !string.IsNullOrEmpty(x)))
+                    }
+                );
+            }
+
+            if (new[] { SignatureProfile.XLType1, SignatureProfile.XType1, SignatureProfile.A }.Any(x => x == targetSignatureProfile)
+                || this.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Length > 0)
+            {
+                result.Add(new string[]{
+                        SignatureProfile.XType1.GetDescription() ?? string.Empty,
+                        this.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Length > 0
+                            ? this.SignatureLevelAnalysis.LevelX.LevelReached.Status.GetDescription() ?? string.Empty
+                            : ResultStatus.INVALID.GetDescription() ?? string.Empty,
+                        string.Join(". ", new[]
+                        {
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelX.LevelReached.Description),
+                            GetTimestampLocalizationString(this.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification),
+                        }.Where(x => !string.IsNullOrEmpty(x)))
+                    }
+                );
+            }
+
+            if (new[] { SignatureProfile.XLType2, SignatureProfile.XType2 }.Any(x => x == targetSignatureProfile)
+                || this.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Length > 0)
+            {
+                result.Add(new string[]{
+                        SignatureProfile.XType2.GetDescription() ?? string.Empty,
+                        this.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Length > 0
+                            ? this.SignatureLevelAnalysis.LevelX.LevelReached.Status.GetDescription() ?? string.Empty
+                            : ResultStatus.INVALID.GetDescription() ?? string.Empty,
+                        string.Join(". ", new[]
+                        {
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelX.LevelReached.Description),
+                            GetTimestampLocalizationString(this.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification),
+                        }.Where(x => !string.IsNullOrEmpty(x)))
+                    }
+                );
+            }
+
+            if (new[] { SignatureProfile.XL, SignatureProfile.XLType1, SignatureProfile.XLType2, SignatureProfile.A }.Any(x => x == targetSignatureProfile)
+                || this.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid)
+            {
+                result.Add(new string[]{
+                        SignatureProfile.XL.GetDescription() ?? string.Empty,
+                        this.SignatureLevelAnalysis.LevelXL.LevelReached.Status.GetDescription() ?? string.Empty,
+                        string.Join(". ",
+                            new[]
+                            {
+                                PrepareForLocalization(this.SignatureLevelAnalysis.LevelXL.LevelReached.Description),
+                                PrepareForLocalization(this.SignatureLevelAnalysis.LevelXL.CertificateValuesVerification?.Description),
+                                PrepareForLocalization(this.SignatureLevelAnalysis.LevelXL.RevocationValuesVerification?.Description),
+                            }.Where(x => !string.IsNullOrEmpty(x)))
+                    }
+                );
+            }
+
+            if (SignatureProfile.A == targetSignatureProfile
+                || this.SignatureLevelAnalysis.LevelA.LevelReached.IsValid)
+            {
+                result.Add(new string[]{
+                        SignatureProfile.A.GetDescription() ?? string.Empty,
+                        this.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification?.Count > 0
+                            ? this.SignatureLevelAnalysis.LevelA.LevelReached.Status.GetDescription() ?? string.Empty
+                            : ResultStatus.INVALID.GetDescription() ?? string.Empty,
+                        string.Join(". ", new[]
+                        {
+                            PrepareForLocalization(this.SignatureLevelAnalysis.LevelA.LevelReached.Description),
+                            GetTimestampLocalizationString(this.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification),
+                        }.Where(x => !string.IsNullOrEmpty(x)))
+                    }
+                );
+            }
+
+            return result;
+        }
+
+        public static string GetTimestampLocalizationString(ICollection<TimestampVerificationResult>? timestamps)
+        {
+            if (timestamps is not { Count: > 0 })
+            {
+                return string.Empty;
+            }
+
+            return string.Join(
+                ", ",
+                timestamps
+                    .Select(x => PrepareForLocalization(x.CertPathVerification?.Description))
+                    .Where(x => !string.IsNullOrEmpty(x)));
+        }
+
+        public static string? PrepareForLocalization(string? str) =>
+            string.IsNullOrEmpty(str) ? str : $"{{{str}}}";
 
         public enum FinalConclusions
         {

@@ -1,5 +1,7 @@
 ﻿using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
+using System;
+using NLog;
 
 namespace CAdESLib.Document.Validation
 {
@@ -7,6 +9,8 @@ namespace CAdESLib.Document.Validation
     using Result = SignatureValidationResult;
     public class CertificateVerification
     {
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
         public CertificateAndContext CertificateAndContext { get; set; }
 
         private Result? validityPeriodVerification;
@@ -15,8 +19,15 @@ namespace CAdESLib.Document.Validation
 
         private RevocationVerificationResult? certificateStatus;
 
-        public CertificateVerification(CertificateAndContext cert, IValidationContext ctx)
+        public CertificateVerification(
+                RevocationInfo revocationInfo,
+                CertificateAndContext cert,
+                DateTime startDate,
+                DateTime endDate,
+                IValidationContext ctx,
+                CertificateStatus status)
         {
+            nloglogger.Trace($"---CertificateVerification startDate={startDate}, cert={cert.Certificate.SubjectDN}");
             if (ctx is null)
             {
                 throw new System.ArgumentNullException(nameof(ctx));
@@ -27,7 +38,7 @@ namespace CAdESLib.Document.Validation
             {
                 try
                 {
-                    cert.Certificate.CheckValidity(ctx.ValidationDate);
+                    cert.Certificate.CheckValidity(endDate);
                     validityPeriodVerification = new Result(ResultStatus.VALID, null);
                 }
                 catch (CertificateExpiredException)
@@ -38,33 +49,34 @@ namespace CAdESLib.Document.Validation
                 {
                     validityPeriodVerification = new Result(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CertificateNotYetValid");
                 }
-                var status = ctx.GetCertificateStatusFromContext(cert);
-                if (status != null)
-                {
-                    certificateStatus = new RevocationVerificationResult(status);
-                }
+
+                certificateStatus = new RevocationVerificationResult(status);
 
                 Summary.SetStatus(ResultStatus.VALID, null);
                 if (validityPeriodVerification.IsInvalid)
                 {
+                    nloglogger.Trace("$UI_Signatures_ValidationText_CertificateIsNotValid");
                     Summary.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CertificateIsNotValid");
                 }
                 else if (CertificateStatus != null)
                 {
                     if (CertificateStatus.Status == CertificateValidity.REVOKED)
                     {
+                        nloglogger.Trace("$UI_Signatures_ValidationText_CertificateRevoked");
                         Summary.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_CertificateRevoked");
                     }
                     else
                     {
                         if (CertificateStatus.Status == CertificateValidity.UNKNOWN)
                         {
+                            nloglogger.Trace("$UI_Signatures_ValidationText_RevocationUnknown");
                             Summary.SetStatus(ResultStatus.UNDETERMINED, "$UI_Signatures_ValidationText_RevocationUnknown");
                         }
                     }
                 }
                 else if (!validityPeriodVerification.IsInvalid)
                 {
+                    nloglogger.Trace("$UI_Signatures_ValidationText_NoRevocationData");
                     Summary.SetStatus(ResultStatus.UNDETERMINED, "$UI_Signatures_ValidationText_NoRevocationData");
                 }
             }

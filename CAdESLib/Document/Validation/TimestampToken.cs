@@ -1,5 +1,7 @@
-﻿using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Security;
+﻿using CAdESLib.Document.Signature;
+using CAdESLib.Helpers;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.Tsp;
 using Org.BouncyCastle.X509;
@@ -9,37 +11,13 @@ using System.Linq;
 namespace CAdESLib.Document.Validation
 {
     // <summary>SignedToken containing a TimeStamp.</summary>
-    public class TimestampToken : ISignedToken
+    public class TimestampToken : ISignedToken, ICertsAndVals
     {
-        /// <summary>
-        /// Source of the timestamp
-        /// <p>
-        /// DISCLAIMER: Project owner DG-MARKT.
-        /// </summary>
-        /// <remarks>
-        /// Source of the timestamp
-        /// <p>
-        /// DISCLAIMER: Project owner DG-MARKT.
-        /// </remarks>
-        /// <author><a href="mailto:dgmarkt.Project-DSS@arhs-developments.com">ARHS Developments</a>
-        /// 	</author>
-        public enum TimestampType
-        {
-            CONTENT_TIMESTAMP,
-            INDIVIDUAL_CONTENT_TIMESTAMP,
-            SIGNATURE_TIMESTAMP,
-            VALIDATION_DATA_REFSONLY_TIMESTAMP,
-            VALIDATION_DATA_TIMESTAMP,
-            ARCHIVE_TIMESTAMP
-        }
-
         private readonly TimeStampToken timeStamp;
-
-        private readonly TimestampToken.TimestampType timeStampType;
 
         public List<object?> RootCause { get; } = new List<object?>();
 
-        private TimestampToken(TimeStampToken timeStamp, object? rootCause)
+        public TimestampToken(TimeStampToken timeStamp, object? rootCause = null)
         {
             // CAdES: id-aa-ets-contentTimestamp, XAdES: AllDataObjectsTimeStamp, PAdES standard
             // timestamp
@@ -52,18 +30,9 @@ namespace CAdESLib.Document.Validation
             RootCause.Add(rootCause);
         }
 
-        /// <summary>
-        /// Constructor with an indication of the time-stamp type The default constructor for TimestampToken.
-        /// </summary>
-        public TimestampToken(TimeStampToken timeStamp, TimestampToken.TimestampType type, object? rootCause = null) : this(timeStamp, rootCause)
-        {
-            timeStampType = type;
-        }
-
         public virtual X509Name? GetSignerSubjectName()
         {
-            ICollection<X509Certificate> certs = ((CAdESCertificateSource) GetWrappedCertificateSource()).GetCertificates
-                ();
+            ICollection<X509Certificate> certs = ((CAdESCertificateSource)GetWrappedCertificateSource()).GetCertificates(true);
             foreach (X509Certificate cert in certs)
             {
                 if (timeStamp.SignerID.Match(cert))
@@ -76,7 +45,7 @@ namespace CAdESLib.Document.Validation
 
         public virtual X509Certificate? GetSigner()
         {
-            ICollection<X509Certificate> certs = ((CAdESCertificateSource) GetWrappedCertificateSource()).GetCertificates();
+            ICollection<X509Certificate> certs = ((CAdESCertificateSource)GetWrappedCertificateSource()).GetCertificates(true);
             foreach (X509Certificate cert in certs)
             {
                 if (timeStamp.SignerID.Match(cert))
@@ -122,14 +91,7 @@ namespace CAdESLib.Document.Validation
             return new CAdESCertificateSource(timeStamp.ToCmsSignedData());
         }
 
-        /// <returns>
-        /// the timeStampType
-        /// </returns>
-        public virtual TimestampToken.TimestampType GetTimeStampType()
-        {
-            return timeStampType;
-        }
-
+        public DateTime ThisUpdate => GetGenTimeDate();
         /// <returns>
         /// the timeStamp token
         /// </returns>
@@ -138,16 +100,22 @@ namespace CAdESLib.Document.Validation
             return timeStamp;
         }
 
+        public override int GetHashCode()
+        {
+            return this.timeStamp.ToCmsSignedData().ContentInfo.GetHashCode();
+        }
+
+
         /// <summary>
         /// Check if the TimeStampToken matches the data
         /// </summary>
         /// <returns>
         /// true if the data are verified by the TimeStampToken
         /// </returns>
-        public virtual bool MatchData(byte[] data)
+        public virtual bool MatchData(ICryptographicProvider cryptographicProvider, byte[] data)
         {
             string hashAlgorithm = timeStamp.TimeStampInfo.HashAlgorithm.Algorithm.Id;
-            byte[] computedDigest = DigestUtilities.CalculateDigest(hashAlgorithm, data);
+            byte[] computedDigest = cryptographicProvider.CalculateDigest(hashAlgorithm, data);
             return computedDigest.SequenceEqual(timeStamp.TimeStampInfo.GetMessageImprintDigest());
         }
 
@@ -157,6 +125,51 @@ namespace CAdESLib.Document.Validation
         public virtual DateTime GetGenTimeDate()
         {
             return timeStamp.TimeStampInfo.GenTime;
+        }
+        
+        public virtual IList<X509Certificate> AllCertificates => Certificates;
+
+        public virtual IList<X509Certificate> Certificates => timeStamp.UnsignedAttributes?.GetEtsCertValues() ?? Array.Empty<X509Certificate>();
+
+        public virtual IList<CertificateRef> AllCertificateRefs => CertificateRefs;
+
+        public virtual IList<CertificateRef> CertificateRefs => timeStamp.UnsignedAttributes?.GetEtsCertificateRefs() ?? Array.Empty<CertificateRef>();
+
+        public virtual IList<CRLRef> AllCRLRefs => CRLRefs;
+
+        public virtual IList<CRLRef> CRLRefs => timeStamp.UnsignedAttributes.GetEtsCrlRefs() ?? Array.Empty<CRLRef>();
+
+        public virtual IList<OCSPRef> AllOCSPRefs => OCSPRefs;
+
+        public virtual IList<OCSPRef> OCSPRefs => timeStamp.UnsignedAttributes.GetEtsOcspRefs() ?? Array.Empty<OCSPRef>();
+
+        public virtual IList<X509Crl> AllCRLs => CRLs;
+
+        public virtual IList<X509Crl> CRLs
+        {
+            get
+            {
+                var list = new List<X509Crl>();
+
+                foreach (var crl in timeStamp.GetCrls("Collection").GetMatches(null).Cast<X509Crl>())
+                {
+                    list.Add(crl);
+                }
+
+                list.AddRange(timeStamp.UnsignedAttributes?.GetCrls() ?? new List<X509Crl>());
+
+                return list;
+            }
+
+        }
+
+        public virtual IList<BasicOcspResp> AllOCSPs => OCSPs;
+        
+        public virtual IList<BasicOcspResp> OCSPs => timeStamp.UnsignedAttributes?.GetOcspReps() ?? Array.Empty<BasicOcspResp>();
+
+        public override string ToString()
+        {
+            return $"Timestamp[GenTime={GetGenTimeDate()}, SerialNumber={timeStamp.TimeStampInfo.SerialNumber}]";
         }
     }
 }

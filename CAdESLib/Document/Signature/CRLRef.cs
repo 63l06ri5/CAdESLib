@@ -1,5 +1,5 @@
-﻿using Org.BouncyCastle.Asn1.Esf;
-using Org.BouncyCastle.Security;
+﻿using CAdESLib.Helpers;
+using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.X509;
 using System;
 using System.Linq;
@@ -21,9 +21,9 @@ namespace CAdESLib.Document.Signature
             digestValue = cmsRef.CrlHash.GetHashValue();
         }
 
-        public virtual bool Match(X509Crl crl)
+        public virtual bool Match(ICryptographicProvider cryptographicProvider, X509Crl crl)
         {
-            byte[] computedValue = DigestUtilities.CalculateDigest(algorithm, crl.GetEncoded());
+            byte[] computedValue = cryptographicProvider.CalculateDigest(algorithm, crl.GetEncoded());
             return digestValue.SequenceEqual(computedValue);
         }
     }

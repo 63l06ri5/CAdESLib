@@ -7,6 +7,7 @@
     {
         TRUST_STORE,
         TRUSTED_LIST,
-        SIGNATURE
+        SIGNATURE,
+        NOT_TRUSTED_LIST,
     }
 }

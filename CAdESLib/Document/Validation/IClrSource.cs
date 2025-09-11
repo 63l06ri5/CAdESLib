@@ -1,5 +1,6 @@
 ﻿using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -15,6 +16,10 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Finds the request CRL.
         /// </summary>
-        IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate);
+        IEnumerable<X509Crl> FindCrls(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate);
     }
 }

@@ -1,5 +1,7 @@
 ﻿using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
+using System.Collections.Generic;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -16,6 +18,6 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Get and OCSPResp for the given certificate/issuerCertificate couple.
         /// </summary>
-        BasicOcspResp? GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate);
+        IEnumerable<BasicOcspResp?> GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate, DateTime startDate, DateTime endDate);
     }
 }

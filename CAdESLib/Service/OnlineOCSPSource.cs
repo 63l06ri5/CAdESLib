@@ -21,7 +21,7 @@ namespace CAdESLib.Service
     /// 	</remarks>
     public class OnlineOcspSource : IOcspSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly ICAdESServiceSettings settings;
 
@@ -47,8 +47,13 @@ namespace CAdESLib.Service
             HttpDataLoader = dataLoader;
         }
 
-        public BasicOcspResp? GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate)
+        public IEnumerable<BasicOcspResp?> GetOcspResponse(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
         {
+            var result = new List<BasicOcspResp?>();
             try
             {
                 var certAccessLocation = GetAccessLocation(certificate, X509ObjectIdentifiers.OcspAccessMethod);
@@ -56,10 +61,10 @@ namespace CAdESLib.Service
                     ?
                     (!string.IsNullOrEmpty(PresetOCSPUri) ? PresetOCSPUri : certAccessLocation)
                     : null;
-                logger.Trace("OCSP URI: " + OcspUri);
+                nloglogger.Trace("OCSP URI: " + OcspUri);
                 if (OcspUri == null)
                 {
-                    return null;
+                    return result;
                 }
 
                 var digestOid = CertificateID.HashSha1;
@@ -75,7 +80,7 @@ namespace CAdESLib.Service
                 certId = new CertificateID(new CertID(new AlgorithmIdentifier(certCertId.HashAlgorithm.Algorithm), certCertId.IssuerNameHash, certCertId.IssuerKeyHash, certCertId.SerialNumber));
                 ocspReqGenerator.AddRequest(certId);
 
-                var nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
+                var nonce = BigInteger.ValueOf(DateTime.UtcNow.Ticks + Environment.TickCount);
                 var oids = new List<DerObjectIdentifier> { OcspObjectIdentifiers.PkixOcspNonce };
                 var nonceValue = new DerOctetString(new DerOctetString(nonce.ToByteArray()));
                 var values = new List<X509Extension> { new X509Extension(false, nonceValue) };
@@ -90,26 +95,39 @@ namespace CAdESLib.Service
 
                     if (!CheckNonce(respObj, nonceValue))
                     {
-                        return null;
+                        return result;
                     }
 
-                    return respObj;
+                    if (respObj.ProducedAt.CompareTo(respObj.Responses[0].ThisUpdate) < 0)
+                    {
+                        nloglogger.Error($"onlineocsp: ProducedAt < ThisUpdate, producedAt={respObj.ProducedAt}, thisUpdate={respObj.Responses[0].ThisUpdate}");
+                        return result;
+                    }
+                    else if (!respObj.IsValid(startDate, endDate))
+                    {
+                        nloglogger.Error($"onlineocsp: not valid: validationPeriod={startDate}-{endDate}, producedAt={respObj.ProducedAt}, thisUpdate={respObj.Responses[0].ThisUpdate}, nextUpdate={respObj.Responses[0].NextUpdate}");
+                        return result;
+                    }
+
+                    result.Add(respObj);
+
+                    return result;
                 }
                 catch (ArgumentNullException)
                 {
                     // Encountered a case when the OCSPResp is initialized with a null OCSP response...
                     // (and there are no nullity checks in the OCSPResp implementation)
-                    return null;
+                    return result;
                 }
             }
             catch (CannotFetchDataException)
             {
-                return null;
+                return result;
             }
             catch (OcspException e)
             {
-                logger.Error("OCSP error: " + e.Message);
-                return null;
+                nloglogger.Error("OCSP error: " + e.Message);
+                return result;
             }
         }
 
@@ -128,7 +146,7 @@ namespace CAdESLib.Service
                 ();
             foreach (AccessDescription accessDescription in accessDescriptions)
             {
-                logger.Trace("access method: " + accessDescription.AccessMethod);
+                nloglogger.Trace("access method: " + accessDescription.AccessMethod);
                 bool correctAccessMethod = accessDescription.AccessMethod.Equals(accessMethod);
                 if (!correctAccessMethod)
                 {
@@ -137,12 +155,12 @@ namespace CAdESLib.Service
                 GeneralName gn = accessDescription.AccessLocation;
                 if (gn.TagNo != GeneralName.UniformResourceIdentifier)
                 {
-                    logger.Trace("not a uniform resource identifier");
+                    nloglogger.Trace("not a uniform resource identifier");
                     continue;
                 }
                 DerIA5String str = (DerIA5String)((DerTaggedObject)gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
-                logger.Trace("access location: " + accessLocation);
+                nloglogger.Trace("access location: " + accessLocation);
                 return accessLocation;
             }
             return null;
@@ -165,12 +183,12 @@ namespace CAdESLib.Service
             {
                 if (!nonceExt.Equals(encodedNonce))
                 {
-                    logger.Error("Different nonce found in response!");
+                    nloglogger.Error("Different nonce found in response!");
                     return false;
                 }
                 else
                 {
-                    logger.Trace("Nonce is good");
+                    nloglogger.Trace("Nonce is good");
                     return true;
                 }
             }

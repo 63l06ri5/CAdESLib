@@ -1,6 +1,4 @@
-﻿using Org.BouncyCastle.Ocsp;
-using Org.BouncyCastle.X509;
-using System;
+﻿using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -9,82 +7,59 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class RevocationData
     {
-        private readonly ISignedToken? targetToken;
-
-        private object? revocationData;
-
-        public RevocationData()
-        {
-        }
+        private readonly ISignedToken targetToken;
 
         public RevocationData(ISignedToken signedToken)
         {
             targetToken = signedToken;
         }
+        public CertificateAndContext? RevocationDataAsCertificate { get; set; }
+        public StatusSource? RevocationDataAsStatusSource { get; set; }
+        public CertificateSourceType? RevocationDataAsCertificateSourceType { get; set; }
+
 
         /// <summary>
         /// The target of this revocation data
         /// </summary>
-        public virtual ISignedToken? GetTargetToken()
+        public ISignedToken TargetToken
         {
-            return targetToken;
+            get { return targetToken; }
         }
+
+        public bool Processed => RevocationDataAsStatusSource is not null ||
+            RevocationDataAsCertificate is not null ||
+            RevocationDataAsCertificateSourceType is not null;
 
         /// <summary>
         /// The value of the revocation data
         /// </summary>
-        public virtual object? GetRevocationData()
+        public virtual StatusSource? GetRevocationDataStatusFor(DateTime startDate, DateTime endDate)
         {
-            return revocationData;
-        }
-
-        /// <summary>
-        /// Set the value of the revocation data
-        /// </summary>
-        public virtual void SetRevocationData(object? revocationData)
-        {
-            if (targetToken is CertificateToken && !(revocationData is null))
+            if (this.RevocationDataAsStatusSource?.IsValidForTime(startDate, endDate) ?? false)
             {
-                if (!(revocationData is CertificateSourceType) && !(revocationData is BasicOcspResp) && !(revocationData is X509Crl))
-                {
-                    throw new ArgumentException("For " + targetToken + " only OCSP, CRL or CertificateSourceType are valid. (Trying to add " + revocationData.GetType().Name + ").");
-                }
+                return this.RevocationDataAsStatusSource;
             }
-            this.revocationData = revocationData;
+            return null;
         }
 
         public override string ToString()
         {
             string data;
-            var revocationData = GetRevocationData();
-            if (revocationData is X509Crl crl)
+            if (RevocationDataAsCertificate is not null)
             {
-                data = "CRL[from=" + crl.IssuerDN + "]";
+                data = "Certificate[subjectName=" + RevocationDataAsCertificate.Certificate.SubjectDN + "]";
+            }
+            else if (RevocationDataAsStatusSource is not null)
+            {
+                data = string.Join(", ", RevocationDataAsStatusSource.Source?.GetType().ToString() ?? "null");
+            }
+            else if (RevocationDataAsCertificateSourceType is not null)
+            {
+                data = RevocationDataAsCertificateSourceType.ToString()!;
             }
             else
             {
-                if (revocationData is BasicOcspResp resp)
-                {
-                    data = "OCSP[from" + resp.ResponderId.ToAsn1Object().Name + "]";
-                }
-                else
-                {
-                    if (revocationData is X509Certificate certificate)
-                    {
-                        data = "Certificate[subjectName=" + certificate.SubjectDN + "]";
-                    }
-                    else
-                    {
-                        if (!(revocationData is null))
-                        {
-                            data = revocationData.ToString()!;
-                        }
-                        else
-                        {
-                            data = "*** NO VALIDATION DATA AVAILABLE ***";
-                        }
-                    }
-                }
+                data = "*** NO VALIDATION DATA AVAILABLE ***";
             }
             return "RevocationData[token=" + targetToken + ",data=" + data + "]";
         }

@@ -6,10 +6,8 @@ using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Ocsp;
-using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.Tsp;
 using Org.BouncyCastle.Utilities.Date;
-using Org.BouncyCastle.Utilities.IO;
 using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
@@ -26,11 +24,11 @@ namespace CAdESLib.Document.Signature
     /// </summary>
     public class CAdESSignature : IAdvancedSignature
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly CmsSignedData _cmsSignedData;
 
-        private readonly SignerInformation signerInformation;
+        public SignerInformation SignerInformation { get; }
 
         public CAdESSignature(byte[] data) : this(new CmsSignedData(data))
         {
@@ -38,77 +36,46 @@ namespace CAdESLib.Document.Signature
 
         public CAdESSignature(CmsSignedData cms)
         {
-            signerInformation = cms.GetSignerInfos().GetSigners().OfType<SignerInformation>().FirstOrDefault();
-            if (signerInformation is null)
-            {
-                throw new ArgumentNullException(nameof(signerInformation));
-            }
+            SignerInformation = cms.GetSignerInfos().GetSigners().OfType<SignerInformation>().First();
             _cmsSignedData = cms;
         }
 
         public CAdESSignature(CmsSignedData cms, SignerInformation signerInformation)
         {
             _cmsSignedData = cms;
-            this.signerInformation = signerInformation;
+            this.SignerInformation = signerInformation;
         }
 
         public CAdESSignature(CmsSignedData cms, SignerID id)
         {
             _cmsSignedData = cms;
-            this.signerInformation = BCStaticHelpers.GetSigner(cms, id);
+            this.SignerInformation = BCStaticHelpers.GetSigner(cms, id);
         }
 
 
-        public virtual ICertificateSource CertificateSource => new CAdESCertificateSource(_cmsSignedData, signerInformation.SignerID, false);
+        public virtual ICertificateSource CertificateSource => new CAdESCertificateSource(_cmsSignedData, SignerInformation.SignerID, false);
 
-        public virtual ICertificateSource ExtendedCertificateSource => new CAdESCertificateSource(_cmsSignedData, signerInformation.SignerID, true);
+        public virtual ICertificateSource ExtendedCertificateSource => new CAdESCertificateSource(_cmsSignedData, SignerInformation.SignerID, true);
 
-        public virtual ICrlSource CRLSource => new CAdESCRLSource(_cmsSignedData, signerInformation.SignerID);
+        public virtual ICrlSource CRLSource => new CAdESCRLSource(_cmsSignedData, SignerInformation.SignerID);
 
-        public virtual IOcspSource OCSPSource => new CAdESOCSPSource(_cmsSignedData, signerInformation.SignerID);
+        public virtual IOcspSource OCSPSource => new CAdESOCSPSource(_cmsSignedData, SignerInformation.SignerID);
 
-        public virtual X509Certificate? SigningCertificate
-        {
-            get
-            {
-                logger.Trace($"SignerInformation {signerInformation.SignerID.Subject},serial={signerInformation.SignerID.SerialNumber.ToString(16)}");
-                ICollection<X509Certificate> certs = Certificates;
-                foreach (X509Certificate cert in certs)
-                {
-                    logger.Trace($"Test match for certificate {cert.SubjectDN.ToString()},serial={cert.SerialNumber.ToString(16)}");
-                    if (signerInformation.SignerID.Match(cert))
-                    {
-                        return cert;
-                    }
-                }
-                return null;
-            }
-        }
+        public virtual X509Certificate? SigningCertificate => Certificates.FirstOrDefault(cert => SignerInformation.SignerID.Match(cert));
 
-        public virtual IList<X509Certificate> Certificates
-        {
-            get
-            {
-                var list = ((CAdESCertificateSource)CertificateSource).GetCertificates()?.ToList() ?? Array.Empty<X509Certificate>().ToList();
-
-                foreach (var tst in AllTimestampTokens)
-                {
-                    list.AddRange(tst.GetTimeStamp().UnsignedAttributes?.GetEtsCertValues() ?? new List<X509Certificate>());
-                }
-
-                return list;
-            }
-        }
+        public virtual IList<X509Certificate> AllCertificates => ((CAdESCertificateSource)CertificateSource).GetCertificates(true)?.ToList() ?? Array.Empty<X509Certificate>().ToList();
+        
+        public virtual IList<X509Certificate> Certificates => ((CAdESCertificateSource)CertificateSource).GetCertificates(false)?.ToList() ?? Array.Empty<X509Certificate>().ToList();
 
         public virtual PolicyValue? PolicyId
         {
             get
             {
-                if (signerInformation.SignedAttributes == null)
+                if (SignerInformation.SignedAttributes == null)
                 {
                     return null;
                 }
-                BcCms.Attribute sigPolicytAttr = signerInformation.SignedAttributes[PkcsObjectIdentifiers.IdAAEtsSigPolicyID];
+                BcCms.Attribute sigPolicytAttr = SignerInformation.SignedAttributes[PkcsObjectIdentifiers.IdAAEtsSigPolicyID];
                 if (sigPolicytAttr == null)
                 {
                     return null;
@@ -130,10 +97,10 @@ namespace CAdESLib.Document.Signature
         {
             get
             {
-                if (signerInformation.SignedAttributes != null && signerInformation.SignedAttributes
+                if (SignerInformation.SignedAttributes != null && SignerInformation.SignedAttributes
             [PkcsObjectIdentifiers.Pkcs9AtSigningTime] != null)
                 {
-                    Asn1Set set = signerInformation.SignedAttributes[PkcsObjectIdentifiers.Pkcs9AtSigningTime]
+                    Asn1Set set = SignerInformation.SignedAttributes[PkcsObjectIdentifiers.Pkcs9AtSigningTime]
                         .AttrValues;
                     try
                     {
@@ -145,11 +112,11 @@ namespace CAdESLib.Document.Signature
                             case BcX509.Time _:
                                 return new DateTimeObject(((BcX509.Time)o).ToDateTime());
                         }
-                        logger.Error("Error when reading signing time. Unrecognized " + o.GetType());
+                        nloglogger.Error("Error when reading signing time. Unrecognized " + o.GetType());
                     }
                     catch (Exception ex)
                     {
-                        logger.Error("Error when reading signing time " + ex.Message);
+                        nloglogger.Error("Error when reading signing time " + ex.Message);
                         return null;
                     }
                 }
@@ -163,11 +130,11 @@ namespace CAdESLib.Document.Signature
         {
             get
             {
-                if (signerInformation.SignedAttributes == null)
+                if (SignerInformation.SignedAttributes == null)
                 {
                     return null;
                 }
-                BcCms.Attribute signerAttrAttr = signerInformation.SignedAttributes[PkcsObjectIdentifiers.IdAAEtsSignerAttr];
+                BcCms.Attribute signerAttrAttr = SignerInformation.SignedAttributes[PkcsObjectIdentifiers.IdAAEtsSignerAttr];
                 if (signerAttrAttr == null)
                 {
                     return null;
@@ -188,59 +155,29 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual IList<TimestampToken>? SignatureTimestamps => signerInformation.GetSignatureTimestamps();
+        public virtual IList<TimestampToken>? SignatureTimestamps => SignerInformation.GetSignatureTimestamps();
 
-        public virtual IList<TimestampToken>? TimestampsX1 => signerInformation.GetTimestampsX1();
+        public virtual IList<TimestampToken>? TimestampsX1 => SignerInformation.GetTimestampsX1();
 
-        public virtual IList<TimestampToken>? TimestampsX2 => signerInformation.GetTimestampsX2();
+        public virtual IList<TimestampToken>? TimestampsX2 => SignerInformation.GetTimestampsX2();
 
-        public virtual IList<TimestampToken>? ArchiveTimestamps => signerInformation.GetArchiveTimestamps();
+        public virtual IList<TimestampToken>? ArchiveTimestamps => SignerInformation.GetArchiveTimestamps();
 
-        public virtual string SignatureAlgorithm => signerInformation.EncryptionAlgOid;
+        public virtual string SignatureAlgorithm => SignerInformation.EncryptionAlgOid;
 
-        public virtual bool CheckIntegrity(IDocument? detachedDocument)
+        public virtual bool CheckIntegrity(ICryptographicProvider cryptographicProvider, IDocument? detachedDocument)
         {
-            try
-            {
-                bool ret = false;
-                SignerInformation? si = null;
-                if (detachedDocument != null)
-                {
-                    // Recreate a SignerInformation with the content using a CMSSignedDataParser                   
-
-                    CmsSignedDataParser sp = new CmsSignedDataParser(new CmsTypedStream(detachedDocument.OpenStream()), _cmsSignedData.GetEncoded());
-                    sp.GetSignedContent().Drain();
-                    si = BCStaticHelpers.GetSigner(sp, signerInformation.SignerID);
-                }
-                else
-                {
-                    si = signerInformation;
-                }
-                ret = si.Verify(SigningCertificate);
-                return ret;
-            }
-            catch (CertificateExpiredException)
-            {
-                return false;
-            }
-            catch (CmsException)
-            {
-                return false;
-            }
-            catch (IOException)
-            {
-                return false;
-            }
+            return cryptographicProvider.CheckIntegrity(_cmsSignedData, detachedDocument);
         }
 
-        public virtual string ContentType => signerInformation.ContentType.ToString();
+        public virtual string ContentType => SignerInformation.ContentType.ToString();
 
         public virtual IList<IAdvancedSignature> CounterSignatures
         {
             get
             {
                 IList<IAdvancedSignature> counterSigs = new List<IAdvancedSignature>();
-                foreach (var o in signerInformation.GetCounterSignatures().GetSigners().Cast<SignerInformation>())
+                foreach (var o in SignerInformation.GetCounterSignatures().GetSigners().Cast<SignerInformation>())
                 {
                     CAdESSignature info = new CAdESSignature(_cmsSignedData, o.SignerID);
                     counterSigs.Add(info);
@@ -248,13 +185,12 @@ namespace CAdESLib.Document.Signature
                 return counterSigs;
             }
         }
-
-        public virtual IList<CertificateRef> CertificateRefs
+        
+        public virtual IList<CertificateRef> AllCertificateRefs
         {
             get
             {
-                var list = new List<CertificateRef>();
-                list.AddRange(signerInformation.UnsignedAttributes.GetEtsCertificateRefs());
+                var list = (CertificateRefs as List<CertificateRef>)!;
 
                 foreach (var tst in AllTimestampTokens)
                 {
@@ -265,12 +201,13 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public virtual IList<CRLRef> CRLRefs
+        public virtual IList<CertificateRef> CertificateRefs => new List<CertificateRef>(SignerInformation.UnsignedAttributes.GetEtsCertificateRefs());
+        
+        public virtual IList<CRLRef> AllCRLRefs
         {
             get
             {
-                var list = new List<CRLRef>();
-                list.AddRange(signerInformation.UnsignedAttributes.GetEtsCrlRefs());
+                var list = (CRLRefs as List<CRLRef>)!;
 
                 foreach (var tst in AllTimestampTokens)
                 {
@@ -279,12 +216,14 @@ namespace CAdESLib.Document.Signature
                 return list;
             }
         }
-        public virtual IList<OCSPRef> OCSPRefs
+
+        public virtual IList<CRLRef> CRLRefs => new List<CRLRef>(SignerInformation.UnsignedAttributes.GetEtsCrlRefs());
+
+        public virtual IList<OCSPRef> AllOCSPRefs
         {
             get
             {
-                var list = new List<OCSPRef>();
-                list.AddRange(signerInformation.UnsignedAttributes.GetEtsOcspRefs());
+                var list =(OCSPRefs as List<OCSPRef>)!; 
 
                 foreach (var tst in AllTimestampTokens)
                 {
@@ -293,21 +232,28 @@ namespace CAdESLib.Document.Signature
                 return list;
             }
         }
+        
+        public virtual IList<OCSPRef> OCSPRefs => new List<OCSPRef>(SignerInformation.UnsignedAttributes.GetEtsOcspRefs());
 
-        public virtual IList<X509Crl> CRLs => ((CAdESCRLSource)CRLSource).GetCRLsFromSignature();
+        public virtual IList<X509Crl> AllCRLs => ((CAdESCRLSource)CRLSource).GetCRLsFromSignature(true);
+        
+        public virtual IList<X509Crl> CRLs => ((CAdESCRLSource)CRLSource).GetCRLsFromSignature(false);
 
-        public virtual IList<BasicOcspResp> OCSPs => ((CAdESOCSPSource)OCSPSource).GetOCSPResponsesFromSignature();
+        public virtual IList<BasicOcspResp> AllOCSPs => ((CAdESOCSPSource)OCSPSource).GetOCSPResponsesFromSignature(true);
+        
+        public virtual IList<BasicOcspResp> OCSPs => ((CAdESOCSPSource)OCSPSource).GetOCSPResponsesFromSignature(false);
 
-        public virtual byte[] SignatureTimestampData => signerInformation.GetSignature();
+        public virtual byte[] SignatureTimestampData => SignerInformation.GetSignature();
 
         public virtual byte[] TimestampX1Data
         {
             get
             {
                 var toTimestamp = new MemoryStream();
-                toTimestamp.Write(signerInformation.GetSignature());
+                toTimestamp.Write(SignerInformation.GetSignature());
                 Org.BouncyCastle.Asn1.Cms.Attribute attr;
-                if (signerInformation.UnsignedAttributes != null && (attr = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken]) != null)
+                // TODO: if there more than one ts? Index prop of unsignedAttributes return only one. Consider OrderedAttributeTable, which work with SignerInfo.UnauthenticatedAttributes
+                if (SignerInformation.UnsignedAttributes != null && (attr = SignerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken]) != null)
                 {
                     toTimestamp.Write(attr.AttrType.GetDerEncoded());
                     toTimestamp.Write(attr.AttrValues.GetDerEncoded());
@@ -323,13 +269,14 @@ namespace CAdESLib.Document.Signature
             get
             {
                 var toTimestamp = new MemoryStream();
-                if (signerInformation.UnsignedAttributes != null)
+                
+                if (SignerInformation.UnsignedAttributes != null)
                 {
-                    var unsignedAttibutes = signerInformation.UnsignedAttributes.ToDictionary();
+                    var unsignedAttibutes = SignerInformation.UnsignedAttributes.ToDictionary();
 
                     if (unsignedAttibutes.Contains(PkcsObjectIdentifiers.IdAAEtsCertificateRefs))
                     {
-                        var attrCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
+                        var attrCertRefs = SignerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs];
                         if (attrCertRefs != null)
                         {
                             toTimestamp.Write(attrCertRefs.AttrType.GetDerEncoded());
@@ -339,7 +286,7 @@ namespace CAdESLib.Document.Signature
 
                     if (unsignedAttibutes.Contains(PkcsObjectIdentifiers.IdAAEtsRevocationRefs))
                     {
-                        var attrRevocCertRefs = signerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
+                        var attrRevocCertRefs = SignerInformation.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs];
                         if (attrRevocCertRefs != null)
                         {
                             toTimestamp.Write(attrRevocCertRefs.AttrType.GetDerEncoded());
@@ -351,59 +298,14 @@ namespace CAdESLib.Document.Signature
             }
         }
 
-        public IList<TimestampToken> AllTimestampTokens => signerInformation.GetAllTimestampTokens();
+        public IList<TimestampToken> AllTimestampTokens => SignerInformation.GetAllTimestampTokens();
 
-        public virtual byte[] GetArchiveTimestampData(int index, IDocument? originalDocument)
+        public CmsSignedData CmsSignedData
         {
-            using var toTimestamp = new MemoryStream();
-            BcCms.ContentInfo contentInfo = _cmsSignedData.ContentInfo;
-            BcCms.SignedData signedData = BcCms.SignedData.GetInstance(contentInfo.Content);
-            // 5.4.1
-            if (signedData.EncapContentInfo == null || signedData.EncapContentInfo.Content == null)
+            get
             {
-                if (originalDocument != null)
-                {
-                    toTimestamp.Write(Streams.ReadAll(originalDocument.OpenStream()));
-                }
-                else
-                {
-                    throw new Exception("Signature is detached and no original data provided.");
-                }
+                return this._cmsSignedData;
             }
-            else
-            {
-                BcCms.ContentInfo content = signedData.EncapContentInfo;
-                DerOctetString octet = (DerOctetString)content.Content;
-                BcCms.ContentInfo info2 = new BcCms.ContentInfo(new DerObjectIdentifier("1.2.840.113549.1.7.1"), new BerOctetString(octet.GetOctets()));
-                toTimestamp.Write(info2.GetEncoded());
-            }
-            if (signedData.Certificates != null)
-            {
-                DerOutputStream output = new DerOutputStream(toTimestamp);
-                output.WriteObject(signedData.Certificates);
-                output.Close();
-            }
-            if (signedData.CRLs != null)
-            {
-                toTimestamp.Write(signedData.CRLs.GetEncoded());
-            }
-            if (signerInformation.UnsignedAttributes != null)
-            {
-                Asn1EncodableVector original = signerInformation.UnsignedAttributes.ToAsn1EncodableVector();
-                IList<BcCms.Attribute> timeStampToRemove = GetTimeStampToRemove(index);
-                Asn1EncodableVector filtered = new Asn1EncodableVector();
-                for (int i = 0; i < original.Count; i++)
-                {
-                    Asn1Encodable enc = original[i];
-                    if (!timeStampToRemove.Contains(enc))
-                    {
-                        filtered.Add(original[i]);
-                    }
-                }
-                SignerInformation filteredInfo = SignerInformation.ReplaceUnsignedAttributes(signerInformation, new BcCms.AttributeTable(filtered));
-                toTimestamp.Write(filteredInfo.ToSignerInfo().GetEncoded());
-            }
-            return toTimestamp.ToArray();
         }
 
         private class AttributeTimeStampComparator : IComparer<BcCms.Attribute>
@@ -436,26 +338,6 @@ namespace CAdESLib.Document.Signature
                     throw new Exception("Cannot read original ArchiveTimeStamp", e);
                 }
             }
-        }
-
-        private IList<BcCms.Attribute> GetTimeStampToRemove(int archiveTimeStampToKeep)
-        {
-            List<BcCms.Attribute> ts = new List<BcCms.Attribute>();
-            if (signerInformation.UnsignedAttributes != null)
-            {
-                Asn1EncodableVector v = signerInformation.UnsignedAttributes.GetAll(PkcsObjectIdentifiers.IdAAEtsArchiveTimestamp);
-                for (int i = 0; i < v.Count; i++)
-                {
-                    Asn1Encodable enc = v[i];
-                    ts.Add((BcCms.Attribute)enc);
-                }
-                ts.Sort(new AttributeTimeStampComparator());
-                for (int i_1 = 0; i_1 < archiveTimeStampToKeep; i_1++)
-                {
-                    ts.RemoveAt(0);
-                }
-            }
-            return ts;
         }
     }
 }

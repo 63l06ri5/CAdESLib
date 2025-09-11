@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using NLog;
 
 namespace CAdESLib.Helpers
 {
@@ -17,6 +15,20 @@ namespace CAdESLib.Helpers
 
     public class RuntimeValidatingParams : IRuntimeValidatingParams
     {
-        public bool OfflineValidating { get; set; }
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
+        private bool offlineValidating = false;
+        public bool OfflineValidating
+        {
+            get
+            {
+                return offlineValidating;
+            }
+            set
+            {
+                offlineValidating = value;
+                nloglogger.Trace("Offline mode is " + (offlineValidating ? "on" : "off"));
+            }
+        }
     }
 }

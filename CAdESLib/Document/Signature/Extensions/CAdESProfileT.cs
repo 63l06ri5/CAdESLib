@@ -1,18 +1,17 @@
 ﻿using CAdESLib.Document.Validation;
+using CAdESLib.Helpers;
 using CAdESLib.Service;
 using NLog;
-using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
-using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
-using System.Collections;
-using System.Collections.Generic;
+using PkcsObjectIdentifiers = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers;
+using System;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
     public class CAdESProfileT : CAdESSignatureExtension
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         /// <returns>
         /// the TSA used for the signature-time-stamp attribute
@@ -21,12 +20,20 @@ namespace CAdESLib.Document.Signature.Extensions
 
         public override SignatureProfile SignatureProfile => SignatureProfile.T;
 
-        public CAdESProfileT(ITspSource signatureTsa)
+        public CAdESProfileT(
+                ITspSource signatureTsa,
+                ICryptographicProvider cryptographicProvider,
+                ICurrentTimeGetter currentTimeGetter): base(cryptographicProvider, currentTimeGetter)
         {
             this.SignatureTsa = signatureTsa;
         }
 
-        protected internal override (SignerInformation, IValidationContext?) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument? originalData)
+        protected internal override (SignerInfo, IValidationContext?) ExtendCMSSignature(
+                CmsSignedData signedData,
+                DateTime endDate,
+                SignerInformation si,
+                SignatureParameters parameters,
+                IDocument? originalData)
         {
             if (si is null)
             {
@@ -38,22 +45,22 @@ namespace CAdESLib.Document.Signature.Extensions
                 throw new System.ArgumentNullException(nameof(SignatureTsa));
             }
 
-            logger.Trace("Extend signature with id " + si.SignerID);
-            AttributeTable unsigned = si.UnsignedAttributes;
-            IDictionary unsignedAttrHash;
-            if (unsigned is null)
+            var unsignedAttrTable = new OrderedAttributeTable(si.ToSignerInfo().UnauthenticatedAttributes);
+            if (unsignedAttrTable[PkcsObjectIdentifiers.IdAASignatureTimeStampToken] != null
+                    && unsignedAttrTable[PkcsObjectIdentifiers.IdAASignatureTimeStampToken]!.Count != 0
+                    && !parameters.CreateNewAttributeIfExist)
             {
-                unsignedAttrHash = new Dictionary<DerObjectIdentifier, Attribute>();
-            }
-            else
-            {
-                unsignedAttrHash = si.UnsignedAttributes.ToDictionary();
+                nloglogger.Trace("Already had a signature-time-stamp and parameters says to not create a new one");
+                return (si.ToSignerInfo(), null);
             }
 
-            //TODO: What happens if it is already CAdES-T? It should not be extended again.
-            Attribute signatureTimeStamp = GetTimeStampAttribute(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, SignatureTsa, si.GetSignature(), SignatureProfile != SignatureProfile.T);
-            unsignedAttrHash.Add(PkcsObjectIdentifiers.IdAASignatureTimeStampToken, signatureTimeStamp);
-            SignerInformation newsi = SignerInformation.ReplaceUnsignedAttributes(si, new AttributeTable(unsignedAttrHash));
+            var signatureTimeStamp = GetTimeStampAttribute(
+                    PkcsObjectIdentifiers.IdAASignatureTimeStampToken,
+                    SignatureTsa,
+                    si.GetSignature(),
+                    SignatureProfile != SignatureProfile.T);
+            unsignedAttrTable.AddAttribute(signatureTimeStamp);
+            var newsi = ReplaceUnsignedAttributes(si, unsignedAttrTable);
             return (newsi, null);
         }
     }

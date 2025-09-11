@@ -7,6 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CAdESLib", "CAdESLib\CAdESL
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CAdESLib.Tests", "CAdESLib.Tests\CAdESLib.Tests.csproj", "{F09627BB-E668-4901-B750-FD513827B3C0}"
 EndProject
+
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

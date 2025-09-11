@@ -1,5 +1,6 @@
 ﻿using CAdESLib.Document.Validation;
-using Org.BouncyCastle.Ocsp;
+using CAdESLib.Helpers;
+using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Utilities.Date;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
@@ -13,8 +14,11 @@ namespace CAdESLib.Document.Signature
     /// Provides an abstraction for an Advanced Electronic Signature. This ease the validation process. Every signature
     /// format : XAdES, CAdES and PAdES are treated the same.
     /// </remarks>
-    public interface IAdvancedSignature
+    public interface IAdvancedSignature: ICertsAndVals
     {
+        // TODO: redo - need to handle multiple signers
+        public SignerInformation SignerInformation { get; }
+
         /// <summary>
         /// Retrieves the signature algorithm (or cipher) used for generating the signature
         /// </summary>
@@ -24,12 +28,6 @@ namespace CAdESLib.Document.Signature
         /// Gets a certificate source for the ALL certificates embedded in the signature
         /// </summary>
         ICertificateSource CertificateSource { get; }
-
-        /// <summary>
-        /// Get certificates embedded in the signature
-        /// </summary>
-        /// <reutrn>a list of certificate contained in the signature</reutrn>
-        IList<X509Certificate> Certificates { get; }
 
         /// <summary>
         /// Gets a CRL source for the CRLs embedded in the signature
@@ -82,18 +80,6 @@ namespace CAdESLib.Document.Signature
         byte[] SignatureTimestampData { get; }
 
         /// <summary>
-        /// Archive timestamp seals the data of the signature in a specific order.
-        /// </summary>
-        /// <remarks>
-        /// Archive timestamp seals the data of the signature in a specific order. We need to retrieve the data for each
-        /// timestamp.
-        /// </remarks>
-        /// <param name="originalData">
-        /// For a detached signature, the original data are needed
-        /// </param>
-        byte[] GetArchiveTimestampData(int index, IDocument? originalData);
-
-        /// <summary>
         /// Returns the timestamp over the certificate/revocation references (and optionally other fields), used in -X
         /// profiles
         /// </summary>
@@ -120,7 +106,7 @@ namespace CAdESLib.Document.Signature
         /// <returns>
         /// true if the signature is valid
         /// </returns>
-        bool CheckIntegrity(IDocument? detachedDocument);
+        bool CheckIntegrity(ICryptographicProvider cryptographicProvider, IDocument? detachedDocument);
 
         /// <summary>
         /// Returns a list of counter signatures applied to this signature
@@ -129,32 +115,7 @@ namespace CAdESLib.Document.Signature
         /// a list of AdvancedSignatures representing the counter signatures
         /// </returns>
         IList<IAdvancedSignature> CounterSignatures { get; }
-
-        /// <summary>
-        /// Retrieve list of certificate ref
-        /// </summary>
-        IList<CertificateRef> CertificateRefs { get; }
-
-        /// <returns>
-        /// The list of CRLRefs contained in the Signature
-        /// </returns>
-        IList<CRLRef> CRLRefs { get; }
-
-        /// <returns>
-        /// The list of OCSPRef contained in the Signature
-        /// </returns>
-        IList<OCSPRef> OCSPRefs { get; }
-
-        /// <returns>
-        /// The list of X509Crl contained in the Signature
-        /// </returns>
-        IList<X509Crl> CRLs { get; }
-
-        /// <returns>
-        /// The list of BasicOCSResp contained in the Signature
-        /// </returns>
-        IList<BasicOcspResp> OCSPs { get; }
-
+        
         /// <returns>
         /// The byte array digested to create a TimeStamp X1
         /// </returns>
@@ -164,5 +125,7 @@ namespace CAdESLib.Document.Signature
         /// The byte array digested to create a TimeStamp X2
         /// </returns>
         byte[] TimestampX2Data { get; }
+
+        CmsSignedData CmsSignedData { get; }
     }
 }

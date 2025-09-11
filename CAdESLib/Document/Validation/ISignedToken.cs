@@ -1,6 +1,7 @@
 ﻿using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -29,5 +30,13 @@ namespace CAdESLib.Document.Validation
         /// Root reason to validate the token
         /// </summary>
         List<object?> RootCause { get; }
+
+        /// <summary>
+        /// Time of a start of validity
+        /// </summary>
+        /// <remarks>
+        /// ThisUpdate for a revocation data, not before for a certificate, a time stamp for a timestamp
+        /// </remarks>
+        DateTime ThisUpdate { get; }
     }
 }

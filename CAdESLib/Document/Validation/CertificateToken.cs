@@ -1,6 +1,5 @@
 ﻿using CAdESLib.Helpers;
 using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Security.Certificates;
 using Org.BouncyCastle.X509;
 using System;
@@ -44,20 +43,14 @@ namespace CAdESLib.Document.Validation
         /// <returns>
         /// the cert
         /// </returns>
-        public virtual CertificateAndContext GetCertificateAndContext()
-        {
-            return cert;
-        }
+        public CertificateAndContext CertificateAndContext => cert;
 
         /// <returns>
         /// the cert
         /// </returns>
-        public virtual X509Certificate GetCertificate()
-        {
-            return cert.Certificate;
-        }
+        public X509Certificate Certificate => cert.Certificate;
 
-        public virtual bool IsSignedBy(X509Certificate potentialIssuer) => GetCertificate().IsSignedBy(potentialIssuer);
+        public virtual bool IsSignedBy(X509Certificate potentialIssuer) => Certificate.IsSignedBy(potentialIssuer);
 
         /// <param>
         /// the status to set
@@ -82,7 +75,7 @@ namespace CAdESLib.Document.Validation
         {
             if (sourceFactory != null)
             {
-                ICertificateSource source = sourceFactory.CreateAIACertificateSource(GetCertificate());
+                ICertificateSource source = sourceFactory.CreateAIACertificateSource(Certificate);
                 return source;
             }
             else
@@ -91,13 +84,15 @@ namespace CAdESLib.Document.Validation
             }
         }
 
+        public DateTime ThisUpdate => cert.Certificate.NotBefore;
+
         public override int GetHashCode()
         {
             int prime = 31;
             int result = 1;
             try
             {
-                result = prime * result + ((cert == null) ? 0 : Convert.ToBase64String(GetCertificate().GetEncoded()).GetHashCode());
+                result = prime * result + ((cert == null) ? 0 : Convert.ToBase64String(Certificate.GetEncoded()).GetHashCode());
             }
             catch (CertificateException)
             {
@@ -140,8 +135,8 @@ namespace CAdESLib.Document.Validation
 
         public override string ToString()
         {
-            var cert = GetCertificate();
-            return $"Certificate[subjectName=\"{GetCertificate().SubjectDN}\",issuedBy=\"{GetCertificate().IssuerDN}\",serial={cert.SerialNumber.ToString(16)}]";
+            var cert = Certificate;
+            return $"Certificate[subjectName=\"{cert.SubjectDN}\",issuedBy=\"{cert.IssuerDN}\",serial={cert.SerialNumber.ToString(16)}]";
         }
     }
 }

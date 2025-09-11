@@ -1,20 +1,21 @@
-﻿using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Esf;
+﻿using CAdESLib.Helpers;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Ess;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Security;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using Attribute = Org.BouncyCastle.Asn1.Cms.Attribute;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
     public class CAdESProfileBES
     {
-        public CAdESProfileBES()
+        private ICryptographicProvider CryptographicProvider { get; }
+
+        public CAdESProfileBES(ICryptographicProvider cryptographicProvider )
         {
+            this.CryptographicProvider = cryptographicProvider;
         }
 
         private Attribute MakeSigningCertificateAttribute(SignatureParameters parameters)
@@ -25,7 +26,7 @@ namespace CAdESLib.Document.Signature.Extensions
                 throw new ArgumentException(nameof(signingCertificate));
             }
 
-            byte[] certHash = DigestUtilities.CalculateDigest(Helpers.CmsSignedHelper.Instance.GetDigestAlgName(parameters.DigestAlgorithmOID), signingCertificate.GetEncoded());
+            byte[] certHash = CryptographicProvider.CalculateDigest(Helpers.CmsSignedHelper.Instance.GetDigestAlgName(parameters.DigestAlgorithmOID), signingCertificate.GetEncoded());
 
             if (parameters.DigestAlgorithmOID == DigestAlgorithm.SHA1.OID)
             {

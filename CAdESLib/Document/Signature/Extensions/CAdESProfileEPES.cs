@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1;
+﻿using CAdESLib.Helpers;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Esf;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
@@ -14,7 +15,7 @@ namespace CAdESLib.Document.Signature.Extensions
     /// </summary>
     public class CAdESProfileEPES : CAdESProfileBES
     {
-        public CAdESProfileEPES()
+        public CAdESProfileEPES(ICryptographicProvider provider) : base(provider)
         {
         }
 

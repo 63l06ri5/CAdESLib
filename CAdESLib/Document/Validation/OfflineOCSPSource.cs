@@ -3,6 +3,7 @@ using NLog;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -11,35 +12,32 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public abstract class OfflineOCSPSource : IOcspSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
-        public BasicOcspResp? GetOcspResponse(X509Certificate certificate, X509Certificate
-             issuerCertificate)
+        public bool TimestampsIncluded { get; set; } = false;
+
+        public IEnumerable<BasicOcspResp?> GetOcspResponse(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
         {
-            logger.Trace("find OCSP response");
-            try
+            nloglogger.Trace("try to find OCSP response. timestamps included: " + TimestampsIncluded);
+            foreach (BasicOcspResp basicOCSPResp in GetOCSPResponsesFromSignature(false))
             {
-                foreach (BasicOcspResp basicOCSPResp in GetOCSPResponsesFromSignature())
+                foreach (SingleResp singleResp in basicOCSPResp.Responses)
                 {
-                    foreach (SingleResp singleResp in basicOCSPResp.Responses)
+                    var localCertId = singleResp.GetCertID();
+                    CertificateID certId = new CertificateID(localCertId.HashAlgOid, issuerCertificate, certificate.SerialNumber);
+                    if (localCertId.EqualsWithDerNull(certId))
                     {
-                        var localCertId = singleResp.GetCertID();
-                        CertificateID certId = new CertificateID(localCertId.HashAlgOid, issuerCertificate, certificate.SerialNumber);
-                        if (localCertId.EqualsWithDerNull(certId))
-                        {
-                            logger.Trace("OCSP response found");
-                            return basicOCSPResp;
-                        }
+                        nloglogger.Trace("OCSP response found");
+                        yield return basicOCSPResp;
                     }
                 }
-                OcspNotFound(certificate, issuerCertificate);
-                return null;
             }
-            catch (OcspException e)
-            {
-                logger.Error("OcspException: " + e.Message);
-                return null;
-            }
+            OcspNotFound(certificate, issuerCertificate);
+            yield return null;
         }
 
         /// <summary>
@@ -52,6 +50,6 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Retrieve the list of BasicOCSPResp contained in the Signature.
         /// </summary>
-        public abstract IList<BasicOcspResp> GetOCSPResponsesFromSignature();
+        public abstract IList<BasicOcspResp> GetOCSPResponsesFromSignature(bool timestampIncluded);
     }
 }

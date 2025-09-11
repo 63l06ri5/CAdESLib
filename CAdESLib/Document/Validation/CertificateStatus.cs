@@ -18,12 +18,12 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Result of the validity check
         /// </summary>
-        public CertificateValidity Validity { get; set; }
+        public CertificateValidity? Validity { get; set; }
 
         /// <summary>
         /// Data from which the status is coming
         /// </summary>        
-        public object? StatusSource { get; set; }
+        public StatusSource StatusSource { get; set; } = new StatusSource();
 
         /// <summary>
         /// Type of source from which the status is coming
@@ -43,12 +43,31 @@ namespace CAdESLib.Document.Validation
         /// <summary>
         /// Date when the validation was performed
         /// </summary>
-        public DateTime ValidationDate { get; set; }
+        public DateTime StartDate { get; set; }
+
+        public DateTime EndDate { get; set; }
+
+        public static CertificateStatus GetNotAvailableStatus(X509Certificate certificate, DateTime startDate, DateTime endDate)
+        {
+            return new CertificateStatus()
+            {
+                Certificate = certificate,
+                StatusSource = StatusSource.GetNotAvailableStatus(startDate, endDate),
+                StartDate = startDate,
+                EndDate = endDate,
+                Validity = CertificateValidity.UNKNOWN
+            };
+        }
+
+        public bool IsValidForTime(DateTime startDate, DateTime endDate) => 
+            StatusSourceType == ValidatorSourceType.TRUSTED_LIST ||
+            StatusSource.IsValidForTime(startDate, endDate) ||
+            StartDate.CompareTo(startDate) >= 0 && EndDate.CompareTo(endDate) <= 0;
 
         public override string ToString()
         {
             return "CertificateStatus[The certificate of '" + (Certificate != null ? Certificate
-                .SubjectDN.ToString() : "<<!!null!!>>") + "' is " + (Validity.ToString()) + " at the date " + ValidationDate + " according to " + (StatusSourceType.ToString()) + "]";
+                .SubjectDN.ToString() : "<<!!null!!>>") + "' is " + (Validity?.ToString()) + " at period " + StartDate + "-" + EndDate + " according to " + (StatusSourceType.ToString()) + "]";
         }
     }
 }

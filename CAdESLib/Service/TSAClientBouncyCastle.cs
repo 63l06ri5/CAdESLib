@@ -1,6 +1,4 @@
-﻿using CAdESLib.Helpers;
-using NLog;
-using Org.BouncyCastle.Crypto;
+﻿using NLog;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Tsp;
 using System;
@@ -23,7 +21,7 @@ namespace CAdESLib.Service
     {
 
         /** The Logger instance. */
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         /** An interface that allows you to inspect the timestamp info. */
         protected ITSAInfoBouncyCastle? tsaInfo;
@@ -108,13 +106,17 @@ namespace CAdESLib.Service
             return tokenSizeEstimate;
         }
 
-        /**
-         * Gets the MessageDigest to digest the data imprint
-         * @return the digest algorithm name
-         */
-        public IDigest? GetMessageDigest()
+        // /**
+        //  * Gets the MessageDigest to digest the data imprint
+        //  * @return the digest algorithm name
+        //  */
+        // public IDigest? GetMessageDigest()
+        // {
+        //     return TsaDigestAlgorithmOID is null ? null : DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOID);
+        // }
+        public string? GetDigestAlgorithm()
         {
-            return TsaDigestAlgorithmOID is null ? null : DigestAlgorithms.GetMessageDigestFromOid(TsaDigestAlgorithmOID);
+            return TsaDigestAlgorithmOID;
         }
 
         /**
@@ -129,7 +131,7 @@ namespace CAdESLib.Service
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
-            BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
+            BigInteger nonce = BigInteger.ValueOf(DateTime.UtcNow.Ticks + Environment.TickCount);
             TimeStampRequest request = tsqGenerator.Generate(TsaDigestAlgorithmOID, imprint, nonce);
             byte[] requestBytes = request.GetEncoded();
 
@@ -160,7 +162,7 @@ namespace CAdESLib.Service
             TimeStampTokenInfo tsTokenInfo = tsToken.TimeStampInfo; // to view details
             byte[] encoded = tsToken.GetEncoded();
 
-            logger.Trace("Timestamp generated: " + tsTokenInfo.GenTime);
+            nloglogger.Trace("Timestamp generated: " + tsTokenInfo.GenTime);
             if (tsaInfo != null)
             {
                 tsaInfo.InspectTimeStampTokenInfo(tsTokenInfo);
@@ -213,7 +215,7 @@ namespace CAdESLib.Service
             }
             else
             {
-                HttpWebRequest con = (HttpWebRequest)WebRequest.Create(TsaURL);
+                HttpWebRequest con = (HttpWebRequest)WebRequest.Create(TsaURL!);
                 con.ContentLength = requestBytes.Length;
                 con.ContentType = "application/timestamp-query";
                 con.Method = "POST";

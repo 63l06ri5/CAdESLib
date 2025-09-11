@@ -1,11 +1,16 @@
 ﻿using CAdESLib.Document.Validation;
 using CAdESLib.Service;
+using CAdESLib.Helpers;
 using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
-using System;
+using PkcsObjectIdentifiers = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers;
 using System.IO;
-using BcCms = Org.BouncyCastle.Asn1.Cms;
+using System;
+using Org.BouncyCastle.Asn1.Cms;
+using System.Linq;
+using Attribute = Org.BouncyCastle.Asn1.Cms.Attribute;
+using Org.BouncyCastle.Tsp;
+using NLog;
 
 namespace CAdESLib.Document.Signature.Extensions
 {
@@ -16,11 +21,17 @@ namespace CAdESLib.Document.Signature.Extensions
     /// </summary>
     public class CAdESProfileX : CAdESProfileC
     {
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
         protected int extendedValidationType = 1;
 
         public override SignatureProfile SignatureProfile => SignatureProfile.XType1;
 
-        public CAdESProfileX(ITspSource signatureTsa, ICertificateVerifier certificateVerifier) : base(signatureTsa, certificateVerifier) { }
+        public CAdESProfileX(
+                ITspSource signatureTsa,
+                ICertificateVerifier certificateVerifier,
+                ICryptographicProvider provider,
+                ICurrentTimeGetter currentTimeGetter) : base(signatureTsa, certificateVerifier, provider, currentTimeGetter) { }
 
         /// <summary>
         /// Gets the type of the CAdES-X signature (Type 1 with id-aa-ets-escTimeStamp or Type 2 with
@@ -50,28 +61,144 @@ namespace CAdESLib.Document.Signature.Extensions
             this.extendedValidationType = extendedValidationType;
         }
 
-        protected internal override (SignerInformation, IValidationContext) ExtendCMSSignature(CmsSignedData signedData, SignerInformation si, SignatureParameters parameters, IDocument? originalData)
+        protected internal override (SignerInfo, IValidationContext) ExtendCMSSignature(
+                CmsSignedData signedData,
+                DateTime endDate,
+                SignerInformation signerInformation,
+                SignatureParameters parameters,
+                IDocument? originalData)
         {
-            var (newSi, validationContext) = base.ExtendCMSSignature(signedData, si, parameters, originalData);
-            si = newSi;
-            using var toTimestamp = new MemoryStream();
+            // TODO: apply attribute affinity rule and parameters.CreateNewAttributeIfExist
+            var levelXTime =
+                    signerInformation.GetTimestampsX1()?.Select(x => x.GetGenTimeDate() as DateTime?).OrderBy(x => x).FirstOrDefault() ??
+                    signerInformation.GetTimestampsX2()?.Select(x => x.GetGenTimeDate() as DateTime?).OrderBy(x => x).FirstOrDefault();
+
+            var (si, validationContext) = base.ExtendCMSSignature(signedData, levelXTime ?? endDate, signerInformation, parameters, originalData);
+            var unsignedAttributesTable = new OrderedAttributeTable(si.UnauthenticatedAttributes);
             DerObjectIdentifier attributeId;
+            var signature = new CAdESSignature(signedData, signerInformation.SignerID);
+
             switch (GetExtendedValidationType())
             {
                 case 1:
                     {
-                        attributeId = PkcsObjectIdentifiers.IdAAEtsEscTimeStamp;
-                        toTimestamp.Write(si.GetSignature());
-                        // We don't include the outer SEQUENCE, only the attrType and attrValues as stated by the TS Â§6.3.5,
-                        // NOTE 2)
-                        toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken].AttrType.GetDerEncoded());
-                        toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAASignatureTimeStampToken].AttrValues.GetDerEncoded());
+                        var timestamps = unsignedAttributesTable[PkcsObjectIdentifiers.IdAASignatureTimeStampToken]!.ToList();
+                        foreach (var timestamp in timestamps)
+                        {
+                            using var toTimestamp = new MemoryStream();
+                            attributeId = PkcsObjectIdentifiers.IdAAEtsEscTimeStamp;
+                            Attribute? extendedTimeStamp = null;
+                            var isNewAttribute = unsignedAttributesTable[attributeId] is var existedAttrs && (existedAttrs is null || existedAttrs.Count == 0)
+                                    || parameters.CreateNewAttributeIfExist;
+                            if (isNewAttribute)
+                            {
+                                toTimestamp.Write(si.EncryptedDigest.GetOctets());
+                                toTimestamp.Write(timestamp.AttrType.GetDerEncoded());
+                                toTimestamp.Write(timestamp.AttrValues.GetDerEncoded());
+                                if (unsignedAttributesTable[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]?.FirstOrDefault() is Attribute certRefsAttr)
+                                {
+                                    toTimestamp.Write(certRefsAttr.AttrType.GetDerEncoded());
+                                    toTimestamp.Write(certRefsAttr.AttrValues.GetDerEncoded());
+                                }
+
+                                if (unsignedAttributesTable[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]?.FirstOrDefault() is Attribute revsRefsAttr)
+                                {
+                                    toTimestamp.Write(revsRefsAttr.AttrType.GetDerEncoded());
+                                    toTimestamp.Write(revsRefsAttr.AttrValues.GetDerEncoded());
+                                }
+
+                                extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
+                            }
+                            else
+                            {
+                                extendedTimeStamp = existedAttrs!.First();
+                            }
+
+                            var tstSignedData = new CmsSignedData(extendedTimeStamp!.AttrValues[0].GetDerEncoded());
+                            var tst = new TimeStampToken(tstSignedData);
+                            var newTstSignedData = EnrichTimestampsWithRefsAndValues(
+                                    tstSignedData,
+                                    endDate,
+                                    validationContext,
+                                    signature.CertificateSource,
+                                    signature.CRLSource,
+                                    signature.OCSPSource,
+                                    parameters.DigestAlgorithmOID,
+                                    parameters.CreateNewAttributeIfExist,
+                                    !(unsignedAttributesTable[CAdESProfileA.id_aa_ets_archiveTimestamp_v3]?.Any() ?? false)
+                                    );
+
+                            var derSet = new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER")));
+                            var enrichedAttribute = new Attribute(
+                                    attributeId,
+                                    derSet);
+
+                            if (isNewAttribute)
+                            {
+                                unsignedAttributesTable.AddAttribute(enrichedAttribute);
+                            }
+                            else
+                            {
+                                unsignedAttributesTable.ReplaceAttribute(extendedTimeStamp, derSet);
+                            }
+                        }
                         break;
                     }
 
                 case 2:
                     {
                         attributeId = PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp;
+                        Attribute? extendedTimeStamp = null;
+                        var isNewAttribute = unsignedAttributesTable[attributeId] is var existedAttrs && (existedAttrs is null || existedAttrs.Count == 0)
+                                || parameters.CreateNewAttributeIfExist;
+                        if (isNewAttribute)
+                        {
+                            using var toTimestamp = new MemoryStream();
+                            if (unsignedAttributesTable[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]?.FirstOrDefault() is Attribute certRefsAttr)
+                            {
+                                toTimestamp.Write(certRefsAttr.AttrType.GetDerEncoded());
+                                toTimestamp.Write(certRefsAttr.AttrValues.GetDerEncoded());
+                            }
+
+                            if (unsignedAttributesTable[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]?.FirstOrDefault() is Attribute revsRefsAttr)
+                            {
+                                toTimestamp.Write(revsRefsAttr.AttrType.GetDerEncoded());
+                                toTimestamp.Write(revsRefsAttr.AttrValues.GetDerEncoded());
+                            }
+
+                            extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
+                        }
+                        else
+                        {
+                            extendedTimeStamp = existedAttrs!.First();
+                        }
+
+                        var tstSignedData = new CmsSignedData(extendedTimeStamp!.AttrValues[0].GetDerEncoded());
+                        var tst = new TimeStampToken(tstSignedData);
+                        var newTstSignedData = EnrichTimestampsWithRefsAndValues(
+                                tstSignedData,
+                                endDate,
+                                validationContext,
+                                signature.CertificateSource,
+                                signature.CRLSource,
+                                signature.OCSPSource,
+                                parameters.DigestAlgorithmOID,
+                                parameters.CreateNewAttributeIfExist,
+                                !(unsignedAttributesTable[CAdESProfileA.id_aa_ets_archiveTimestamp_v3]?.Any() ?? false)
+                                );
+                        var derSet = new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER")));
+                        var enrichedAttribute = new Attribute(
+                                attributeId,
+                                derSet);
+
+                        if (isNewAttribute)
+                        {
+                            unsignedAttributesTable.AddAttribute(enrichedAttribute);
+                        }
+                        else
+                        {
+                            unsignedAttributesTable.ReplaceAttribute(extendedTimeStamp, derSet);
+                        }
                         break;
                     }
 
@@ -80,23 +207,8 @@ namespace CAdESLib.Document.Signature.Extensions
                         return (si, validationContext);
                     }
             }
-            var unsignedAttributes = si.UnsignedAttributes.ToDictionary();
 
-            if (unsignedAttributes.Contains(PkcsObjectIdentifiers.IdAAEtsCertificateRefs) && unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs] != null)
-            {
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrType.GetDerEncoded());
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsCertificateRefs].AttrValues.GetDerEncoded());
-            }
-
-            if (unsignedAttributes.Contains(PkcsObjectIdentifiers.IdAAEtsRevocationRefs) && unsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs] != null)
-            {
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrType.GetDerEncoded());
-                toTimestamp.Write(si.UnsignedAttributes[PkcsObjectIdentifiers.IdAAEtsRevocationRefs].AttrValues.GetDerEncoded());
-            }
-
-            BcCms.Attribute extendedTimeStamp = GetTimeStampAttribute(attributeId, SignatureTsa, toTimestamp.ToArray());
-            unsignedAttributes.Add(attributeId, extendedTimeStamp);
-            return (SignerInformation.ReplaceUnsignedAttributes(si, new BcCms.AttributeTable(unsignedAttributes)), validationContext);
+            return (ReplaceUnsignedAttributes(si, unsignedAttributesTable), validationContext);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.X509;
+﻿using Org.BouncyCastle.Ocsp;
+using Org.BouncyCastle.X509;
 using System;
 
 namespace CAdESLib.Document.Validation
@@ -23,13 +24,32 @@ namespace CAdESLib.Document.Validation
         /// <param name="issuerCertificate">
         /// This (potential) issuer of the certificate
         /// </param>
-        /// <param name="validationDate">
-        /// The time for which the validation has to be done (maybe in the past)
+        /// <param name="startDate">
+        /// The start time for which the validation has to be done (maybe in the past)
+        /// </param>
+        /// <param name="endDate">
+        /// The end time for which the validation has to be done (maybe in the past)
         /// </param>
         /// <returns>
         /// A CertificateStatus if the check could be performed. (But still, the certificate can be REVOKED). Null
         /// otherwise.
         /// </returns>
-        CertificateStatus? Check(X509Certificate certificate, X509Certificate? issuerCertificate, DateTime validationDate);
+        CertificateStatus? Check(X509Certificate certificate, X509Certificate? issuerCertificate, DateTime startDate, DateTime endDate);
+
+        CertificateStatus? VerifyValue(
+                CertificateStatus status,
+                BasicOcspResp? ocspResp,
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate);
+
+        CertificateStatus? VerifyValue(
+                CertificateStatus status,
+                X509Crl? crl,
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate);
     }
 }

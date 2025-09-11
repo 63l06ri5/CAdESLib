@@ -1,8 +1,5 @@
 ﻿using CAdESLib.Helpers;
 using NLog;
-using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Pkcs;
-using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
 using System;
@@ -16,7 +13,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class CAdESCertificateSource : SignatureCertificateSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly CmsSignedData cmsSignedData;
 
@@ -49,28 +46,9 @@ namespace CAdESLib.Document.Validation
             this.onlyExtended = onlyExtended;
         }
 
-        public override IList<X509Certificate> GetCertificates()
+        public override IList<X509Certificate> GetCertificates(bool timestampIncluded)
         {
-            var list = new List<X509Certificate>();
-
-            if (!onlyExtended)
-            {
-                logger.Trace(cmsSignedData.GetCertificates("Collection").GetMatches(null).Count + " certificate in collection");
-                foreach (var ch in cmsSignedData.GetCertificates("Collection").GetMatches(null).Cast<X509Certificate>())
-                {
-                    X509Certificate c = ch;
-                    logger.Trace($"Certificate {c.SubjectDN},{c.SerialNumber.ToString(16)}");
-                    if (!list.Contains(c))
-                    {
-                        list.Add(c);
-                    }
-                }
-            }
-            // Add certificates in CAdES-XL certificate-values inside SignerInfo attribute if present
-            SignerInformation si = BCStaticHelpers.GetSigner(cmsSignedData, signerId);
-            list.AddRange(si?.UnsignedAttributes?.GetEtsCertValues() ?? new List<X509Certificate>());
-
-            return list;
+            return cmsSignedData.GetCertificates(signerId, timestampIncluded);
         }
     }
 }

@@ -38,13 +38,13 @@ namespace CAdESLib.Document.Validation
             this.levelT = levelT;
             bool levelReachedT = LevelIsReached(levelT, levelReached);
             this.levelC = levelC;
-            levelReached = LevelIsReached(levelC, levelReachedT);
+            var levelReachedC = LevelIsReached(levelC, levelReachedT);
             this.levelX = levelX;
-            levelReached = LevelIsReached(levelX, levelReached);
+            var levelReachedX = LevelIsReached(levelX, levelReachedC);
             this.levelXL = levelXL;
-            levelReached = LevelIsReached(levelXL, levelReached);
+            var levelReachedXL = LevelIsReached(levelXL, levelReachedC);
             this.levelA = levelA;
-            LevelIsReached(levelA, levelReached);
+            LevelIsReached(levelA, levelReachedX && levelReachedXL);
         }
 
         private bool LevelIsReached(SignatureLevel level, bool previousLevel)

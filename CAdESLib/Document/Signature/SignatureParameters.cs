@@ -11,7 +11,7 @@ namespace CAdESLib.Document.Signature
         /// <summary>
         /// Get or Set the signing date
         /// </summary>        
-        public virtual DateTime SigningDate { get; set; }
+        public virtual DateTime SigningDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>
         /// Get or Set the signing certificate
@@ -60,9 +60,14 @@ namespace CAdESLib.Document.Signature
         /// </summary>
         public virtual SignaturePackaging SignaturePackaging { get; set; }
 
-        public virtual DigestAlgorithm DigestAlgorithm { get; set; }
         public virtual string DigestAlgorithmOID { get; set; }
         public virtual string EncriptionAlgorithmOID { get; set; }
+
+        /// <summary>
+        /// Should create a new attribute if it already exists when extending signature
+        /// </summary>
+        /// <remarks>
+        public virtual bool CreateNewAttributeIfExist { get; private set; }
 
         public string SignatureName
         {
@@ -83,9 +88,27 @@ namespace CAdESLib.Document.Signature
         public SignatureParameters()
         {
             SignaturePolicy = SignaturePolicy.NO_POLICY;
-            DigestAlgorithm = DigestAlgorithm.SHA256;
             DigestAlgorithmOID = DigestAlgorithm.SHA1.OID;
             EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id;
+            CreateNewAttributeIfExist = false;
+        }
+
+        public SignatureParameters(SignatureParameters parameters)
+        {
+            SigningDate = parameters.SigningDate;
+            SigningCertificate = parameters.SigningCertificate;
+            CertificateChain = parameters.CertificateChain;
+            SignaturePolicy = parameters.SignaturePolicy;
+            SignaturePolicyID = parameters.SignaturePolicyID;
+            SignaturePolicyHashAlgo = parameters.SignaturePolicyHashAlgo;
+            SignaturePolicyHashValue = parameters.SignaturePolicyHashValue;
+            ClaimedSignerRole = parameters.ClaimedSignerRole;
+            SignatureProfile = parameters.SignatureProfile;
+            SignaturePackaging = parameters.SignaturePackaging;
+            DigestAlgorithmOID = parameters.DigestAlgorithmOID;
+            EncriptionAlgorithmOID = parameters.EncriptionAlgorithmOID;
+            CreateNewAttributeIfExist = parameters.CreateNewAttributeIfExist;
         }
     }
+
 }

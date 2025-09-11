@@ -40,10 +40,13 @@ namespace CAdESLib.Document.Validation
                 creationTime = token.GetTimeStamp().TimeStampInfo.GenTime;
                 issuerName = token.GetSignerSubjectName()?.ToString();
                 issuer = token.GetSigner();
+                Token = token;
             }
         }
 
         public IList<CertificateAndContext> UsedCerts { get; set; } = new List<CertificateAndContext>();
+
+        public TimestampToken? Token { get; }
 
         /// <param>
         /// the sameDigest to set
@@ -62,7 +65,7 @@ namespace CAdESLib.Document.Validation
 
         public virtual string? SerialNumber => serialNumber;
 
-        public virtual DateTime CreationTime => creationTime;
+        public virtual DateTime? CreationTime => creationTime;
 
         public virtual string? IssuerName => issuerName;
 

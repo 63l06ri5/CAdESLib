@@ -19,7 +19,7 @@ namespace CAdESLib.Service
     /// </remarks>
     public class OnlineCrlSource : ICrlSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
         readonly ICAdESServiceSettings settings;
 
         private string PresetCRLUri => settings.CrlSource;
@@ -35,7 +35,11 @@ namespace CAdESLib.Service
             UrlDataLoader = dataLoaderFunc();
         }
 
-        public virtual IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
+        public virtual IEnumerable<X509Crl> FindCrls(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate, 
+                DateTime endDate)
         {
             if (this.settings.Crls != null)
             {
@@ -53,7 +57,7 @@ namespace CAdESLib.Service
 
             foreach (var crlURL in crlURLs)
             {
-                logger.Trace("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
+                nloglogger.Trace("CRL's URL for " + certificate.SubjectDN + " : " + crlURL);
                 if (crlURL != null)
                 {
                     List<X509Crl> crls = new List<X509Crl>();
@@ -99,7 +103,7 @@ namespace CAdESLib.Service
 
                     X509CrlParser parser = new X509CrlParser();
                     X509Crl crl = parser.ReadCrl(input);
-                    logger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
+                    nloglogger.Trace("CRL size: " + crl.GetEncoded().Length + " bytes");
                     return crl;
                 }
                 catch (CannotFetchDataException)
@@ -152,13 +156,13 @@ namespace CAdESLib.Service
                 var input = File.OpenRead(path);
                 X509CrlParser parser = new X509CrlParser();
                 var crl = parser.ReadCrl(input);
-                logger.Trace($"File: {path}, CRL size: {crl.GetEncoded().Length} bytes");
+                nloglogger.Trace($"File: {path}, CRL size: {crl.GetEncoded().Length} bytes");
 
                 return crl;
             }
             catch (Exception ex)
             {
-                logger.Error($"Exception when reading clr file: {path}\n{ex.Message}\n{ex.StackTrace}");
+                nloglogger.Error($"Exception when reading clr file: {path}\n{ex.Message}\n{ex.StackTrace}");
                 return null;
             }
         }
@@ -181,8 +185,6 @@ namespace CAdESLib.Service
             try
             {
                 DerOctetString oct;
-                //oct = (DEROctetString)(new ASN1InputStream(new ByteArrayInputStream(crlDistributionPointsValue
-                //    )).ReadObject());
                 oct = (DerOctetString)crlDistributionPointsValue;
                 seq = (Asn1Sequence)new Asn1InputStream(oct.GetOctets()).ReadObject();
             }
@@ -205,7 +207,7 @@ namespace CAdESLib.Service
                 {
                     if (name.TagNo != GeneralName.UniformResourceIdentifier)
                     {
-                        logger.Trace("not a uniform resource identifier");
+                        nloglogger.Trace("not a uniform resource identifier");
                         continue;
                     }
                     string str;
@@ -230,7 +232,7 @@ namespace CAdESLib.Service
                     }
                     else
                     {
-                        logger.Trace("Supports only http:// and https:// protocol for CRL");
+                        nloglogger.Trace("Supports only http:// and https:// protocol for CRL");
                     }
                 }
             }

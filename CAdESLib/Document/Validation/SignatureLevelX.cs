@@ -24,7 +24,10 @@ namespace CAdESLib.Document.Validation
             this.referencesTimestampsVerification = referencesTimestampsVerification;
         }
 
-        public SignatureLevelX(SignatureValidationResult levelReached, List<TimestampVerificationResult> signatureAndRefsTimestampsVerification, List<TimestampVerificationResult> referencesTimestampsVerification) : base(levelReached)
+        public SignatureLevelX(
+                SignatureValidationResult levelReached,
+                List<TimestampVerificationResult> signatureAndRefsTimestampsVerification,
+                List<TimestampVerificationResult> referencesTimestampsVerification) : base(levelReached)
         {
             if (signatureAndRefsTimestampsVerification is null)
             {

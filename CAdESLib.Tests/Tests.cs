@@ -1,11 +1,9 @@
-﻿//TODO:
-#nullable disable
+﻿#nullable disable
 
 using CAdESLib.Document;
 using CAdESLib.Document.Signature;
 using CAdESLib.Document.Validation;
 using CAdESLib.Helpers;
-using CAdESLib.Service;
 using NUnit.Framework;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
@@ -18,21 +16,23 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Unity;
-using Unity.Lifetime;
+using Newtonsoft.Json;
+using static CAdESLib.Helpers.ValidationHelper;
+using NLog;
+using CAdESLib.Service;
 
 namespace CAdESLib.Tests
 {
     [TestFixture]
     public class Tests
     {
-        private UnityContainer unityContainer;
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
+        private UnityContainer container;
         private AsymmetricCipherKeyPair ocspCAKeyPair;
         private X509Certificate ocspCACert;
         private AsymmetricCipherKeyPair ocspKeyPair;
         private X509Certificate ocspCert;
-        // private AsymmetricCipherKeyPair crlCAKeyPair;
-        // private AsymmetricCipherKeyPair crlKeyPair;
-        // private X509Certificate crlCert;
         private AsymmetricCipherKeyPair tspCAKeyPair;
         private X509Certificate tspCACert;
         private AsymmetricCipherKeyPair tspKeyPair;
@@ -42,6 +42,7 @@ namespace CAdESLib.Tests
         [TestCaseSource("BESTestCaseSource")]
         public void TestSigProfiles(SignatureParams sigParams, SignatureVerificationResults sigResult)
         {
+            nloglogger.Trace("staaaart");
             var ca = new X509Name("CN=ca");
             var caKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
             var caCert = CryptoHelpers.GenerateCertificate(ca, ca, caKeyPair.Private, caKeyPair.Public);
@@ -64,14 +65,14 @@ namespace CAdESLib.Tests
             }
             if (sigParams.SignatureCertOCSP ?? false)
             {
-                var fakeOcsp = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(null, null) as FakeOnlineOcspSource;
+                var fakeOcsp = container.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(null, null) as FakeOnlineOcspSource;
                 fakeOcsp.AddNotRevokedCert(signingCert, caCert);
             }
             if (sigParams.OCSPCertTrusted ?? false)
             {
                 cadesSettings.TrustedCerts.Add(ocspCACert);
             }
-            var fakeCrl = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(null, null) as FakeOnlineCrlSource;
+            var fakeCrl = container.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(null, null) as FakeOnlineCrlSource;
             if (!(sigParams.SignatureCertCRL ?? false))
             {
                 fakeCrl.AddRevokedCert(!(sigParams.SignatureCertCRL ?? false) ? signingCert : null, caCert, caKeyPair);
@@ -84,10 +85,10 @@ namespace CAdESLib.Tests
             if (sigParams.TSSignatureCertTrusted ?? false)
             {
                 cadesSettings.TrustedCerts.Add(tspCACert);
-                var fakeOcsp = unityContainer.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(null, null) as FakeOnlineOcspSource;
+                var fakeOcsp = container.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(null, null) as FakeOnlineOcspSource;
                 fakeOcsp.AddNotRevokedCert(tspCert, tspCACert);
             }
-            var cadesService = unityContainer.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
+            var cadesService = container.Resolve<Func<ICAdESServiceSettings, IDocumentSignatureService>>()(cadesSettings);
             // to be signed
             var inputData = Encoding.UTF8.GetBytes("anydataanydataanydataanydataanydataanydataanydataanydata");
             var inputDocument = new InMemoryDocument(inputData);
@@ -115,11 +116,19 @@ namespace CAdESLib.Tests
                 signatureValue[0] ^= 1;
             }
             // make pkcs7
-            var (signedDocument, validationReport) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+            var (signedDocument, _) = cadesService.GetSignedDocument(inputDocument, parameters, signatureValue);
+
+            // for  different time for ocsp and crls
+            System.Threading.Thread.Sleep(1000);
 
             // validate
             var report = cadesService.ValidateDocument(signedDocument, true, inputDocument);
             var sigInfo = report.SignatureInformationList[0];
+
+            var valInfos = GetValidationInfos(SignatureType.CAdES, sigParams.SignatureProfile, report, container.Resolve<ICurrentTimeGetter>());
+            nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
+            nloglogger.Trace(Convert.ToBase64String(Streams.ReadAll(signedDocument.OpenStream())));
+
             Assert.AreEqual(sigResult.SignatureVerification, sigInfo.SignatureVerification.SignatureVerificationResult.IsValid, "Signature value is invalid");
             Assert.AreEqual(sigResult.CertPathVerification, sigInfo.CertPathRevocationAnalysis.Summary.IsValid, $"Cert path is invalid: {sigInfo.CertPathRevocationAnalysis.Summary.Description}");
 
@@ -146,7 +155,7 @@ namespace CAdESLib.Tests
             {
                 Assert.AreEqual(sigResult.XLLevel, sigInfo.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid, "XL is not reached");
                 Assert.AreEqual(sigResult.CCertValues, sigInfo.SignatureLevelAnalysis.LevelXL.CertificateValuesVerification.IsValid, "XL cert values are not valid");
-                Assert.AreEqual(sigResult.CRevocationRefs, sigInfo.SignatureLevelAnalysis.LevelXL.RevocationValuesVerification.IsValid, "XL cert revocations values are not valid");
+                Assert.AreEqual(sigResult.CRevocationValues, sigInfo.SignatureLevelAnalysis.LevelXL.RevocationValuesVerification.IsValid, "XL cert revocations values are not valid");
             }
 
             if (sigResult.XType1Level.HasValue)
@@ -201,16 +210,6 @@ namespace CAdESLib.Tests
                 ocspCert = CryptoHelpers.GenerateCertificate(ocspCA, ocsp, ocspCAKeyPair.Private, ocspKeyPair.Public, ocsp: true);
             }
 
-            // {
-            //     var crlCA = new X509Name("CN=crlCA");
-            //     crlCAKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            //     //crlCACert = CryptoHelpers.GenerateCertificate(crlCA, crlCA, crlCAKeyPair.Private, crlCAKeyPair.Public);
-
-            //     var crl = new X509Name("CN=crl");
-            //     crlKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
-            //     crlCert = CryptoHelpers.GenerateCertificate(crlCA, crl, crlCAKeyPair.Private, crlKeyPair.Public);
-            // }
-
             {
                 var tspCA = new X509Name("CN=tspCA");
                 tspCAKeyPair = CryptoHelpers.GenerateRsaKeyPair(2048);
@@ -228,30 +227,10 @@ namespace CAdESLib.Tests
             });
             var fakeOnlineTspSource = new FakeOnlineTspSource(tspCert, tspKeyPair);
 
-            unityContainer = new UnityContainer();
+            container = new UnityContainer();
 
-            unityContainer
-                .RegisterFactory<Func<ICAdESServiceSettings, IDocumentSignatureService>>(c => new Func<ICAdESServiceSettings, IDocumentSignatureService>(
-                    (settings) => new CAdESService(
-                        (runtimeValidatingParams) => c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ITspSource>>()(runtimeValidatingParams, settings),
-                        (runtimeValidatingParams) => c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>>()(runtimeValidatingParams, settings),
-                        (runtimeValidatingParams) => c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ISignedDocumentValidator>>()(runtimeValidatingParams, settings))
-                    ))
-
-
-                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>>(c => new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>((runtimeValidationSettings, settings) =>
-                    new TrustedListCertificateVerifier(
-                        c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(runtimeValidationSettings, settings))))
-
-                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ISignedDocumentValidator>>(c => new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ISignedDocumentValidator>((runtimeValidationSettings, settings) =>
-                    new SignedDocumentValidator(
-                        c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICertificateVerifier>>()(runtimeValidationSettings, settings),
-                        c.Resolve<Func<ICAdESLogger>>(),
-                        c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings,
-                        Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>()(runtimeValidationSettings, settings))))
-
-                .RegisterType<ICAdESLogger, CAdESLogger>(new TransientLifetimeManager())
-
+            container
+                .DefaultCAdESLibSetup()
                 .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ITspSource>>(
                     c =>
                     new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ITspSource>(
@@ -269,39 +248,11 @@ namespace CAdESLib.Tests
                     new Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>(
                         (runtimeValidatingParams, settings) =>
                         fakeOnlineCrlSource))
-
-                .RegisterFactory<Func<ICAdESServiceSettings, ICertificateSource>>(c => new Func<ICAdESServiceSettings, ICertificateSource>((settings) => new ListCertificateSourceWithSetttings(settings)))
-
                 .RegisterFactory<Func<IRuntimeValidatingParams, ICertificateSourceFactory>>(
                     c =>
                     new Func<IRuntimeValidatingParams, ICertificateSourceFactory>(
                         (runtimeValidatingParams) =>
                             new FakeAIACertificateFactoryImpl()))
-
-                .RegisterFactory<Func<IRuntimeValidatingParams, ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>>(
-                    c =>
-                    new Func<IRuntimeValidatingParams, ICAdESServiceSettings, Func<X509Certificate, DateTime, ICAdESLogger, IValidationContext>>(
-                        (runtimeValidatingParams, settings) => (cert, date, logger) =>
-                        new ValidationContext(
-                              cert,
-                              date,
-                              logger,
-                              c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, IOcspSource>>()(runtimeValidatingParams, settings),
-                              c.Resolve<Func<IRuntimeValidatingParams, ICAdESServiceSettings, ICrlSource>>()(runtimeValidatingParams, settings),
-                              c.Resolve<Func<ICAdESServiceSettings, ICertificateSource>>()(settings),
-                              c.Resolve<Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>>(),
-                              (context) => c.Resolve<Func<IRuntimeValidatingParams, CertificateAndContext, CertificateToken>>()(runtimeValidatingParams, context))
-                        ))
-
-                .RegisterFactory<Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>>(c =>
-                    new Func<IOcspSource, ICrlSource, ICertificateStatusVerifier>((ocspVerifier, crlVerifier) => new OCSPAndCRLCertificateVerifier(new OCSPCertificateVerifier(ocspVerifier), new CRLCertificateVerifier(crlVerifier)))
-                )
-
-                .RegisterFactory<Func<IRuntimeValidatingParams, CertificateAndContext, CertificateToken>>(
-                    c =>
-                    new Func<IRuntimeValidatingParams, CertificateAndContext, CertificateToken>(
-                        (runtimeValidatingParams, context) =>
-                            new CertificateToken(context, c.Resolve<Func<IRuntimeValidatingParams, ICertificateSourceFactory>>()(runtimeValidatingParams))))
             ;
         }
 
@@ -323,7 +274,7 @@ namespace CAdESLib.Tests
 
                 var values = line.Split('\t');
                 // params
-                if (values[0] == "no")
+                if (!(GetBoolValue(values[0]) ?? false))
                 {
                     continue;
                 }
@@ -405,6 +356,7 @@ namespace CAdESLib.Tests
 
         private static bool? GetBoolValue(string str)
         {
+            str = str.Trim();
             return str == "yes" ? true : str == "no" ? false : (bool?)null;
         }
 
@@ -533,30 +485,5 @@ namespace CAdESLib.Tests
                 return string.Join(",", builder);
             }
         }
-    }
-
-    class CAdESServiceSettings : ICAdESServiceSettings
-    {
-        public SignaturePackaging SignaturePackaging { get; set; }
-
-        public SignatureProfile SignatureProfile { get; set; }
-
-        public SignatureType SignatureType { get; set; }
-
-        public string TspSource { get; set; }
-
-        public string TspUsername { get; set; }
-
-        public string TspPassword { get; set; }
-
-        public string TspDigestAlgorithmOID { get; set; }
-
-        public string OcspSource { get; set; }
-
-        public string CrlSource { get; set; }
-
-        public IList<X509Certificate> TrustedCerts { get; set; } = new List<X509Certificate>();
-
-        public IList<X509Crl> Crls { get; set; } = new List<X509Crl>();
     }
 }

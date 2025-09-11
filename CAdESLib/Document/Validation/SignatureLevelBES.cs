@@ -42,7 +42,7 @@ namespace CAdESLib.Document.Validation
             {
                 certificates = signature.Certificates;
                 signingCertificate = signature.SigningCertificate;
-                signingTime = (signature.SigningTime?.Value ?? DateTime.Now).ToUniversalTime();
+                signingTime = (signature.SigningTime?.Value ?? DateTime.UtcNow).ToUniversalTime();
                 location = signature.Location;
                 claimedSignerRole = signature.ClaimedSignerRoles;
                 contentType = signature.ContentType;

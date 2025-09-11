@@ -59,7 +59,7 @@ namespace CAdESLib.Service
             TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
             tsqGenerator.SetCertReq(true);
             // tsqGenerator.setReqPolicy("1.3.6.1.4.1.601.10.3.1");
-            BigInteger nonce = BigInteger.ValueOf(DateTime.Now.Ticks + Environment.TickCount);
+            BigInteger nonce = BigInteger.ValueOf(DateTime.UtcNow.Ticks + Environment.TickCount);
             TimeStampRequest request = tsqGenerator.Generate(digestAlgorithmOID, digest, nonce);
             byte[] requestBytes = request.GetEncoded();
 

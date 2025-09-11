@@ -15,7 +15,7 @@ namespace CAdESLib.Document.Validation
             this.ocsps = ocsps;
         }
 
-        public override IList<BasicOcspResp> GetOCSPResponsesFromSignature()
+        public override IList<BasicOcspResp> GetOCSPResponsesFromSignature(bool timestampIncluded)
         {
             return ocsps;
         }

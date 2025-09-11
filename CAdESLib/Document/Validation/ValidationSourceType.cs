@@ -9,6 +9,7 @@
         OCSP,
         TRUSTED_LIST,
         SELF_SIGNED,
-        OCSP_NO_CHECK
+        OCSP_NO_CHECK,
+        NOT_TRUSTED_LIST
     }
 }

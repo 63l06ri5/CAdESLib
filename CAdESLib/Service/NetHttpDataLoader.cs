@@ -21,7 +21,7 @@ namespace CAdESLib.Service
     /// </remarks>
     public class NetHttpDataLoader : IHTTPDataLoader
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private const string LdapScheme = "ldap";
 
@@ -48,7 +48,7 @@ namespace CAdESLib.Service
 
             try
             {
-                logger.Trace("Fetching data from url " + URL);
+                nloglogger.Trace("Fetching data from url " + URL);
 
                 var uri = new Uri(URL);
 
@@ -73,7 +73,7 @@ namespace CAdESLib.Service
                     cn.Bind();
 
                     var results = cn.Search(dn, filter, attributes, GetSearchScope(scope));
-                    var result = results.FirstOrDefault();
+                    var result = results.First();
                     var a = result.DirectoryAttributes[attributes[0]];
                     var c = a.GetValue<byte[]>();
 
@@ -103,7 +103,7 @@ namespace CAdESLib.Service
             }
             catch (Exception ex)
             {
-                logger.Error(ex);
+                nloglogger.Error(ex);
                 throw new CannotFetchDataException(ex, URL);
             }
         }
@@ -117,7 +117,7 @@ namespace CAdESLib.Service
 
             try
             {
-                logger.Trace("Post data to url " + URL);
+                nloglogger.Trace("Post data to url " + URL);
 
                 byte[] data = Streams.ReadAll(content);
 
@@ -159,7 +159,7 @@ namespace CAdESLib.Service
             }
             catch (Exception ex)
             {
-                logger.Error(ex);
+                nloglogger.Error(ex);
                 throw new CannotFetchDataException(ex, URL);
             }
         }

@@ -11,9 +11,11 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public abstract class OfflineCertificateSource : ICertificateSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private CertificateSourceType sourceType;
+
+        public bool TimestampsIncluded { get; set; } = false;
 
         /// <param>
         /// the sourceType to set
@@ -25,24 +27,22 @@ namespace CAdESLib.Document.Validation
 
         public IEnumerable<CertificateAndContext> GetCertificateBySubjectName(X509Name? subjectName)
         {
+            nloglogger.Trace("try to find certificate by name. timestamps included: " + TimestampsIncluded);
             IList<CertificateAndContext> list = new List<CertificateAndContext>();
-            foreach (X509Certificate cert in GetCertificates())
+            foreach (X509Certificate cert in GetCertificates(TimestampsIncluded))
             {
-                if (subjectName == null || subjectName.Equals(cert.SubjectDN))
+                if (cert is not null && (subjectName == null || subjectName.Equals(cert.SubjectDN)))
                 {
-                    CertificateAndContext cc = new CertificateAndContext(cert)
-                    {
-                        CertificateSource = sourceType
-                    };
-                    list.Add(cc);
+                    var cc = CertificateAndContext.GetInstance(cert);
+                    cc.CertificateSource = sourceType;
+                    yield return cc;
                 }
             }
-            return list;
         }
 
         /// <summary>
         /// Retrieve the list of certificate from this source.
         /// </summary>
-        public abstract IList<X509Certificate> GetCertificates();
+        public abstract IList<X509Certificate> GetCertificates(bool timestampIncluded);
     }
 }

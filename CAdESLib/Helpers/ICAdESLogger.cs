@@ -4,6 +4,7 @@ namespace CAdESLib.Helpers
 {
     public interface ICAdESLogger
     {
+        void Trace(string message);
         void Info(string message);
         void Error(string message);
         void Warn(string message);
@@ -21,6 +22,7 @@ namespace CAdESLib.Helpers
     {
         Info = 1,
         Error = 2,
-        Warn = 3
+        Warn = 3,
+        Trace = 4
     }
 }

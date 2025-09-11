@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Ilya Turkin</Authors>
     <Company />
@@ -10,8 +10,8 @@
     <RepositoryUrl>https://github.com/63l06ri5/CAdESLib</RepositoryUrl>
     <PackageLicenseExpression></PackageLicenseExpression>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
-    <Version>1.6.5</Version>
-    <AssemblyVersion>1.6.5</AssemblyVersion>
+    <Version>1.7.0.1</Version>
+    <AssemblyVersion>1.7.0.1</AssemblyVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
@@ -19,6 +19,8 @@
     <PackageReference Include="LdapForNet" Version="2.7.10" />
     <PackageReference Include="NLog" Version="4.7.0" />
     <PackageReference Include="Portable.BouncyCastle-GOST2012" Version="1.8.6.11" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Unity.Container" Version="5.11.11" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,30 +1,36 @@
 ﻿using NLog;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
     public abstract class OfflineCRLSource : ICrlSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+        
+        public bool TimestampsIncluded { get; set; } = false;
 
-        public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
+        public IEnumerable<X509Crl> FindCrls(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
         {
-            var crls = new List<X509Crl>();
-            foreach (X509Crl crl in GetCRLsFromSignature())
+            nloglogger.Trace("try to find CRLs. timestamps included: " + TimestampsIncluded);
+            foreach (X509Crl crl in GetCRLsFromSignature(TimestampsIncluded))
             {
                 if (crl.IssuerDN.Equals(issuerCertificate.SubjectDN))
                 {
-                    logger.Trace("CRL found for issuer " + issuerCertificate.SubjectDN.ToString());
-                    crls.Add(crl);
+                    nloglogger.Trace("CRL found for issuer " + issuerCertificate.SubjectDN.ToString());
+                    yield return crl;
                 }
             }
-            return crls;
         }
 
         /// <summary>
         /// Retrieve the list of CRL contained in the Signature
         /// </summary>
-        public abstract IList<X509Crl> GetCRLsFromSignature();
+        public abstract IList<X509Crl> GetCRLsFromSignature(bool timestampIncluded);
     }
 }

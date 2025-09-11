@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using System;
+using System.Linq;
+using NLog;
 
 namespace CAdESLib.Document.Validation
 {
@@ -8,23 +11,25 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class CertPathRevocationAnalysis
     {
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
         private SignatureValidationResult summary;
 
-        private IList<CertificateVerification> certificatePathVerification = new List<CertificateVerification>();
+        private List<CertificateVerification> certificatePathVerification = new List<CertificateVerification>();
 
-        private TrustedListInformation? trustedListInformation;
-
-        public CertPathRevocationAnalysis(IValidationContext ctx, TrustedListInformation info, IList<CertificateAndContext> neededCertificates)
+        public CertPathRevocationAnalysis(
+                IValidationContext ctx,
+                IList<CertificateAndContext> neededCertificates,
+                DateTime startDate,
+                DateTime endDate)
         {
             summary = new SignatureValidationResult();
-            trustedListInformation = info;
             if (ctx != null && neededCertificates != null)
             {
-                foreach (CertificateAndContext cert in neededCertificates)
-                {
-                    CertificateVerification verif = new CertificateVerification(cert, ctx);
-                    certificatePathVerification.Add(verif);
-                }
+                certificatePathVerification.AddRange(
+                        neededCertificates.SelectMany(
+                            x => x.CertificateVerifications.Where(
+                                y => y.CertificateStatus.CertificateStatus.IsValidForTime(startDate, endDate))));
             }
             summary.SetStatus(ResultStatus.VALID, null);
             if (certificatePathVerification != null)
@@ -33,25 +38,16 @@ namespace CAdESLib.Document.Validation
                 {
                     if (verif.Summary.IsInvalid)
                     {
+                        nloglogger.Trace("invalid");
                         summary.SetStatus(ResultStatus.INVALID, verif.Summary.Description ?? "$UI_Signatures_ValidationText_CertificateIsNotValid");
                         break;
                     }
                     if (verif.Summary.IsUndetermined)
                     {
+                        nloglogger.Trace("undetermined");
                         summary.SetStatus(ResultStatus.UNDETERMINED, verif.Summary.Description ?? "$UI_Signatures_ValidationText_NoRevocationData");
                     }
                 }
-            }
-            if (trustedListInformation != null)
-            {
-                if (!trustedListInformation.IsServiceWasFound)
-                {
-                    summary.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_NoTrustedListServiceWasFound");
-                }
-            }
-            else
-            {
-                summary.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_NoTrustedListServiceWasFound");
             }
         }
 
@@ -64,11 +60,6 @@ namespace CAdESLib.Document.Validation
         /// the certificatePathVerification
         /// </returns>
         public virtual IList<CertificateVerification> CertificatePathVerification => certificatePathVerification;
-
-        /// <returns>
-        /// the trustedListInformation
-        /// </returns>
-        public virtual TrustedListInformation? TrustedListInformation => trustedListInformation;
 
         /// <param>
         /// the summary to set
@@ -84,15 +75,7 @@ namespace CAdESLib.Document.Validation
         public virtual void SetCertificatePathVerification(IList<CertificateVerification>
              certificatePathVerification)
         {
-            this.certificatePathVerification = certificatePathVerification;
-        }
-
-        /// <param>
-        /// the trustedListInformation to set
-        /// </param>
-        public virtual void SetTrustedListInformation(TrustedListInformation trustedListInformation)
-        {
-            this.trustedListInformation = trustedListInformation;
+            this.certificatePathVerification = certificatePathVerification.ToList();
         }
     }
 }

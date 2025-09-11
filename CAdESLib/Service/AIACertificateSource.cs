@@ -1,5 +1,4 @@
 ﻿using CAdESLib.Document.Validation;
-using CAdESLib.Helpers;
 using NLog;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
@@ -15,7 +14,7 @@ namespace CAdESLib.Service
 {
     public class AIACertificateSource : ICertificateSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly X509Certificate certificate;
 
@@ -51,7 +50,7 @@ namespace CAdESLib.Service
                     {
                         if (subjectName != null || cert.SubjectDN.Equals(subjectName))
                         {
-                            list.Add(new CertificateAndContext(cert));
+                            list.Add(CertificateAndContext.GetInstance(cert));
                         }
                     }
                 }
@@ -79,7 +78,7 @@ namespace CAdESLib.Service
             AccessDescription[] accessDescriptions = authorityInformationAccess.GetAccessDescriptions();
             foreach (AccessDescription accessDescription in accessDescriptions)
             {
-                logger.Trace("access method: " + accessDescription.AccessMethod);
+                nloglogger.Trace("access method: " + accessDescription.AccessMethod);
                 bool correctAccessMethod = accessDescription.AccessMethod.Equals(accessMethod);
                 if (!correctAccessMethod)
                 {
@@ -88,12 +87,12 @@ namespace CAdESLib.Service
                 GeneralName gn = accessDescription.AccessLocation;
                 if (gn.TagNo != GeneralName.UniformResourceIdentifier)
                 {
-                    logger.Trace("not a uniform resource identifier");
+                    nloglogger.Trace("not a uniform resource identifier");
                     continue;
                 }
                 DerIA5String str = (DerIA5String)((DerTaggedObject)gn.ToAsn1Object()).GetObject();
                 string accessLocation = str.GetString();
-                logger.Trace("access location: " + accessLocation);
+                nloglogger.Trace("access location: " + accessLocation);
                 return accessLocation;
             }
             return null;

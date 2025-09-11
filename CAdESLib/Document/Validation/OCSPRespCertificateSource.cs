@@ -10,7 +10,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class OCSPRespCertificateSource : OfflineCertificateSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly BasicOcspResp ocspResp;
 
@@ -19,12 +19,11 @@ namespace CAdESLib.Document.Validation
             this.ocspResp = ocspResp;
         }
 
-        public override IList<X509Certificate> GetCertificates()
+        public override IList<X509Certificate> GetCertificates(bool timestampIncluded)
         {
             IList<X509Certificate> certs = new List<X509Certificate>();
             foreach (X509Certificate c in ocspResp.GetCerts())
             {
-                logger.Trace(c.SubjectDN + " issued by " + c.IssuerDN + " serial number " + c.SerialNumber);
                 certs.Add(c);
             }
             return certs;

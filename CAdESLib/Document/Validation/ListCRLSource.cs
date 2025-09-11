@@ -12,7 +12,7 @@ namespace CAdESLib.Document.Validation
             this.list = list;
         }
 
-        public override IList<X509Crl> GetCRLsFromSignature()
+        public override IList<X509Crl> GetCRLsFromSignature(bool timestampIncluded)
         {
             return list;
         }

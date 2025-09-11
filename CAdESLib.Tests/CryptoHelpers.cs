@@ -157,9 +157,9 @@ namespace CAdESLib.Tests
 
         public const string DEFAULTHASHALGORITHM = "SHA-256";
 
-        public IDigest GetMessageDigest()
+        public string? GetDigestAlgorithm()
         {
-            return DigestAlgorithms.GetMessageDigest(DEFAULTHASHALGORITHM);
+            return DEFAULTHASHALGORITHM;
         }
 
         public TimeStampResponse GetTimeStampResponse(string digestAlgorithmOid, byte[] digest)
@@ -178,9 +178,6 @@ namespace CAdESLib.Tests
                 };
             var certStore = X509StoreFactory.Create("Certificate/Collection", new X509CollectionStoreParameters(certs));
             tsTokenGen.SetCertificates(certStore);
-
-            //TimeStampRequestGenerator reqGen = new TimeStampRequestGenerator();
-            //TimeStampRequest request = reqGen.Generate(TspAlgorithms.Sha1, new byte[20], BigInteger.ValueOf(100));
 
             TimeStampResponseGenerator tsRespGen = new TimeStampResponseGenerator(tsTokenGen, TspAlgorithms.Allowed);
 
@@ -215,7 +212,11 @@ namespace CAdESLib.Tests
             this.cert = cert;
         }
 
-        public BasicOcspResp GetOcspResponse(X509Certificate certificate, X509Certificate issuerCertificate)
+        public IEnumerable<BasicOcspResp?> GetOcspResponse(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
         {
             try
             {
@@ -238,7 +239,7 @@ namespace CAdESLib.Tests
 
                 BasicOcspResp resp = generator.Generate("SHA1withRSA", keyPair.Private, new X509Certificate[] { cert }, DateTime.UtcNow, null);
 
-                return resp;
+                return new List<BasicOcspResp?>() { resp };
             }
             catch (Exception e)
             {
@@ -268,7 +269,11 @@ namespace CAdESLib.Tests
         {
             this.certIssuerPairs = certIssuerPairs;
         }
-        public IEnumerable<X509Crl> FindCrls(X509Certificate certificate, X509Certificate issuerCertificate)
+        public IEnumerable<X509Crl> FindCrls(
+                X509Certificate certificate,
+                X509Certificate issuerCertificate,
+                DateTime startDate,
+                DateTime endDate)
         {
             X509V2CrlGenerator crlGen = new X509V2CrlGenerator();
             DateTime now = DateTime.UtcNow.AddDays(-1);
@@ -299,7 +304,7 @@ namespace CAdESLib.Tests
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(cert));
             crlGen.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.CrlNumber, false, new CrlNumber(BigInteger.One));
 
-            return new List<X509Crl> { crlGen.Generate(privateKey) };
+            yield return crlGen.Generate(privateKey);
         }
         public void AddRevokedCert(X509Certificate certificate, X509Certificate issuerCertificate, AsymmetricCipherKeyPair keyPair)
         {

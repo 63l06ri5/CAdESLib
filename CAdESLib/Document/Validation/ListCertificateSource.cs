@@ -9,7 +9,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class ListCertificateSource : OfflineCertificateSource
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
         private readonly IList<X509Certificate> certificates;
 
@@ -23,7 +23,7 @@ namespace CAdESLib.Document.Validation
         {
         }
 
-        public override IList<X509Certificate> GetCertificates()
+        public override IList<X509Certificate> GetCertificates(bool timestampIncluded)
         {
             return certificates;
         }

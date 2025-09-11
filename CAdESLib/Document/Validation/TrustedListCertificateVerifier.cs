@@ -3,7 +3,6 @@ using Org.BouncyCastle.X509;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 
 namespace CAdESLib.Document.Validation
 {
@@ -12,30 +11,30 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class TrustedListCertificateVerifier : ICertificateVerifier
     {
-        //private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
-        private readonly Func<X509Certificate, DateTime, ICAdESLogger?, IValidationContext> validationContextFactory;
+        private readonly Func<X509Certificate, ICAdESLogger, IValidationContext> validationContextFactory;
         private readonly List<IValidationContext> cache = new List<IValidationContext>();
+        private readonly ICAdESLogger CadesLogger;
 
-        public TrustedListCertificateVerifier(Func<X509Certificate, DateTime, ICAdESLogger?, IValidationContext> validationContextFactory)
+        public TrustedListCertificateVerifier(Func<X509Certificate, ICAdESLogger, IValidationContext> validationContextFactory, ICAdESLogger cadesLogger)
         {
             this.validationContextFactory = validationContextFactory;
+            this.CadesLogger = cadesLogger;
         }
 
-        public IValidationContext GetValidationContext(X509Certificate cert, DateTime validationDate, ICAdESLogger? CadesLogger = null)
+        public IValidationContext GetValidationContext(X509Certificate cert)
         {
-            if (cert == null || validationDate == null)
+            if (cert == null)
             {
-                throw new ArgumentNullException("A validation context must contains a cert and a validation date");
+                throw new ArgumentNullException("A validation context must contains a cert");
             }
 
-            var alreadyUsed = cache.FirstOrDefault(x => x.Certificate == cert && x.ValidationDate == validationDate);
+            var alreadyUsed = cache.FirstOrDefault(x => x.Certificate == cert);
             if (alreadyUsed != null)
             {
                 return alreadyUsed;
             }
 
-            IValidationContext context = validationContextFactory(cert, validationDate, CadesLogger);
+            IValidationContext context = validationContextFactory(cert, CadesLogger);
             cache.Add(context);
 
             return context;

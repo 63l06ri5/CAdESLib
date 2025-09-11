@@ -2,6 +2,7 @@
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System;
 
 namespace CAdESLib.Document.Validation
 {
@@ -10,7 +11,7 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class CRLToken : ISignedToken
     {
-        private readonly X509Crl x509crl;
+        public readonly X509Crl Crl;
 
         private X509Certificate? signer;
 
@@ -18,27 +19,20 @@ namespace CAdESLib.Document.Validation
 
         public CRLToken(X509Crl crl, object rootCause)
         {
-            x509crl = crl;
+            Crl = crl;
             RootCause.Add(rootCause);
-        }
-        /// <returns>
-        /// the x509crl
-        /// </returns>
-        public virtual X509Crl GetX509crl()
-        {
-            return x509crl;
         }
 
         public virtual X509Name GetSignerSubjectName()
         {
-            return x509crl.IssuerDN;
+            return Crl.IssuerDN;
         }
 
         public virtual bool IsSignedBy(X509Certificate potentialIssuer)
         {
             try
             {
-                x509crl.Verify(potentialIssuer.GetPublicKey());
+                Crl.Verify(potentialIssuer.GetPublicKey());
                 signer = potentialIssuer;
                 return true;
             }
@@ -57,11 +51,13 @@ namespace CAdESLib.Document.Validation
             return null;
         }
 
+        public DateTime ThisUpdate => Crl.ThisUpdate;
+
         public override int GetHashCode()
         {
             int prime = 31;
             int result = 1;
-            result = prime * result + ((x509crl == null) ? 0 : x509crl.GetHashCode());
+            result = prime * result + ((Crl == null) ? 0 : Crl.GetHashCode());
             return result;
         }
 
@@ -80,16 +76,16 @@ namespace CAdESLib.Document.Validation
                 return false;
             }
             CRLToken other = (CRLToken) obj;
-            if (x509crl == null)
+            if (Crl == null)
             {
-                if (other.x509crl != null)
+                if (other.Crl != null)
                 {
                     return false;
                 }
             }
             else
             {
-                if (!x509crl.Equals(other.x509crl))
+                if (!Crl.Equals(other.Crl))
                 {
                     return false;
                 }

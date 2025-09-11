@@ -1,6 +1,7 @@
 ﻿using Org.BouncyCastle.X509;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using NLog;
 
 namespace CAdESLib.Document.Validation
 {
@@ -9,6 +10,13 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class CertificateAndContext
     {
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
+        public static CertificateAndContext GetInstance(X509Certificate cert)
+        {
+            return new CertificateAndContext(cert);
+        }
+
         /// <summary>
         /// Create a CertificateAndContext wrapping the provided X509Certificate The default constructor for
         /// CertificateAndContext.
@@ -18,7 +26,7 @@ namespace CAdESLib.Document.Validation
         {
         }
 
-        public CertificateAndContext(X509Certificate cert, ISerializable? context)
+        private CertificateAndContext(X509Certificate cert, ISerializable? context)
         {
             Certificate = cert;
             Context = context;
@@ -29,7 +37,7 @@ namespace CAdESLib.Document.Validation
         public virtual CertificateAndContext? IssuerCertificate { get; set; }
         public virtual ISerializable? Context { get; set; }
         public virtual CertificateSourceType CertificateSource { get; set; }
-        public CertificateStatus? CertificateStatus { get; internal set; }
+        public List<CertificateVerification> CertificateVerifications { get; internal set; } = new List<CertificateVerification>();
 
         public override string ToString()
         {

@@ -4,6 +4,8 @@ using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using System.Collections.Generic;
+using System;
+using System.Linq;
 
 namespace CAdESLib.Document.Validation
 {
@@ -12,9 +14,9 @@ namespace CAdESLib.Document.Validation
     /// </summary>
     public class OCSPRespToken : ISignedToken
     {
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
-        private readonly BasicOcspResp ocspResp;
+        public readonly BasicOcspResp OcspResp;
 
         private X509Name? signerSubjectName;
 
@@ -28,16 +30,8 @@ namespace CAdESLib.Document.Validation
 
         public OCSPRespToken(BasicOcspResp ocspResp, object rootValidationCause)
         {
-            this.ocspResp = ocspResp;
+            this.OcspResp = ocspResp;
             RootCause.Add(rootValidationCause);
-        }
-
-        /// <returns>
-        /// the ocspResp
-        /// </returns>
-        public virtual BasicOcspResp GetOcspResp()
-        {
-            return ocspResp;
         }
 
         public virtual X509Name? GetSignerSubjectName()
@@ -47,7 +41,7 @@ namespace CAdESLib.Document.Validation
                 return signerSubjectName;
             }
 
-            signerSubjectName = ocspResp.ResponderId.ToAsn1Object().Name;
+            signerSubjectName = OcspResp.ResponderId.ToAsn1Object().Name;
 
             if (signerSubjectName != null)
             {
@@ -109,7 +103,7 @@ namespace CAdESLib.Document.Validation
         {
             try
             {
-                var result = ocspResp.Verify(potentialIssuer.GetPublicKey());
+                var result = OcspResp.Verify(potentialIssuer.GetPublicKey());
                 if (result)
                 {
                     signerCertificate = potentialIssuer;
@@ -124,14 +118,22 @@ namespace CAdESLib.Document.Validation
 
         public virtual ICertificateSource GetWrappedCertificateSource()
         {
-            return new OCSPRespCertificateSource(ocspResp);
+            return new OCSPRespCertificateSource(OcspResp);
         }
+
+        public DateTime ThisUpdate => OcspResp.Responses.First().ThisUpdate;
 
         public override int GetHashCode()
         {
             int prime = 31;
             int result = 1;
-            result = prime * result + ((ocspResp == null) ? 0 : ocspResp.GetHashCode());
+            int hashCode = 0;
+            if (OcspResp is not null)
+            {
+                hashCode = new BigInteger(OcspResp.GetSignature()).GetHashCode();
+            }
+                        
+            result = prime * result + ((OcspResp == null) ? 0 : hashCode);
             return result;
         }
 
@@ -145,21 +147,17 @@ namespace CAdESLib.Document.Validation
             {
                 return false;
             }
-            if (GetType() != obj.GetType())
-            {
-                return false;
-            }
             OCSPRespToken other = (OCSPRespToken)obj;
-            if (ocspResp == null)
+            if (OcspResp == null)
             {
-                if (other.ocspResp != null)
+                if (other.OcspResp != null)
                 {
                     return false;
                 }
             }
             else
             {
-                if (!ocspResp.Equals(other.ocspResp))
+                if (!this.GetHashCode().Equals(other.GetHashCode()))
                 {
                     return false;
                 }
@@ -174,7 +172,7 @@ namespace CAdESLib.Document.Validation
 
         private X509Certificate? GetSigningCert()
         {
-            IList<X509Certificate> certs = ((OCSPRespCertificateSource)GetWrappedCertificateSource()).GetCertificates();
+            IList<X509Certificate> certs = ((OCSPRespCertificateSource)GetWrappedCertificateSource()).GetCertificates(true);
             foreach (X509Certificate c in certs)
             {
                 if (IsSignedBy(c))
@@ -183,7 +181,7 @@ namespace CAdESLib.Document.Validation
                 }
             }
 
-            logger.Warn("Don't found an signer for OCSPToken in the " + certs.Count + " certificates " + certs);
+            nloglogger.Warn("Don't found an signer for OCSPToken in the " + certs.Count + " certificates " + certs);
 
             return null;
         }

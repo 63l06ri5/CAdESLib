@@ -38,13 +38,13 @@ namespace CAdESLib.Document.Validation
             signerId = id;
         }
 
-        public override IList<BasicOcspResp> GetOCSPResponsesFromSignature()
+        public override IList<BasicOcspResp> GetOCSPResponsesFromSignature(bool timestampIncluded)
         {
             // Add certificates in CAdES-XL certificate-values inside SignerInfo attribute if present
             SignerInformation si = BCStaticHelpers.GetSigner(cmsSignedData, signerId);
             var list = si?.UnsignedAttributes.GetOcspReps()?.ToList() ?? new List<BasicOcspResp>();
 
-            if (si != null)
+            if (timestampIncluded && si != null)
             {
                 foreach (var tst in si.GetAllTimestampTokens())
                 {
