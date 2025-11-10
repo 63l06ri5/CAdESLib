@@ -410,9 +410,12 @@ namespace CAdESLib.Document.Validation
                     {
                         CadesLogger.Trace("ocsp status");
                         KnownOcsps.Add(resp);
-                        revocationInfo.AddNotYetVerifiedToken(
-                                new OCSPRespToken(resp, rootValidationCause),
-                                CadesLogger);
+                        if (status.StatusSourceType != ValidatorSourceType.OCSP_NO_CHECK)
+                        {
+                            revocationInfo.AddNotYetVerifiedToken(
+                                    new OCSPRespToken(resp, rootValidationCause),
+                                    CadesLogger);
+                        }
                     }
                     else
                     {

@@ -112,8 +112,8 @@ namespace CAdESLib.Tests
             Action callsChecker = () =>
             {
                 // sign: ocsp - 1   
-                // extend: tsp - 2, ocsp for signer - 1, ocsp for tsp - 1
-                fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(1 + 4));
+                // extend: tsp - 2, ocsp for signer - 1, ocsp for tsp - 2
+                fakeHttpDataLoader.Verify(x => x.Post(It.IsAny<string>(), It.IsAny<Stream>()), Times.Exactly(1 + 5));
                 // sign: intermediate - 1, crl - 2 (1 - inter, 1 - ocsp) if crlOnline else 0, 
                 // extend: intermediate - 2 (signer, tsp), crl - 4 (2 - inter, 2 - ocsp) if crlOnline else 0, ca - 0 (it is present because of a trusted list)
                 fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(crlOnline ? 9 : 3));
@@ -265,8 +265,8 @@ namespace CAdESLib.Tests
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.CheckedWithWarning, SignatureProfile.T)]
-        [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
-        [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
+        [TestCase(SignatureProfile.XLType1, FileSignatureState.CheckedWithWarning, SignatureProfile.XLType1)]
+        [TestCase(SignatureProfile.XLType2, FileSignatureState.CheckedWithWarning, SignatureProfile.XLType2)]
         public void check_no_net(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (container, fakeHttpDataLoader) = Setup();
@@ -280,9 +280,11 @@ namespace CAdESLib.Tests
             var state = Extensions.GetSignatureState(signatureInformation, signatureProfile);
 
             var levelReached = Extensions.GetLevelReached(signatureInformation);
+            var valInfos = GetValidationInfos(SignatureType.CAdES, signatureProfile, validationReport, container.Resolve<ICurrentTimeGetter>());
+            nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
 
-            Assert.AreEqual(expectedState, state);
             Assert.AreEqual(expectedLevel, levelReached);
+            Assert.AreEqual(expectedState, state);
         }
 
         [TestCase(SignatureProfile.T, FileSignatureState.Failed, SignatureProfile.T)]
@@ -544,17 +546,22 @@ namespace CAdESLib.Tests
         [TestCase(SignatureProfile.T, FileSignatureState.Checked, SignatureProfile.T)]
         [TestCase(SignatureProfile.XLType1, FileSignatureState.Checked, SignatureProfile.XLType1)]
         [TestCase(SignatureProfile.XLType2, FileSignatureState.Checked, SignatureProfile.XLType2)]
-        public void sign_ocsp_without_crl(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
+        public void sign_ocsp_revoked_with_no_check(SignatureProfile signatureProfile, FileSignatureState expectedState, SignatureProfile expectedLevel)
         {
             var (container, fakeHttpDataLoader) = Setup();
+            var (_, certsParams) = GetSignerCert(container, ocsp: (true, true));
+            var cadesSettings = container.Resolve<CAdESServiceSettings>();
+            cadesSettings.TrustedCerts.Add(certsParams.CaCert);
             var (_, _, _, validationReport) = SomeSetupSigning(
                 container,
                 signatureProfile,
-                ocspWithoutCrl: true);
+                certsParams: certsParams);
 
             var signatureInformation = validationReport.SignatureInformationList.First()!;
             var state = Extensions.GetSignatureState(signatureInformation, signatureProfile);
             var levelReached = Extensions.GetLevelReached(signatureInformation);
+            var valInfos = GetValidationInfos(SignatureType.CAdES, signatureProfile, validationReport, container.Resolve<ICurrentTimeGetter>());
+            nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
 
             Assert.AreEqual(expectedState, state);
             Assert.AreEqual(expectedLevel, levelReached);
@@ -593,48 +600,62 @@ namespace CAdESLib.Tests
         }
 
         [Test]
-        public void when_extend_to_XL_IdAAEtsEscTimeStamp_should_have_refs_and_vals()
+        public void when_extend_to_XL_IdAAEtsCertCrlTimestamp_should_have_refs_and_vals_w_enrichXTimestamp()
         {
-            var (container, fakeHttpDataLoader) = Setup();
-            var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
-                container,
-                signatureProfile: SignatureProfile.XLType1);
+            var testFunc = (bool enrichXTimestamp, SignatureProfile signatureProfile, Action<OrderedAttributeTable> assertFunc) =>
+            {
+                var attributeId = signatureProfile == SignatureProfile.XLType1 ? PkcsObjectIdentifiers.IdAAEtsEscTimeStamp : PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp;
+                var (container, fakeHttpDataLoader) = Setup();
+                var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
+                    container,
+                    signatureProfile,
+                    enrichXTimestamp: enrichXTimestamp);
+                var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
+                var si = cms.GetSignerInfos().GetSigners().Cast<SignerInformation>().First();
+                var cmsUnsigneds = new OrderedAttributeTable(si.ToSignerInfo().UnauthenticatedAttributes);
+                var tCms = new CmsSignedData(
+                        cmsUnsigneds[attributeId]!
+                            .First().AttrValues[0].GetDerEncoded());
+                var tSi = tCms.GetSignerInfos().GetSigners().Cast<SignerInformation>().First();
+                var tCmsUnsigneds = new OrderedAttributeTable(tSi.ToSignerInfo().UnauthenticatedAttributes);
 
-            var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
-            var si = cms.GetSignerInfos().GetSigners().Cast<SignerInformation>().First();
-            var cmsUnsigneds = new OrderedAttributeTable(si.ToSignerInfo().UnauthenticatedAttributes);
-            var tCms = new CmsSignedData(
-                    cmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsEscTimeStamp]!
-                        .First().AttrValues[0].GetDerEncoded());
-            var tSi = tCms.GetSignerInfos().GetSigners().Cast<SignerInformation>().First();
-            var tCmsUnsigneds = new OrderedAttributeTable(tSi.ToSignerInfo().UnauthenticatedAttributes);
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]?.Any(), "There is no IdAAEtsCertificateRefs");
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]?.Any(), "There is no IdAAEtsRevocationRefs");
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsCertValues]?.Any(), "There is no IdAAEtsCertValues");
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsRevocationValues]?.Any(), "There is no IdAAEtsRevocationValues");
+                assertFunc(tCmsUnsigneds);
+
+            };
+
+            testFunc(false, SignatureProfile.XLType1, (unsigned) =>
+            {
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsCertificateRefs], "There is IdAAEtsCertificateRefs");
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationRefs], "There is IdAAEtsRevocationRefs");
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsCertValues], "There is IdAAEtsCertValues");
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationValues], "There is IdAAEtsRevocationValues");
+            });
+
+            testFunc(true, SignatureProfile.XLType1, (unsigned) =>
+            {
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]?.Any(), "There is no IdAAEtsCertificateRefs");
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]?.Any(), "There is no IdAAEtsRevocationRefs");
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsCertValues]?.Any(), "There is no IdAAEtsCertValues");
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationValues]?.Any(), "There is no IdAAEtsRevocationValues");
+            });
+
+            testFunc(false, SignatureProfile.XLType2, (unsigned) =>
+            {
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsCertificateRefs], "There is IdAAEtsCertificateRefs");
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationRefs], "There is IdAAEtsRevocationRefs");
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsCertValues], "There is IdAAEtsCertValues");
+                Assert.IsNull(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationValues], "There is IdAAEtsRevocationValues");
+            });
+
+            testFunc(true, SignatureProfile.XLType2, (unsigned) =>
+            {
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]?.Any(), "There is no IdAAEtsCertificateRefs");
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]?.Any(), "There is no IdAAEtsRevocationRefs");
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsCertValues]?.Any(), "There is no IdAAEtsCertValues");
+                Assert.IsTrue(unsigned[PkcsObjectIdentifiers.IdAAEtsRevocationValues]?.Any(), "There is no IdAAEtsRevocationValues");
+            });
         }
 
-        [Test]
-        public void when_extend_to_XL_IdAAEtsCertCrlTimestamp_should_have_refs_and_vals()
-        {
-            var (container, fakeHttpDataLoader) = Setup();
-            var (signedDocument, inputDocument, cadesService, _) = SomeSetupSigning(
-                container,
-                signatureProfile: SignatureProfile.XLType2);
-            var cms = new CmsSignedData(Streams.ReadAll(signedDocument.OpenStream()));
-            var si = cms.GetSignerInfos().GetSigners().Cast<SignerInformation>().First();
-            var cmsUnsigneds = new OrderedAttributeTable(si.ToSignerInfo().UnauthenticatedAttributes);
-            var tCms = new CmsSignedData(
-                    cmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsCertCrlTimestamp]!
-                        .First().AttrValues[0].GetDerEncoded());
-            var tSi = tCms.GetSignerInfos().GetSigners().Cast<SignerInformation>().First();
-            var tCmsUnsigneds = new OrderedAttributeTable(tSi.ToSignerInfo().UnauthenticatedAttributes);
-
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsCertificateRefs]?.Any(), "There is no IdAAEtsCertificateRefs");
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsRevocationRefs]?.Any(), "There is no IdAAEtsRevocationRefs");
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsCertValues]?.Any(), "There is no IdAAEtsCertValues");
-            Assert.IsTrue(tCmsUnsigneds[PkcsObjectIdentifiers.IdAAEtsRevocationValues]?.Any(), "There is no IdAAEtsRevocationValues");
-        }
         [Test]
         public void when_extend_to_XL_IdAASignatureTimeStampToken_should_have_refs_and_vals()
         {
@@ -729,7 +750,7 @@ namespace CAdESLib.Tests
             nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
             nloglogger.Trace(Convert.ToBase64String(Streams.ReadAll(signedDocument.OpenStream())));
 
-            Assert.AreEqual(FileSignatureState.Failed, state, "Strict validation is not failed");
+            Assert.AreEqual(FileSignatureState.CheckedWithWarning, state, "Strict validation is not failed");
         }
 
         [Test]
@@ -856,7 +877,7 @@ namespace CAdESLib.Tests
         public void crl_outdated()
         {
             var (container, fakeHttpDataLoader) = Setup();
-            var (_, certsParams) = GetSignerCert(container, useOcsp: false);
+            var (_, certsParams) = GetSignerCert(container, ocsp: (false, false));
             var signatureProfile = SignatureProfile.XLType1;
             var (_, _, _, validationReport) = SomeSetupSigning(
                 container,
@@ -1001,6 +1022,7 @@ namespace CAdESLib.Tests
                     parameters: new SignatureParameters
                     {
                         SignatureProfile = newSignatureProfile,
+                        EnrichXTimestamp = true
                         // CreateNewAttributeIfExist = false // false is default, but for explicity
                     });
             signatureInformation = validationReport.SignatureInformationList.First()!;
@@ -1337,6 +1359,7 @@ namespace CAdESLib.Tests
         //     fakeHttpDataLoader.Verify(x => x.Get(It.IsAny<string>()), Times.Exactly(getCount));
         // }
 
+        // TODO when you create C profile you don't store rev values, so signature become outdated very soon if you do not  provideoriginal validation data. SO. maybe we should add this feature
         [Test]
         public void you_cannot_validate_C_if_you_dont_store_revocation_values()
         {
@@ -1362,21 +1385,11 @@ namespace CAdESLib.Tests
             var state = Extensions.GetSignatureState(signatureInformation, signatureProfile);
             var levelReached = Extensions.GetLevelReached(signatureInformation);
 
-            Assert.AreEqual(FileSignatureState.Checked, state);
-            Assert.AreEqual(signatureProfile, levelReached);
-
-            validationReport = cadesService.ValidateDocument(
-                    signedDocument,
-                    true,
-                    inputDocument);
-
-            signatureInformation = validationReport.SignatureInformationList.First()!;
-            state = Extensions.GetSignatureState(signatureInformation, signatureProfile);
-            levelReached = Extensions.GetLevelReached(signatureInformation);
             var valInfos = GetValidationInfos(SignatureType.CAdES, signatureProfile, validationReport, container.Resolve<ICurrentTimeGetter>());
             nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
             nloglogger.Trace(Convert.ToBase64String(Streams.ReadAll(signedDocument.OpenStream())));
 
+            // Failed because there is no original ocsp
             Assert.AreEqual(FileSignatureState.Failed, state);
             Assert.AreEqual(SignatureProfile.T, levelReached);
         }
@@ -1664,7 +1677,8 @@ namespace CAdESLib.Tests
                 ocspNextUpdate: ocspNextUpdate,
                 crlThisUpdate: crlThisUpdate,
                 crlNextUpdate: crlNextUpdate,
-                signingDate: signingDate);
+                signingDate: signingDate,
+                enrichXTimestamp: true);
 
 
             // check that a time for esc timestamps is as set above
@@ -1990,7 +2004,9 @@ namespace CAdESLib.Tests
 
                 CertsParams? certsParams = null,
 
-                DateTime? signingDate = null
+                DateTime? signingDate = null,
+
+                bool enrichXTimestamp = false
             )
         {
             var cadesSettings = container.Resolve<CAdESServiceSettings>();
@@ -2009,7 +2025,8 @@ namespace CAdESLib.Tests
                 SignatureProfile = signatureProfile,
                 SigningDate = signingTime,
                 DigestAlgorithmOID = DigestAlgorithm.SHA256.OID,
-                EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id
+                EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id,
+                EnrichXTimestamp = enrichXTimestamp
             };
             var toBeSignedStream = cadesService.ToBeSigned(inputDocument, parameters);
             // sign
@@ -2031,7 +2048,6 @@ namespace CAdESLib.Tests
                 noNetworkForInter: noNetworkForInterBeforeSigning,
                 noNetworkForOcsp: noNetworkForOcspBeforeSigning,
                 noNetworkForCrl: noNetworkForCrlBeforeSigning,
-                ocspWithoutCrl: ocspWithoutCrl,
                 ocspRespIDPublicKey: ocspRespIDPublicKey,
                 timestampTime: timestampTime,
                 ocspProducedAt: ocspProducedAt,
@@ -2055,7 +2071,6 @@ namespace CAdESLib.Tests
                 noNetworkForInter: noNetworkForInterAfterSigning,
                 noNetworkForOcsp: noNetworkForOcspAfterSigning,
                 noNetworkForCrl: noNetworkForCrlAfterSigning,
-                ocspWithoutCrl: ocspWithoutCrl,
                 ocspRespIDPublicKey: ocspRespIDPublicKey,
                 timestampTime: timestampTime,
                 ocspProducedAt: ocspProducedAt,
@@ -2079,7 +2094,6 @@ namespace CAdESLib.Tests
             bool noNetworkForInter = false,
             bool noNetworkForOcsp = false,
             bool noNetworkForCrl = false,
-            bool ocspWithoutCrl = false,
             // use ocsp public key for reference issuer
             bool ocspRespIDPublicKey = false,
             DateTime? timestampTime = null,
@@ -2090,7 +2104,6 @@ namespace CAdESLib.Tests
             DateTime? crlNextUpdate = null,
             bool crlOutdated = false)
         {
-            // var ocspCert = ocspWithoutCrl ? ocspCertWithoutCrl : ocspCertWithCrl;
             var fakeHttpDataLoader = new Mock<IHTTPDataLoader>();
 
             container.RegisterFactory<Func<IRuntimeValidatingParams, IHTTPDataLoader>>(
@@ -2106,6 +2119,8 @@ namespace CAdESLib.Tests
                                 }
 
                                 var ((rootType, urlTypeNew), certsParams) = paramsResolver.Resolve(url);
+
+                                nloglogger.Trace($"rootType={rootType}, urlTypeNew={urlTypeNew}");
 
                                 if (rootType == UrlType.Tsp && urlTypeNew == UrlType.Signer)
                                 {
@@ -2316,8 +2331,9 @@ namespace CAdESLib.Tests
                 bool useCrl = true,
                 bool ocspWOCrl = false,
                 bool tsp = false,
-                bool useOcsp = true)
+                (bool useOcsp, bool noCheck)? ocsp = null)
         {
+            ocsp ??= (true, false);
             var random = new Random();
             var num = random.Next();
             var hexString = num.ToString("X");
@@ -2352,8 +2368,8 @@ namespace CAdESLib.Tests
                     intermediateCertName,
                     caKeyPair.Private,
                     intermediateKeyPair.Public,
-                notBefore: notBefore,
-                notAfter: notAfter,
+                    notBefore: notBefore,
+                    notAfter: notAfter,
                     issuerUrls: new string[] { caUrl },
                     crlUrls: new string[] { crlCaUrl });
 
@@ -2370,7 +2386,7 @@ namespace CAdESLib.Tests
                 notAfter: notAfter,
                 issuerUrls: new string[] { intermediateUrl },
                 crlUrls: ocspWOCrl ? null : new string[] { crlInterUrl },
-                ocsp: true);
+                ocspParam: ocsp);
 
             // Signer
             var signerCertName = new X509Name("CN=" + (tsp ? "tsp" : "signer_cert_") + hexString);
@@ -2385,7 +2401,7 @@ namespace CAdESLib.Tests
                 tsp: tsp,
                 issuerUrls: new string[] { intermediateUrl },
                 crlUrls: useCrl ? new string[] { crlInterUrl } : null,
-                ocspUrls: useOcsp ? new string[] { ocspUrl } : null);
+                ocspUrls: ocsp?.useOcsp ?? false ? new string[] { ocspUrl } : null);
 
             var certParams = new CertsParams(
                 signerCert: signerCert,

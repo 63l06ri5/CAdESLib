@@ -3,6 +3,7 @@ using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Cms;
 using System.Linq;
 using CAdESLib.Document.Signature.Extensions;
+using NLog;
 
 namespace CAdESLib.Helpers
 {
@@ -35,6 +36,8 @@ namespace CAdESLib.Helpers
 
     public static class Extensions
     {
+        private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
+
         public static SignatureProfile GetWannaBeProfile(SignerInformation si)
         {
             if (si is null)
@@ -93,7 +96,6 @@ namespace CAdESLib.Helpers
             {
                 result = SignatureProfile.XType2;
             }
-            
             if (unsignedAttributes[CAdESProfileA.id_aa_ets_archiveTimestamp_v3] != null)
             {
                 result = SignatureProfile.A;
@@ -107,6 +109,41 @@ namespace CAdESLib.Helpers
             SignatureProfile targetSignatureProfile,
             bool strictValidation = false)
         {
+            nloglogger.Trace("GetSignatureState");
+            if (nloglogger.IsTraceEnabled)
+            {
+                nloglogger.Trace($"CertPath={info.CertPathRevocationAnalysis.Summary}");
+                nloglogger.Trace($"LevelT={info.SignatureLevelAnalysis.LevelT.LevelReached}");
+                nloglogger.Trace($"LevelC={info.SignatureLevelAnalysis.LevelC.LevelReached}");
+                nloglogger.Trace($"LevelXL={info.SignatureLevelAnalysis.LevelXL.LevelReached}");
+                nloglogger.Trace($"LevelX={info.SignatureLevelAnalysis.LevelX.LevelReached}");
+                if (info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification is { } x1timestamps)
+                {
+                    nloglogger.Trace($"\tLevelX1");
+                    foreach (var ts in x1timestamps)
+                    {
+                        nloglogger.Trace($"\t\tcertPath={ts.CertPathUpToTrustedList}");
+                    }
+                }
+                if (info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification is { } x2timestamps)
+                {
+                    nloglogger.Trace($"\tLevelX2");
+                    foreach (var ts in x2timestamps)
+                    {
+                        nloglogger.Trace($"\t\tcertPath={ts.CertPathUpToTrustedList}");
+                    }
+                }
+                nloglogger.Trace($"LevelA={info.SignatureLevelAnalysis.LevelA.LevelReached}");
+                if (info.SignatureLevelAnalysis.LevelA.ArchiveTimestampsVerification is { } atimestamps)
+                {
+                    nloglogger.Trace($"\tLevelA");
+                    foreach (var ts in atimestamps)
+                    {
+                        nloglogger.Trace($"\t\tcertPath={ts.CertPathUpToTrustedList}");
+                    }
+                }
+            }
+
             if (info.CertPathRevocationAnalysis.Summary.IsInvalid)
             {
                 return FileSignatureState.Failed;
@@ -136,11 +173,10 @@ namespace CAdESLib.Helpers
                     break;
 
                 case SignatureProfile.XType1:
-                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                    if (!info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
                         || !(info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Length > 0)
-                        || !info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
+                        || info.SignatureLevelAnalysis.LevelX.LevelReached.IsInvalid
                         || info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsInvalid)
                         )
                     {
@@ -154,12 +190,12 @@ namespace CAdESLib.Helpers
                     break;
 
                 case SignatureProfile.XType2:
-                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
+                    if (!info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
                         || !(info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Length > 0)
-                        || !info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsInvalid))
+                        || info.SignatureLevelAnalysis.LevelX.LevelReached.IsInvalid
+                        || info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsInvalid)
+                        )
                     {
                         return FileSignatureState.Failed;
                     }
@@ -181,36 +217,48 @@ namespace CAdESLib.Helpers
                     break;
 
                 case SignatureProfile.XLType1:
-                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
+                    if (
+                           !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
                         || !(info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Length > 0)
-                        || !info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.Any(x => !x.CertPathUpToTrustedList.IsValid))
+                        || info.SignatureLevelAnalysis.LevelX.LevelReached.IsInvalid
+                        || info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsInvalid)
+                        )
                     {
                         return FileSignatureState.Failed;
                     }
+                    else if (info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsUndetermined))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
 
                     break;
 
                 case SignatureProfile.XLType2:
-                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
+                    if (
+                           !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
                         || !(info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification?.Length > 0)
-                        || !info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.Any(x => !x.CertPathUpToTrustedList.IsValid))
+                        || info.SignatureLevelAnalysis.LevelX.LevelReached.IsInvalid
+                        || info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsInvalid)
+                        )
                     {
                         return FileSignatureState.Failed;
                     }
+                    else if (info.SignatureLevelAnalysis.LevelX.ReferencesTimestampsVerification.Any(x => x.CertPathUpToTrustedList.IsUndetermined))
+                    {
+                        return FileSignatureState.CheckedWithWarning;
+                    }
+
 
                     break;
 
                 case SignatureProfile.A:
-                    if (!info.SignatureLevelAnalysis.LevelX.LevelReached.IsValid
-                        || !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
+                    if (
+                           !info.SignatureLevelAnalysis.LevelXL.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelC.LevelReached.IsValid
                         || !info.SignatureLevelAnalysis.LevelT.LevelReached.IsValid
                         || !(info.SignatureLevelAnalysis.LevelX.SignatureAndRefsTimestampsVerification?.Length > 0)

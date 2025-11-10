@@ -43,7 +43,7 @@ namespace CAdESLib.Tests
             AsymmetricKeyParameter subjectPublic,
             DateTime? notBefore = null,
             DateTime? notAfter = null,
-            bool ocsp = false,
+            (bool ocsp, bool ocspNoCheck)? ocspParam = null,
             bool tsp = false,
             string[]? issuerUrls = null,
             string[]? ocspUrls = null,
@@ -111,12 +111,12 @@ namespace CAdESLib.Tests
                 keySupposedIds.Add(KeyPurposeID.IdKPTimeStamping);
             }
 
-            if (ocsp)
+            if (ocspParam?.ocsp ?? false)
             {
                 keySupposedIds.Add(KeyPurposeID.IdKPOcspSigning);
             }
             certGenerator.AddExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(keySupposedIds));
-            if (ocsp)
+            if ((ocspParam?.ocsp ?? false) && (ocspParam?.ocspNoCheck ?? false))
             {
                 certGenerator.AddExtension(X509Consts.OCSPNoCheck, false, new DerInteger(BigInteger.ValueOf(0x0500)));
             }

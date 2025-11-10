@@ -84,6 +84,11 @@ namespace CAdESLib.Document.Signature
                 return new DefaultSignatureAlgorithmIdentifierFinder().Find(this.SignatureName).Algorithm.Id;
             }
         }
+        
+        /// <summary>
+        /// Should add unsigned attributes for X timestamp
+        /// </summary>
+        public virtual bool EnrichXTimestamp { get; set; }
 
         public SignatureParameters()
         {
@@ -91,6 +96,7 @@ namespace CAdESLib.Document.Signature
             DigestAlgorithmOID = DigestAlgorithm.SHA1.OID;
             EncriptionAlgorithmOID = Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.RsaEncryption.Id;
             CreateNewAttributeIfExist = false;
+            EnrichXTimestamp = false;
         }
 
         public SignatureParameters(SignatureParameters parameters)

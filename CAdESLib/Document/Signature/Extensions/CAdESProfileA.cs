@@ -117,17 +117,17 @@ namespace CAdESLib.Document.Signature.Extensions
             // - add ats-hash-index to archive timestamp
             {
                 var timestamp = new CmsSignedData(archiveTimeStamp.AttrValues[0].GetDerEncoded());
-                timestamp = EnrichTimestampsWithRefsAndValues(
-                    timestamp,
-                    this.CurrentTimeGetter.CurrentUtcTime,
-                    validationContext,
-                    signatureCertificateSource,
-                    signatureCrlSource,
-                    signatureOcspSource,
-                    parameters.DigestAlgorithmOID,
-                    parameters.CreateNewAttributeIfExist,
-                    true
-                    );
+                // timestamp = EnrichTimestampsWithRefsAndValues(
+                //     timestamp,
+                //     this.CurrentTimeGetter.CurrentUtcTime,
+                //     validationContext,
+                //     signatureCertificateSource,
+                //     signatureCrlSource,
+                //     signatureOcspSource,
+                //     parameters.DigestAlgorithmOID,
+                //     parameters.CreateNewAttributeIfExist,
+                //     true
+                //     );
 
                 var timestampSignerInformation = timestamp.GetSignerInfos().GetSigners().OfType<SignerInformation>().First();
                 var tsSignedInfo = timestampSignerInformation.ToSignerInfo();
@@ -519,7 +519,8 @@ namespace CAdESLib.Document.Signature.Extensions
                                     originalDocument,
                                     new SignatureParameters(parameters)
                                     {
-                                        SignatureProfile = targetSignatureProfile
+                                        SignatureProfile = targetSignatureProfile,
+                                        EnrichXTimestamp = true
                                     });
                             nloglogger.Trace($"Extending to {targetSignatureProfile} start");
                             (report, contexts) = Validator.ValidateDocumentWithContext(

@@ -115,20 +115,23 @@ namespace CAdESLib.Document.Signature.Extensions
                             }
 
                             var tstSignedData = new CmsSignedData(extendedTimeStamp!.AttrValues[0].GetDerEncoded());
-                            var tst = new TimeStampToken(tstSignedData);
-                            var newTstSignedData = EnrichTimestampsWithRefsAndValues(
-                                    tstSignedData,
-                                    endDate,
-                                    validationContext,
-                                    signature.CertificateSource,
-                                    signature.CRLSource,
-                                    signature.OCSPSource,
-                                    parameters.DigestAlgorithmOID,
-                                    parameters.CreateNewAttributeIfExist,
-                                    !(unsignedAttributesTable[CAdESProfileA.id_aa_ets_archiveTimestamp_v3]?.Any() ?? false)
-                                    );
+                            if (parameters.EnrichXTimestamp)
+                            {
+                                var tst = new TimeStampToken(tstSignedData);
+                                tstSignedData = EnrichTimestampsWithRefsAndValues(
+                                        tstSignedData,
+                                        endDate,
+                                        validationContext,
+                                        signature.CertificateSource,
+                                        signature.CRLSource,
+                                        signature.OCSPSource,
+                                        parameters.DigestAlgorithmOID,
+                                        parameters.CreateNewAttributeIfExist,
+                                        !(unsignedAttributesTable[CAdESProfileA.id_aa_ets_archiveTimestamp_v3]?.Any() ?? false)
+                                        );
+                            }
 
-                            var derSet = new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER")));
+                            var derSet = new DerSet(Asn1Object.FromByteArray(tstSignedData.GetEncoded("DER")));
                             var enrichedAttribute = new Attribute(
                                     attributeId,
                                     derSet);
@@ -174,19 +177,22 @@ namespace CAdESLib.Document.Signature.Extensions
                         }
 
                         var tstSignedData = new CmsSignedData(extendedTimeStamp!.AttrValues[0].GetDerEncoded());
-                        var tst = new TimeStampToken(tstSignedData);
-                        var newTstSignedData = EnrichTimestampsWithRefsAndValues(
-                                tstSignedData,
-                                endDate,
-                                validationContext,
-                                signature.CertificateSource,
-                                signature.CRLSource,
-                                signature.OCSPSource,
-                                parameters.DigestAlgorithmOID,
-                                parameters.CreateNewAttributeIfExist,
-                                !(unsignedAttributesTable[CAdESProfileA.id_aa_ets_archiveTimestamp_v3]?.Any() ?? false)
-                                );
-                        var derSet = new DerSet(Asn1Object.FromByteArray(newTstSignedData.GetEncoded("DER")));
+                        if (parameters.EnrichXTimestamp)
+                        {
+                            var tst = new TimeStampToken(tstSignedData);
+                            tstSignedData = EnrichTimestampsWithRefsAndValues(
+                                    tstSignedData,
+                                    endDate,
+                                    validationContext,
+                                    signature.CertificateSource,
+                                    signature.CRLSource,
+                                    signature.OCSPSource,
+                                    parameters.DigestAlgorithmOID,
+                                    parameters.CreateNewAttributeIfExist,
+                                    !(unsignedAttributesTable[CAdESProfileA.id_aa_ets_archiveTimestamp_v3]?.Any() ?? false)
+                                    );
+                        }
+                        var derSet = new DerSet(Asn1Object.FromByteArray(tstSignedData.GetEncoded("DER")));
                         var enrichedAttribute = new Attribute(
                                 attributeId,
                                 derSet);

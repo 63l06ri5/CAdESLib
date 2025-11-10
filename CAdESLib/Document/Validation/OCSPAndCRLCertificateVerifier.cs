@@ -96,8 +96,9 @@ namespace CAdESLib.Document.Validation
                 if (
                         ocspResult != null &&
                         ocspResult.Validity is not null &&
-                        ocspResult.Validity != CertificateValidity.UNKNOWN &&
-                        ocspResult.StatusSourceType != ValidatorSourceType.OCSP_NO_CHECK)
+                        ocspResult.Validity != CertificateValidity.UNKNOWN )
+                        // &&
+                        // ocspResult.StatusSourceType != ValidatorSourceType.OCSP_NO_CHECK)
                 {
                     nloglogger.Trace(OCSPDoneMessage);
                     return ocspResult;

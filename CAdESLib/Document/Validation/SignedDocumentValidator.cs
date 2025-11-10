@@ -369,12 +369,14 @@ namespace CAdESLib.Document.Validation
                     everyNeededCertAreInSignature.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_NoAllNeededcertificateRef");
                 }
                 cadesLogger.Info("Every CertificateRef found " + everyNeededCertAreInSignature);
-                int refCount = 0;
                 SignatureValidationResult everyNeededRevocationData = new SignatureValidationResult(ResultStatus.VALID, null);
-                refCount += ocspRefs.Count;
-                refCount += crlRefs.Count;
                 SignatureValidationResult? levelCReached = null;
-                var neededOcspResps = neededCerts.SelectMany(x => revocationInfo.GetRelatedOCSPResp(x, startDate, endDate));
+                var neededOcspResps = neededCerts.SelectMany(x =>
+                {
+                    var ocspResps = revocationInfo.GetRelatedOCSPResp(x, startDate, endDate);
+                    nloglogger.Trace($"related ocsp resps ({ocspResps.Count}) for " + x);
+                    return ocspResps;
+                });
                 if (!EveryOCSPValueOrRefAreThere(neededOcspResps, ocspRefs))
                 {
                     everyNeededRevocationData.SetStatus(ResultStatus.INVALID, "$UI_Signatures_ValidationText_NoAllNeededOCSPRef");
@@ -588,7 +590,7 @@ namespace CAdESLib.Document.Validation
                     {
                         if (valueOrRef.Equals(ocspResp))
                         {
-                            nloglogger.Trace("BasicOcspResp " + (found ? " found" : " not found"));
+                            nloglogger.Trace("BasicOcspResp found");
                             found = true;
                             break;
                         }
@@ -597,13 +599,13 @@ namespace CAdESLib.Document.Validation
                     {
                         if (@ref.Match(this.cryptographicProvider, ocspResp))
                         {
-                            nloglogger.Trace("OCSPRef " + (found ? " found" : " not found"));
+                            nloglogger.Trace("OCSPRef found");
                             found = true;
                             break;
                         }
                     }
                 }
-                nloglogger.Trace("Ref " + (found ? " found" : " not found"));
+                nloglogger.Trace("Ref" + (found ? " found" : " not found"));
                 if (!found)
                 {
                     return false;
