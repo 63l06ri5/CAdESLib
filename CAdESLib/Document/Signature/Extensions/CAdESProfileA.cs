@@ -538,16 +538,7 @@ namespace CAdESLib.Document.Signature.Extensions
                                         targetSignatureProfile)
                                     != FileSignatureState.Checked)
                             {
-                                // TODO: need to return and print to log a summary reason of why
-                                throw new ArgumentException(
-                                        $"Cannot extend to a {targetSignatureProfile} profile: " +
-                                        Environment.NewLine +
-                                        string.Join(
-                                            Environment.NewLine,
-                                            report.SignatureInformationList[0]!.
-                                            GetLevelDescriptionForTarget(targetSignatureProfile).
-                                            Select(x =>
-                                                string.Join(", ", x)).ToArray()));
+                                return (signedDocument, new[] { context });
                             }
                             (signedData, si) = FillDataStructures(signedDocument);
                             context = contexts.ElementAt(0)!;
@@ -602,15 +593,7 @@ namespace CAdESLib.Document.Signature.Extensions
             else
             {
                 nloglogger.Trace(JsonConvert.SerializeObject(ValidationHelper.GetValidationInfos(SignatureType.CAdES, wannabeProfile, report, this.CurrentTimeGetter)));
-                // TODO: need to return and print to log a summary reason of why
-                throw new Exception($"Signature with signer certificate={si.SignerID.Certificate} is not valid: " +
-                                        Environment.NewLine +
-                                        string.Join(
-                                            Environment.NewLine,
-                                            report!.SignatureInformationList[0]!.
-                                            GetLevelDescriptionForTarget(targetSignatureProfile).
-                                            Select(x =>
-                                                string.Join(", ", x)).ToArray()));
+                return (signedDocument, new[] { context });
             }
 
             CmsSignedData extended = ReplaceSigners(signedData, siArray);
