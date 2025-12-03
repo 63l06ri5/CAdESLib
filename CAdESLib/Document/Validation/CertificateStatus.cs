@@ -61,8 +61,9 @@ namespace CAdESLib.Document.Validation
 
         public bool IsValidForTime(DateTime startDate, DateTime endDate) => 
             StatusSourceType == ValidatorSourceType.TRUSTED_LIST ||
+            StatusSourceType == ValidatorSourceType.NOT_TRUSTED_LIST ||
             StatusSource.IsValidForTime(startDate, endDate) ||
-            StartDate.CompareTo(startDate) >= 0 && EndDate.CompareTo(endDate) <= 0;
+            (StartDate.CompareTo(startDate) >= 0 && EndDate.CompareTo(endDate) <= 0);
 
         public override string ToString()
         {

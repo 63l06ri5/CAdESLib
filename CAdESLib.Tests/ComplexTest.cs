@@ -43,6 +43,49 @@ namespace CAdESLib.Tests
     {
         private static readonly Logger nloglogger = LogManager.GetCurrentClassLogger();
 
+        [Test]
+        public void AllGoodButSignerCAIsNotTrusted()
+        {
+            var (container, _) = Setup();
+            const SignatureProfile signatureProfile = SignatureProfile.XLType1;
+            var (_, signerCertsParams) = GetSignerCert(container, useCrl: false);
+            // NO-NO-NO
+            // var cadesSettings = container.Resolve<CAdESServiceSettings>();
+            // cadesSettings.TrustedCerts.Add(signerCertsParams.CaCert);
+
+            var (signedDocument, inputDocument, cadesService, validationReport) = SomeSetupSigning(
+                container,
+                signatureProfile: signatureProfile,
+                certsParams: signerCertsParams);
+
+            // check validation on a signing
+            {
+                var signatureInformation = validationReport.SignatureInformationList.First()!;
+                var state = Extensions.GetSignatureState(signatureInformation, signatureProfile);
+                var levelReached = Extensions.GetLevelReached(signatureInformation);
+                var valInfos = GetValidationInfos(SignatureType.CAdES, signatureProfile, validationReport, container.Resolve<ICurrentTimeGetter>());
+                nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
+                nloglogger.Trace(Convert.ToBase64String(Streams.ReadAll(signedDocument.OpenStream())));
+
+                Assert.AreEqual(FileSignatureState.Failed, state, "Not in a failed state on a signing");
+                Assert.AreEqual(signatureProfile, levelReached, "Not in a expected level on a signing");
+            }
+
+            // check validation after a signing
+            {
+                validationReport = cadesService.ValidateDocument(signedDocument, false, inputDocument);
+                var signatureInformation = validationReport.SignatureInformationList.First()!;
+                var state = Extensions.GetSignatureState(signatureInformation, signatureProfile);
+                var levelReached = Extensions.GetLevelReached(signatureInformation);
+                var valInfos = GetValidationInfos(SignatureType.CAdES, signatureProfile, validationReport, container.Resolve<ICurrentTimeGetter>());
+                nloglogger.Trace(JsonConvert.SerializeObject(valInfos));
+                nloglogger.Trace(Convert.ToBase64String(Streams.ReadAll(signedDocument.OpenStream())));
+
+                Assert.AreEqual(FileSignatureState.Failed, state, "Not in a failed state on a validation after a signing");
+                Assert.AreEqual(signatureProfile, levelReached, "Not in a expected level on a validation after a signing");
+            }
+        }
+
         [TestCase(true, Description = "crlOnline")]
         [TestCase(false, Description = "crlOffline")]
         public void XLT1_with_same_issuers_chain(bool crlOnline)
@@ -66,12 +109,7 @@ namespace CAdESLib.Tests
             var certsParams = container.Resolve<ParamsResolver>().Resolve(UrlType.Signer, UrlType.Signer).First().Item2.Item2;
             if (!crlOnline)
             {
-                if (cadesSettings.Crls == null)
-                {
-                    cadesSettings.Crls = new List<X509Crl>();
-                }
-
-                cadesSettings.Crls.Add(GetX509Crl(certsParams.IntermediateCert, certsParams.IntermediateKeyPair, certsParams.CaCert.SigAlgOid));
+                (cadesSettings.Crls ??= new List<X509Crl>()).Add(GetX509Crl(certsParams.IntermediateCert, certsParams.IntermediateKeyPair, certsParams.CaCert.SigAlgOid));
                 cadesSettings.Crls.Add(GetX509Crl(certsParams.CaCert, certsParams.CaKeyPair, certsParams.CaCert.SigAlgOid));
                 var tspCertsParams = container.Resolve<ParamsResolver>().Resolve(UrlType.Tsp, UrlType.Signer).First().Item2.Item2;
                 cadesSettings.Crls.Add(GetX509Crl(tspCertsParams.IntermediateCert, tspCertsParams.IntermediateKeyPair, tspCertsParams.CaCert.SigAlgOid));
